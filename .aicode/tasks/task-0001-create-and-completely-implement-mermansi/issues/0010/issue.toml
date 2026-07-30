@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0001-create-and-completely-implement-mermansi#0010"
+number = 10
+title = "Support-matrix and CLI skip JSON source fixtures; flowchart-v2 alias test is incorrect"
+status = "open"
+severity = "P2"
+category = "conformance-coverage"
+fingerprint = "sha256:06782ad6ad768a69107aed4f4a971430e665d9a5e2917e54cc866ea79422e32e"
+created_at = "unix:1785338735"
+updated_at = "unix:1785338735"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0016.json"
+
+[location]
+path = "tests/support_matrix.rs"
+line = 175
+
+[problem]
+description = "support_matrix and the CLI skip JSON source fixtures, and raw JSON input fails render_source. The test claiming flowchart-v2/flowchart-elk alias support only renders a normal flowchart header and does not actually exercise the aliases. Literal 'flowchart-v2' fails while 'flowchart-elk' succeeds, yet the alias test is accepted as Ok."
+impact = "Rule 4 and the Task's conformance requirement are violated — JSON family and flowchart-v2 alias coverage is effectively absent despite passing tests."
+
+[acceptance]
+description = "Include JSON source fixtures in support_matrix and CLI conformance; fix render_source to accept raw JSON input; correct the flowchart-v2 alias test to render actual v2 input and assert correct alias resolution. Add tests that fail until raw JSON and flowchart-v2 render successfully."
+command = "cargo test --test support_matrix"

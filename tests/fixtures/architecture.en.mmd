@@ -1,0 +1,8 @@
+architecture-beta
+    title System Architecture
+    group cloud(Cloud)
+        service web(Web Server) in cloud
+        service api(API Server) in cloud
+        service db(Database) in cloud
+    web:L -- R:api
+    api:L -- R:db

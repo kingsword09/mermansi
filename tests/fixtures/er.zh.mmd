@@ -1,0 +1,11 @@
+erDiagram
+    顾客 ||--o{ 订单 : 下单
+    订单 ||--|{ 订单项 : 包含
+    顾客 {
+        string 姓名
+        string 邮箱
+    }
+    订单 {
+        int 订单号
+        string 状态
+    }

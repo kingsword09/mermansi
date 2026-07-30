@@ -1,0 +1,7 @@
+C4Context
+    title System Context Diagram
+    Person(user, User, "End user")
+    System(app, Application, "Web application")
+    System_Ext(db, Database, "Data store")
+    Rel(user, app, "Uses")
+    Rel(app, db, "Reads from")

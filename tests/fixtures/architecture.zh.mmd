@@ -1,0 +1,8 @@
+architecture-beta
+    title 系统架构
+    group cloud(Cloud)
+        service web(网页服务器) in cloud
+        service api(API服务器) in cloud
+        service db(数据库) in cloud
+    web:L -- R:api
+    api:L -- R:db

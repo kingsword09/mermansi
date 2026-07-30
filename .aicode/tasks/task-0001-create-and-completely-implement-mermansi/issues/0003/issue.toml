@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0001-create-and-completely-implement-mermansi#0003"
+number = 3
+title = "Block adapter walks flat entries and recurses children, duplicating nodes"
+status = "open"
+severity = "P1"
+category = "semantic-entity-preservation"
+fingerprint = "sha256:f2be3a8646e69c1e6d27c5d1edef48336e719a1faf5f8982da824ea0c19b8ed6"
+created_at = "unix:1785338735"
+updated_at = "unix:1785338735"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0016.json"
+
+[location]
+path = "src/adapters/block.rs"
+line = 12
+
+[problem]
+description = "The Block adapter iterates over every blocks_flat entry and then recursively walks children, causing nested nodes (e.g. A/B/C) to be printed multiple times. The flat list already contains the full tree, so the additional recursive traversal double-counts."
+impact = "Rule 4 (no family may silently drop or duplicate parsed semantic entities) is violated by over-emission rather than drops; output is misleading and not a faithful representation of the hierarchy."
+
+[acceptance]
+description = "Walk the hierarchy exactly once — either iterate the flat list or recurse the tree, not both — so that each Block node appears precisely once in the rendered output. Add a test with a three-level nested sample asserting single emission of each node."
+command = "cargo test --test semantic_integrity"

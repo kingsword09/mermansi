@@ -1,0 +1,13 @@
+eventmodeling
+    title Order Processing
+    tf CreateOrder Order order
+        value orderId
+        value customerId
+    tf ValidateOrder Order valid
+        value isValid
+    CreateOrder -> ValidateOrder
+    data Order {
+        orderId
+        customerId
+        amount
+    }

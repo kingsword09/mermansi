@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0001-create-and-completely-implement-mermansi#0005"
+number = 5
+title = "Sequence actor links and Flowchart click URL/tooltip are silently dropped in delegated output; support_matrix skips every delegated variant"
+status = "open"
+severity = "P1"
+category = "semantic-entity-preservation"
+fingerprint = "sha256:6cf9cfacf271dc79b0750dc4cee74ceb8b1c15c7fba032f4a3d220cb953eda33"
+created_at = "unix:1785338735"
+updated_at = "unix:1785338735"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0016.json"
+
+[location]
+path = "src/adapters/mod.rs"
+line = 58
+
+[problem]
+description = "Sequence actor links and Flowchart click URL/tooltip fields parse into typed semantic structures, but these entities disappear from normal delegated output. Additionally, support_matrix returns early for every delegated variant, so the conformance test never exercises these entities."
+impact = "Rule 4 (no family may silently drop parsed semantic entities, relationships, labels, endpoints, markers, hierarchy, or chart values) is violated. The conformance test cannot catch these regressions because it short-circuits."
+
+[acceptance]
+description = "Render or faithfully summarize Sequence actor links and Flowchart click URL/tooltip in delegated output; remove the early-return from support_matrix for delegated variants so conformance exercises these fields. Add tests asserting the fields appear in output."
+command = "cargo test --test support_matrix"

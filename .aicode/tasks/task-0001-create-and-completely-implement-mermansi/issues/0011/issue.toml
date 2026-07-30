@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0001-create-and-completely-implement-mermansi#0011"
+number = 11
+title = "merman-core and merman-ascii specified as caret ranges instead of exact pins"
+status = "open"
+severity = "P2"
+category = "dependency-reproducibility"
+fingerprint = "sha256:e15ce215aa30e30babbad6924319f8f76afb1feb25740f92dff260bc92926b12"
+created_at = "unix:1785338735"
+updated_at = "unix:1785338735"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0016.json"
+
+[location]
+path = "Cargo.toml"
+line = 21
+
+[problem]
+description = "cargo metadata reports merman-core and merman-ascii as caret ranges (^0.8.0-alpha.3) rather than exact version pins (=0.8.0-alpha.3). Pre-release caret ranges allow semver-compatible updates within the alpha series, which can pull a different alpha patch and break determinism."
+impact = "Rule 8 (determinism) and reproducibility are at risk because a future 0.8.0-alpha.x could change parsing or rendering behavior between builds."
+
+[acceptance]
+description = "Pin merman-core and merman-ascii to exact versions (=0.8.0-alpha.3) in Cargo.toml and update Cargo.lock accordingly so builds are fully reproducible."
+command = "cargo metadata --format-version 1 | grep merman"

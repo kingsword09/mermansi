@@ -1,0 +1,13 @@
+eventmodeling
+    title 订单处理
+    tf CreateOrder Order order
+        value 订单编号
+        value 客户编号
+    tf ValidateOrder Order valid
+        value 是否有效
+    CreateOrder -> ValidateOrder
+    data Order {
+        订单编号
+        客户编号
+        金额
+    }

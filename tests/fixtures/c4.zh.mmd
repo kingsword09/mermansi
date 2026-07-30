@@ -1,0 +1,7 @@
+C4Context
+    title 系统上下文图
+    Person(user, 用户, "终端用户")
+    System(app, 应用, "网络应用")
+    System_Ext(db, 数据库, "数据存储")
+    Rel(user, app, "使用")
+    Rel(app, db, "读取")

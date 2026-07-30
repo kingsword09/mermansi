@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0001-create-and-completely-implement-mermansi#0002"
+number = 2
+title = "Raw ANSI escape sequences in Pie labels leak through --no-color output"
+status = "open"
+severity = "P1"
+category = "ansi-geometry-independence"
+fingerprint = "sha256:307d4e0918a941976dbde0a709ecb1df373dcabd8d52ee7a12ccb005a3a5ba12"
+created_at = "unix:1785338735"
+updated_at = "unix:1785338735"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0016.json"
+
+[location]
+path = "src/output.rs"
+line = 115
+
+[problem]
+description = "When a Pie label contains raw ESC CSI bytes, --no-color emits them verbatim into the final text output. The bounded-writer / AnsiEncoder path does not strip or neutralize literal escape sequences embedded in semantic label text before serializing to plain text, so --no-color is not truly color-free."
+impact = "Rule 6 (ANSI roles do not affect geometry / --no-color must be plain text) is violated. Consumers parsing the plain-text output may encounter uncontrolled terminal-control bytes, breaking determinism and downstream consumers."
+
+[acceptance]
+description = "Strip or neutralize all literal ANSI escape sequences from label text before it reaches the final output when --no-color is active; add a regression test asserting no ESC (0x1b) bytes appear in --no-color output for a Pie diagram whose label contains an embedded CSI sequence."
+command = "cargo test --test semantic_integrity"

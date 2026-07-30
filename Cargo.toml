@@ -1,0 +1,38 @@
+[package]
+name = "mermansi"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "Production-quality pure Rust terminal renderer library and CLI for Mermaid."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/kingsword09/mermansi"
+keywords = ["mermaid", "diagrams", "terminal", "ascii", "unicode"]
+categories = ["visualization", "command-line-utilities"]
+
+[lib]
+name = "mermansi"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mermansi"
+path = "src/bin/mermansi.rs"
+
+[dependencies]
+merman-core = { version = "0.8.0-alpha.3", default-features = false, features = [
+    "full",
+    "host",
+] }
+merman-ascii = { version = "0.8.0-alpha.3", default-features = false, features = [
+    "core-full",
+    "core-host",
+] }
+unicode-width = "0.2"
+thiserror = "2"
+serde_json = "1"
+serde = "1"
+unicode-segmentation = "1.12"
+
+[dev-dependencies]
+
+[features]
+default = []

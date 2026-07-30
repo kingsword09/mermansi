@@ -1,0 +1,227 @@
+{
+  "schema_version": 2,
+  "task": "task-0001-create-and-completely-implement-mermansi",
+  "iteration": 16,
+  "loop_iteration": 1,
+  "created_at": "unix:1785338735",
+  "objective": "Create and completely implement mermansi, a production-quality pure Rust terminal renderer library and CLI for Mermaid. Before broad implementation, create root AGENTS.md, README.md, docs/ROADMAP.md, and docs/SUPPORT_MATRIX.md that enumerate all TODOs, architecture boundaries, licenses, and measurable final gates. Treat merman-core 0.8.0-alpha.3 RenderSemanticModel as the authoritative semantic inventory: Json, Mindmap, State, Sequence, Flowchart, Architecture, Class, C4, Kanban, Gantt, Pie, Packet, Timeline, Journey, Requirement, Sankey, Radar, Info, Treemap, Block, Er, QuadrantChart, XyChart, GitGraph, TreeView, Ishikawa, EventModeling, and Venn; also inventory parser aliases and transformed families including graph aliases and ZenUML. Use merman-core as the single strict parser and semantic source. Reuse merman-ascii where it satisfies the contract, and implement adapters for every remaining family without copying or rewriting the Mermaid parser and without forking Selkie. beautiful-mermaid is MIT-licensed algorithmic prior art only, never a byte oracle. Every successfully parsed built-in family must produce deterministic nonempty ASCII and Unicode output through one public source-to-text API and the mermansi CLI; no family may silently drop parsed semantic entities, relationships, labels, endpoints, markers, hierarchy, or chart values. Use terminal-native geometry where it is meaningful and an explicitly documented structured terminal representation where exact browser geometry is not meaningful; never disguise a summary as full geometric parity. Implement optional ANSI roles without affecting geometry. Build a display-column-aware bounded canvas using grapheme segmentation, Unicode width, continuation cells, merged directional strokes, atomic overwrite behavior, and deterministic routing. English, Chinese, combining-mark, and emoji labels must preserve geometry; boxes must close; relationships retain endpoints, markers, and labels; applicable TD/TB/BT/LR/RL directions, self-relations, cycles, disconnected components, nested groups, parallel and dense relations must be tested; source, row, column, cell, routing, and output allocations must be bounded and return typed errors; output must be deterministic. Pin a usable Rust toolchain because Merman requires Rust 1.95 and this host has 1.97.1 installed. Keep parser integration, semantic adapters, layout/routing, canvas, ANSI encoding, CLI, and tests in separate modules following KISS, YAGNI, DRY, and SOLID. Maintain an executable support-matrix conformance test so every current upstream semantic enum variant and supported parser family is accounted for, with at least one English and one Chinese semantic fixture per family. Implement coherent plan phases through the repository issue-loop, Review actual diffs, resolve every finding through numbered Issues, run all configured checks, and create a separate Conventional Commit for each reviewed work unit. Completion requires all TODOs done, every matrix row implemented and tested, no open Issues, a final clean Review, all verification commands passing, and every reviewed unit committed.",
+  "plan": {
+    "objective": "Create and completely implement mermansi, a production-quality pure Rust terminal renderer library and CLI for Mermaid. Before broad implementation, create root AGENTS.md, README.md, docs/ROADMAP.md, and docs/SUPPORT_MATRIX.md that enumerate all TODOs, architecture boundaries, licenses, and measurable final gates. Treat merman-core 0.8.0-alpha.3 RenderSemanticModel as the authoritative semantic inventory: Json, Mindmap, State, Sequence, Flowchart, Architecture, Class, C4, Kanban, Gantt, Pie, Packet, Timeline, Journey, Requirement, Sankey, Radar, Info, Treemap, Block, Er, QuadrantChart, XyChart, GitGraph, TreeView, Ishikawa, EventModeling, and Venn; also inventory parser aliases and transformed families including graph aliases and ZenUML. Use merman-core as the single strict parser and semantic source. Reuse merman-ascii where it satisfies the contract, and implement adapters for every remaining family without copying or rewriting the Mermaid parser and without forking Selkie. beautiful-mermaid is MIT-licensed algorithmic prior art only, never a byte oracle. Every successfully parsed built-in family must produce deterministic nonempty ASCII and Unicode output through one public source-to-text API and the mermansi CLI; no family may silently drop parsed semantic entities, relationships, labels, endpoints, markers, hierarchy, or chart values. Use terminal-native geometry where it is meaningful and an explicitly documented structured terminal representation where exact browser geometry is not meaningful; never disguise a summary as full geometric parity. Implement optional ANSI roles without affecting geometry. Build a display-column-aware bounded canvas using grapheme segmentation, Unicode width, continuation cells, merged directional strokes, atomic overwrite behavior, and deterministic routing. English, Chinese, combining-mark, and emoji labels must preserve geometry; boxes must close; relationships retain endpoints, markers, and labels; applicable TD/TB/BT/LR/RL directions, self-relations, cycles, disconnected components, nested groups, parallel and dense relations must be tested; source, row, column, cell, routing, and output allocations must be bounded and return typed errors; output must be deterministic. Pin a usable Rust toolchain because Merman requires Rust 1.95 and this host has 1.97.1 installed. Keep parser integration, semantic adapters, layout/routing, canvas, ANSI encoding, CLI, and tests in separate modules following KISS, YAGNI, DRY, and SOLID. Maintain an executable support-matrix conformance test so every current upstream semantic enum variant and supported parser family is accounted for, with at least one English and one Chinese semantic fixture per family. Implement coherent plan phases through the repository issue-loop, Review actual diffs, resolve every finding through numbered Issues, run all configured checks, and create a separate Conventional Commit for each reviewed work unit. Completion requires all TODOs done, every matrix row implemented and tested, no open Issues, a final clean Review, all verification commands passing, and every reviewed unit committed.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Preserve the existing uncommitted baseline for host verification and independent Review."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Preserved the existing baseline changes for host verification and independent review.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "4/4 verification commands passed",
+    "commands": [
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "cwd: /Users/kingsword09/Documents/code/ai/mermansi\nstatus: 0\nstdout:\n\nstderr:\n"
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "cwd: /Users/kingsword09/Documents/code/ai/mermansi\nstatus: 0\nstdout:\n\nstderr:\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s\n"
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "cwd: /Users/kingsword09/Documents/code/ai/mermansi\nstatus: 0\nstdout:\n\nrunning 4 tests\ntest tests::render_non_diagram_returns_parse_error ... ok\ntest tests::render_simple_flowchart ... ok\ntest tests::render_deterministic_ascii ... ok\ntest tests::render_deterministic_unicode ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n\nrunning 4 tests\ntest tests::rejects_zero_width_as_invalid_option ... ok\ntest tests::bounds_stdin_before_rendering ... ok\ntest tests::truecolor_is_emitted_without_changing_content ... ok\ntest tests::reports_stdout_failures ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s\n\n\nrunning 29 tests\ntest canvas_dimension_overflow_returns_typed_error ... ok\ntest canvas_creation_enforces_max_cells ... ok\ntest canvas_box_drawing_works ... ok\ntest canvas_overflow_on_out_of_bounds_set ... ok\ntest canvas_creation_within_bounds ... ok\ntest canvas_merges_crossing_strokes_independent_of_order ... ok\ntest canvas_set_text_works ... ok\ntest canvas_stores_decomposed_grapheme_as_one_cell ... ok\ntest default_dimensions_within_bounds ... ok\ntest canvas_tracks_emoji_grapheme_continuation ... ok\ntest canvas_ascii_strokes_merge_with_ascii_glyphs ... ok\ntest canvas_set_text_with_chinese ... ok\ntest default_options_are_valid ... ok\ntest excessive_canvas_cells_rejected ... ok\ntest overwriting_continuation_clears_the_whole_old_grapheme ... ok\ntest right_edge_failure_is_atomic ... ok\ntest oversized_source_rejected ... ok\ntest structured_output_height_is_bounded ... ok\ntest structured_output_width_is_bounded ... ok\ntest text_has_priority_over_strokes ... ok\ntest zero_height_rejected ... ok\ntest zero_width_rejected ... ok\ntest empty_string_produces_error_not_empty_output ... ok\ntest deterministic_for_pie ... ok\ntest deterministic_for_sequence ... ok\ntest deterministic_for_state ... ok\ntest deterministic_ascii_across_repeated_calls ... ok\ntest deterministic_across_repeated_calls ... ok\ntest structured_output_bytes_are_bounded ... ok\n\ntest result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s\n\n\nrunning 2 tests\ntest cli_exit_codes_distinguish_parse_render_and_option_errors ... ok\ntest every_mermaid_fixture_renders_through_cli_in_both_charsets ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.43s\n\n\nrunning 26 tests\ntest direction_lr_renders ... ok\ntest direction_bt_renders ... ok\ntest chinese_cjk_label_preserved ... ok\ntest cycle_renders ... ok\ntest combining_mark_label_preserved ... ok\ntest class_members_preserved ... ok\ntest bidirectional_edge_renders ... ok\ntest direction_rl_renders ... ok\ntest dotted_edge_renders ... ok\ntest edge_label_preserved ... ok\ntest disconnected_components_renders ... ok\ntest direction_td_renders ... ok\ntest direction_tb_renders ... ok\ntest dense_relations_parsed_and_rendered ... ok\ntest emoji_label_preserved ... ok\ntest english_label_preserved ... ok\ntest pie_chinese_preserved ... ok\ntest label_renders_in_ascii_mode_too ... ok\ntest er_relationship_preserved ... ok\ntest pie_values_preserved ... ok\ntest parallel_edges_parsed_and_rendered ... ok\ntest edge_with_arrow_marker_preserved ... ok\ntest sequence_messages_preserved ... ok\ntest nested_group_renders ... ok\ntest self_relation_parsed_and_rendered ... ok\ntest state_transitions_preserved ... ok\n\ntest result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s\n\n\nrunning 10 tests\ntest all_expected_families_have_en_and_zh_fixtures ... ok\ntest upstream_render_parser_inventory_is_fully_accounted_for ... ok\ntest json_render_model_adapter_produces_output ... ok\ntest class_diagram_v1_alias_renders ... ok\ntest flowchart_alias_renders_as_flowchart ... ok\ntest state_diagram_v1_alias_renders ... ok\ntest graph_alias_renders_as_flowchart ... ok\ntest zenuml_fixture_renders_as_sequence ... ok\ntest ansi_modes_do_not_change_rendered_geometry_or_text ... ok\ntest every_fixture_renders_nonempty_in_unicode_and_ascii ... ok\n\ntest result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s\n\n\nstderr:\n   Compiling mermansi v0.1.0 (/Users/kingsword09/Documents/code/ai/mermansi)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.39s\n     Running unittests src/lib.rs (target/debug/deps/mermansi-ca1efc1f29557897)\n     Running unittests src/bin/mermansi.rs (target/debug/deps/mermansi-117beb3a33b8cb95)\n     Running tests/bounds.rs (target/debug/deps/bounds-8a3a56cc8acafaf6)\n     Running tests/cli.rs (target/debug/deps/cli-4ecd9020c5f8aefc)\n     Running tests/semantic_integrity.rs (target/debug/deps/semantic_integrity-9e5b7fb6a7976620)\n     Running tests/support_matrix.rs (target/debug/deps/support_matrix-63e05a3db70fd66f)\n"
+      },
+      {
+        "command": "cargo package --locked --allow-dirty",
+        "passed": true,
+        "output": "cwd: /Users/kingsword09/Documents/code/ai/mermansi\nstatus: 0\nstdout:\n\nstderr:\n   Packaging mermansi v0.1.0 (/Users/kingsword09/Documents/code/ai/mermansi)\n    Updating crates.io index\n    Packaged 93 files, 181.3KiB (47.8KiB compressed)\n   Verifying mermansi v0.1.0 (/Users/kingsword09/Documents/code/ai/mermansi)\n   Compiling mermansi v0.1.0 (/Users/kingsword09/Documents/code/ai/mermansi/target/package/mermansi-0.1.0)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.19s\n"
+      }
+    ]
+  },
+  "verdict": "changes_required",
+  "summary": "The baseline scaffold compiles and all configured verification commands pass, but independent inspection surfaces ten distinct root causes that violate the Task's acceptance criteria: ANSI escape leakage under --no-color, duplicate Block node emission, unbounded pre-validation rendering and model cloning, silent semantic-entity drops in delegated families, duplicated flowchart decision borders, missing self-loop/parallel-edge terminal geometry, absence of display-column-aware Canvas usage in adapters, scalar-width formatting misalignment for CJK columns, skipped/incorrect support-matrix and alias coverage, and caret-range dependency specifications instead of exact pins. Each root cause maps to a new finding below. The parent Issue 0001 remains open because these residuals prevent a final clean review.",
+  "findings": [
+    {
+      "title": "Raw ANSI escape sequences in Pie labels leak through --no-color output",
+      "severity": "P1",
+      "category": "ansi-geometry-independence",
+      "location": {
+        "path": "src/output.rs",
+        "line": 115
+      },
+      "problem": {
+        "description": "When a Pie label contains raw ESC CSI bytes, --no-color emits them verbatim into the final text output. The bounded-writer / AnsiEncoder path does not strip or neutralize literal escape sequences embedded in semantic label text before serializing to plain text, so --no-color is not truly color-free.",
+        "impact": "Rule 6 (ANSI roles do not affect geometry / --no-color must be plain text) is violated. Consumers parsing the plain-text output may encounter uncontrolled terminal-control bytes, breaking determinism and downstream consumers."
+      },
+      "acceptance": {
+        "description": "Strip or neutralize all literal ANSI escape sequences from label text before it reaches the final output when --no-color is active; add a regression test asserting no ESC (0x1b) bytes appear in --no-color output for a Pie diagram whose label contains an embedded CSI sequence.",
+        "command": "cargo test --test semantic_integrity"
+      }
+    },
+    {
+      "title": "Block adapter walks flat entries and recurses children, duplicating nodes",
+      "severity": "P1",
+      "category": "semantic-entity-preservation",
+      "location": {
+        "path": "src/adapters/block.rs",
+        "line": 12
+      },
+      "problem": {
+        "description": "The Block adapter iterates over every blocks_flat entry and then recursively walks children, causing nested nodes (e.g. A/B/C) to be printed multiple times. The flat list already contains the full tree, so the additional recursive traversal double-counts.",
+        "impact": "Rule 4 (no family may silently drop or duplicate parsed semantic entities) is violated by over-emission rather than drops; output is misleading and not a faithful representation of the hierarchy."
+      },
+      "acceptance": {
+        "description": "Walk the hierarchy exactly once — either iterate the flat list or recurse the tree, not both — so that each Block node appears precisely once in the rendered output. Add a test with a three-level nested sample asserting single emission of each node.",
+        "command": "cargo test --test semantic_integrity"
+      }
+    },
+    {
+      "title": "render_model renders fully before validation and clones whole models on delegated branches",
+      "severity": "P1",
+      "category": "bounded-allocation",
+      "location": {
+        "path": "src/output.rs",
+        "line": 40
+      },
+      "problem": {
+        "description": "render_model performs complete adapter rendering before applying dimension/bounds validation. The structured-output path calls serde_json::to_value plus canonicalize before the bounded writer is consulted, and delegated branches clone the entire RenderSemanticModel. This means unbounded work (full render, serialization, model clone) happens before any size cap is enforced.",
+        "impact": "Rule 7 (all allocations are bounded and return typed errors) is violated because source, row, column, cell, and output caps are checked too late — after the expensive allocations and rendering have already occurred."
+      },
+      "acceptance": {
+        "description": "Validate dimension and output bounds before full rendering; avoid cloning the whole model on delegated branches; ensure serde_json serialization respects the bounded writer. Add a test that confirms a typed size error is returned before full rendering for oversized inputs on structured and delegated paths.",
+        "command": "cargo test --test bounds"
+      }
+    },
+    {
+      "title": "Sequence actor links and Flowchart click URL/tooltip are silently dropped in delegated output; support_matrix skips every delegated variant",
+      "severity": "P1",
+      "category": "semantic-entity-preservation",
+      "location": {
+        "path": "src/adapters/mod.rs",
+        "line": 58
+      },
+      "problem": {
+        "description": "Sequence actor links and Flowchart click URL/tooltip fields parse into typed semantic structures, but these entities disappear from normal delegated output. Additionally, support_matrix returns early for every delegated variant, so the conformance test never exercises these entities.",
+        "impact": "Rule 4 (no family may silently drop parsed semantic entities, relationships, labels, endpoints, markers, hierarchy, or chart values) is violated. The conformance test cannot catch these regressions because it short-circuits."
+      },
+      "acceptance": {
+        "description": "Render or faithfully summarize Sequence actor links and Flowchart click URL/tooltip in delegated output; remove the early-return from support_matrix for delegated variants so conformance exercises these fields. Add tests asserting the fields appear in output.",
+        "command": "cargo test --test support_matrix"
+      }
+    },
+    {
+      "title": "Flowchart decision node renders with duplicated rounded borders",
+      "severity": "P1",
+      "category": "terminal-geometry",
+      "location": {
+        "path": "src/adapters/flowchart.rs",
+        "line": 16
+      },
+      "problem": {
+        "description": "A flowchart decision (rhombus) node renders as a duplicated set of rounded borders — the output contains two overlapping box-drawing frames beginning with lines '╭────────╮', '╭        ╮', '< Is it? >'. The merged-stroke logic overwrites the rhombus corners with a second rectangular frame rather than rendering one clean border.",
+        "impact": "Rule 4 and Rule 5 (faithful terminal-native geometry) are violated; boxes must close correctly without duplicated borders."
+      },
+      "acceptance": {
+        "description": "Render each flowchart decision node with a single, correctly closed border (no duplicated rounded frames). Add a snapshot-style test asserting the decision node produces exactly one top-border line and one bottom-border line.",
+        "command": "cargo test --test semantic_integrity"
+      }
+    },
+    {
+      "title": "Self-loops and parallel Flowchart edges render as semantic JSON rather than terminal geometry",
+      "severity": "P1",
+      "category": "terminal-geometry",
+      "location": {
+        "path": "src/adapters/flowchart.rs",
+        "line": 12
+      },
+      "problem": {
+        "description": "Self-loop and parallel Flowchart edges fall back to a semantic JSON representation instead of terminal-native geometry. The existing tests only check for edge labels and do not verify that self-loops or parallel edges produce distinct geometric routing, so the deficiency is masked.",
+        "impact": "Rule 5 (terminal-native geometry where meaningful) and Rule 4 are violated; self-loops and parallel edges are not rendered as distinct geometric edges."
+      },
+      "acceptance": {
+        "description": "Render self-loops and parallel edges with distinct, visible terminal geometry (not a JSON fallback). Extend tests to assert that the geometric output contains the expected self-loop and parallel-edge routing shapes, not just label text.",
+        "command": "cargo test --test semantic_integrity"
+      }
+    },
+    {
+      "title": "No adapter uses the display-column-aware Canvas; set_styled_text styles only the first owner",
+      "severity": "P1",
+      "category": "ansi-geometry-independence",
+      "location": {
+        "path": "src/adapters/mod.rs",
+        "line": 53
+      },
+      "problem": {
+        "description": "No adapter imports or calls the mermansi Canvas; only the structured semantic header uses AnsiEncoder. The set_styled_text helper applies styling to only the first text owner, leaving subsequent owners unstyled. The display-column-aware bounded Canvas that supports grapheme segmentation, Unicode width, continuation cells, merged strokes, and atomic overwrite is unused by every per-family adapter.",
+        "impact": "Rule 5, Rule 6, and Rule 7 are violated — adapters bypass the bounded, display-column-aware Canvas and produce geometry that does not benefit from the core rendering infrastructure. ANSI styling is incomplete."
+      },
+      "acceptance": {
+        "description": "Route adapter text rendering through the display-column-aware Canvas and ensure set_styled_text applies to all text owners. Add tests confirming Canvas-based rendering and multi-owner ANSI styling.",
+        "command": "cargo test --test bounds"
+      }
+    },
+    {
+      "title": "Scalar-width formatting misaligns CJK and mixed-ASCII Pie and Sankey columns",
+      "severity": "P2",
+      "category": "terminal-geometry",
+      "location": {
+        "path": "src/adapters/pie.rs",
+        "line": 26
+      },
+      "problem": {
+        "description": "Mixed ASCII/CJK Pie rows differ by one display column and Sankey rows differ by up to three columns because Rust's scalar-width string formatting (chars().count) is used instead of Unicode display width. CJK characters occupy two display columns but are counted as one scalar, breaking column alignment.",
+        "impact": "Rule 5 (display-column-aware geometry) is violated; labels with CJK characters produce visually misaligned columns."
+      },
+      "acceptance": {
+        "description": "Use Unicode display width (not scalar count) for column padding in Pie and Sankey adapters so mixed ASCII/CJK rows align correctly. Add tests comparing column alignment for mixed-language label rows.",
+        "command": "cargo test --test semantic_integrity"
+      }
+    },
+    {
+      "title": "Support-matrix and CLI skip JSON source fixtures; flowchart-v2 alias test is incorrect",
+      "severity": "P2",
+      "category": "conformance-coverage",
+      "location": {
+        "path": "tests/support_matrix.rs",
+        "line": 175
+      },
+      "problem": {
+        "description": "support_matrix and the CLI skip JSON source fixtures, and raw JSON input fails render_source. The test claiming flowchart-v2/flowchart-elk alias support only renders a normal flowchart header and does not actually exercise the aliases. Literal 'flowchart-v2' fails while 'flowchart-elk' succeeds, yet the alias test is accepted as Ok.",
+        "impact": "Rule 4 and the Task's conformance requirement are violated — JSON family and flowchart-v2 alias coverage is effectively absent despite passing tests."
+      },
+      "acceptance": {
+        "description": "Include JSON source fixtures in support_matrix and CLI conformance; fix render_source to accept raw JSON input; correct the flowchart-v2 alias test to render actual v2 input and assert correct alias resolution. Add tests that fail until raw JSON and flowchart-v2 render successfully.",
+        "command": "cargo test --test support_matrix"
+      }
+    },
+    {
+      "title": "merman-core and merman-ascii specified as caret ranges instead of exact pins",
+      "severity": "P2",
+      "category": "dependency-reproducibility",
+      "location": {
+        "path": "Cargo.toml",
+        "line": 21
+      },
+      "problem": {
+        "description": "cargo metadata reports merman-core and merman-ascii as caret ranges (^0.8.0-alpha.3) rather than exact version pins (=0.8.0-alpha.3). Pre-release caret ranges allow semver-compatible updates within the alpha series, which can pull a different alpha patch and break determinism.",
+        "impact": "Rule 8 (determinism) and reproducibility are at risk because a future 0.8.0-alpha.x could change parsing or rendering behavior between builds."
+      },
+      "acceptance": {
+        "description": "Pin merman-core and merman-ascii to exact versions (=0.8.0-alpha.3) in Cargo.toml and update Cargo.lock accordingly so builds are fully reproducible.",
+        "command": "cargo metadata --format-version 1 | grep merman"
+      }
+    }
+  ],
+  "resolutions": [
+    {
+      "number": 1,
+      "description": "Do not resolve Issue 0001. The baseline scaffold is established (AGENTS.md, README.md, docs, adapters, canvas, ANSI, CLI, and test modules compile and pass configured verification), but every residual root cause above is represented by a new finding (P1/P2) that must be addressed before the Task can pass a final clean review. Issue 0001 remains open until all ten findings are implemented, tested, reviewed, and committed."
+    }
+  ]
+}

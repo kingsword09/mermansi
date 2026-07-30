@@ -1,0 +1,17 @@
+requirementDiagram
+    requirement req1 {
+        id: REQ-001
+        text: The system shall authenticate users
+        risk: High
+        verifymethod: Analysis
+    }
+    element entity1 {
+        type: System
+        docref: SYS-001
+    }
+    requirement req2 {
+        id: REQ-002
+        text: The system shall log access
+    }
+    req1 - satisfies -> entity1
+    req2 - traces -> req1

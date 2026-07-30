@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0001-create-and-completely-implement-mermansi#0008"
+number = 8
+title = "No adapter uses the display-column-aware Canvas; set_styled_text styles only the first owner"
+status = "open"
+severity = "P1"
+category = "ansi-geometry-independence"
+fingerprint = "sha256:b530be00f4fa6f6524f0cd86285bcf671f1e43d36ba3d1be9f44d4101f5edcf2"
+created_at = "unix:1785338735"
+updated_at = "unix:1785338735"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0016.json"
+
+[location]
+path = "src/adapters/mod.rs"
+line = 53
+
+[problem]
+description = "No adapter imports or calls the mermansi Canvas; only the structured semantic header uses AnsiEncoder. The set_styled_text helper applies styling to only the first text owner, leaving subsequent owners unstyled. The display-column-aware bounded Canvas that supports grapheme segmentation, Unicode width, continuation cells, merged strokes, and atomic overwrite is unused by every per-family adapter."
+impact = "Rule 5, Rule 6, and Rule 7 are violated — adapters bypass the bounded, display-column-aware Canvas and produce geometry that does not benefit from the core rendering infrastructure. ANSI styling is incomplete."
+
+[acceptance]
+description = "Route adapter text rendering through the display-column-aware Canvas and ensure set_styled_text applies to all text owners. Add tests confirming Canvas-based rendering and multi-owner ANSI styling."
+command = "cargo test --test bounds"

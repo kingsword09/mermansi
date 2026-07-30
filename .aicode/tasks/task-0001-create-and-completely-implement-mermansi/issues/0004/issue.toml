@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0001-create-and-completely-implement-mermansi#0004"
+number = 4
+title = "render_model renders fully before validation and clones whole models on delegated branches"
+status = "open"
+severity = "P1"
+category = "bounded-allocation"
+fingerprint = "sha256:ce116744446f4a1c7ce639b0a11eb9a15bb4c878cd08b29fd29c95b87923c55d"
+created_at = "unix:1785338735"
+updated_at = "unix:1785338735"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0016.json"
+
+[location]
+path = "src/output.rs"
+line = 40
+
+[problem]
+description = "render_model performs complete adapter rendering before applying dimension/bounds validation. The structured-output path calls serde_json::to_value plus canonicalize before the bounded writer is consulted, and delegated branches clone the entire RenderSemanticModel. This means unbounded work (full render, serialization, model clone) happens before any size cap is enforced."
+impact = "Rule 7 (all allocations are bounded and return typed errors) is violated because source, row, column, cell, and output caps are checked too late — after the expensive allocations and rendering have already occurred."
+
+[acceptance]
+description = "Validate dimension and output bounds before full rendering; avoid cloning the whole model on delegated branches; ensure serde_json serialization respects the bounded writer. Add a test that confirms a typed size error is returned before full rendering for oversized inputs on structured and delegated paths."
+command = "cargo test --test bounds"
