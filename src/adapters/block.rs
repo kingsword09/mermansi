@@ -9,10 +9,17 @@ pub fn render_block(model: &BlockDiagramRenderModel, opts: &MermansiOptions) -> 
     let mut out = String::new();
     out.push_str(&format_title(&Some(String::new())));
 
-    if !model.blocks_flat.is_empty() {
+    // `blocks_flat` begins with a synthetic "root" composite whose `children`
+    // field already holds the real top-level blocks with their complete
+    // subtrees; every descendant re-appears as a later flat entry. To emit each
+    // node exactly once while preserving the hierarchy, traverse only the
+    // root's children in a single deterministic walk.
+    if let Some(root) = model.blocks_flat.first()
+        && !root.children.is_empty()
+    {
         out.push_str("Blocks:\n");
-        for block in &model.blocks_flat {
-            out.push_str(&format_block(block, 1));
+        for child in &root.children {
+            out.push_str(&format_block(child, 1));
         }
     }
 

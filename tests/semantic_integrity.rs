@@ -393,6 +393,72 @@ fn pie_chinese_preserved() {
 }
 
 // ---------------------------------------------------------------------------
+// Block diagram — hierarchy without duplicate nodes
+// ---------------------------------------------------------------------------
+
+/// Extract only the readable preview portion of `render_source` output — i.e.
+/// everything before the `[<family> semantic model]` delimiter — so that node
+/// occurrence counts are not affected by the appended canonical JSON.
+fn preview_only(output: &str) -> &str {
+    output
+        .split("[block semantic model]")
+        .next()
+        .unwrap_or(output)
+}
+
+#[test]
+fn block_nested_three_levels_no_duplicate_nodes() {
+    // Three-level nested hierarchy: Level1 > Level2 > Leaf.
+    let source = "block-beta\n  block:L1[\"Level 1\"]\n    block:L2[\"Level 2\"]\n      Leaf[\"Leaf\"]\n    end\n  end\n";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = preview_only(&output);
+
+    // Each semantic node id must appear exactly once in the preview. The id is
+    // rendered parenthesized as `(id)`, which is unique to a single node line.
+    for node_id in ["L1", "L2", "Leaf"] {
+        let needle = format!("({node_id})");
+        let count = preview.matches(&needle).count();
+        assert_eq!(
+            count, 1,
+            "block node '{node_id}' should appear exactly once in the preview, found {count}:\n{preview}"
+        );
+    }
+
+    // Hierarchy indentation must be preserved: L2 is a child of L1, Leaf a child of L2.
+    let l1_line = preview
+        .lines()
+        .find(|line| line.contains("Level 1"))
+        .unwrap_or_else(|| panic!("Level 1 missing:\n{preview}"));
+    let l2_line = preview
+        .lines()
+        .find(|line| line.contains("Level 2"))
+        .unwrap_or_else(|| panic!("Level 2 missing:\n{preview}"));
+    let leaf_line = preview
+        .lines()
+        .find(|line| line.contains("Leaf"))
+        .unwrap_or_else(|| panic!("Leaf missing:\n{preview}"));
+
+    fn leading_spaces(line: &str) -> usize {
+        line.chars().take_while(|c| *c == ' ').count()
+    }
+
+    assert!(
+        leading_spaces(l2_line) > leading_spaces(l1_line),
+        "Level 2 should be indented deeper than Level 1:\n{preview}"
+    );
+    assert!(
+        leading_spaces(leaf_line) > leading_spaces(l2_line),
+        "Leaf should be indented deeper than Level 2:\n{preview}"
+    );
+
+    // The synthetic "root" node must not be emitted in the preview.
+    assert!(
+        !preview.contains("(root)"),
+        "synthetic root node should not appear in the preview:\n{preview}"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // ANSI escape sequence sanitization in Pie labels (Rule 6)
 // ---------------------------------------------------------------------------
 
