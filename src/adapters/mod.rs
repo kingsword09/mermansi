@@ -13,9 +13,10 @@ use crate::adapters::{
 };
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
-use crate::output::append_structured_model;
+use crate::output::{ensure_serialized_model_within_limit, render_structured_adapter};
 use merman_ascii::{AsciiColorMode, AsciiRenderOptions};
 use merman_core::diagram::RenderSemanticModel;
+use serde::Serialize;
 
 pub mod architecture;
 pub mod block;
@@ -54,112 +55,75 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
     opts.validate()?;
     match model {
         // --- merman-ascii delegated families ---
-        RenderSemanticModel::Flowchart(m) => render_flowchart(m, opts),
-        RenderSemanticModel::Sequence(m) => merman_ascii::render_model(
-            &RenderSemanticModel::Sequence(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::State(m) => merman_ascii::render_model(
-            &RenderSemanticModel::State(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::Class(m) => merman_ascii::render_model(
-            &RenderSemanticModel::Class(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::Er(m) => {
-            merman_ascii::render_model(&RenderSemanticModel::Er(m.clone()), &to_ascii_options(opts))
-                .map_err(Into::into)
+        RenderSemanticModel::Flowchart(m) => {
+            ensure_serialized_model_within_limit(m)?;
+            render_flowchart(m, opts)
         }
-        RenderSemanticModel::Packet(m) => merman_ascii::render_model(
-            &RenderSemanticModel::Packet(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::TreeView(m) => merman_ascii::render_model(
-            &RenderSemanticModel::TreeView(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::XyChart(m) => merman_ascii::render_model(
-            &RenderSemanticModel::XyChart(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::Mindmap(m) => merman_ascii::render_model(
-            &RenderSemanticModel::Mindmap(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::Gantt(m) => merman_ascii::render_model(
-            &RenderSemanticModel::Gantt(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::GitGraph(m) => merman_ascii::render_model(
-            &RenderSemanticModel::GitGraph(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::Journey(m) => merman_ascii::render_model(
-            &RenderSemanticModel::Journey(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::Kanban(m) => merman_ascii::render_model(
-            &RenderSemanticModel::Kanban(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
-        RenderSemanticModel::Timeline(m) => merman_ascii::render_model(
-            &RenderSemanticModel::Timeline(m.clone()),
-            &to_ascii_options(opts),
-        )
-        .map_err(Into::into),
+        RenderSemanticModel::Sequence(m) => render_ascii(m, opts, merman_ascii::render_sequence),
+        RenderSemanticModel::State(m) => render_ascii(m, opts, merman_ascii::render_state),
+        RenderSemanticModel::Class(m) => render_ascii(m, opts, merman_ascii::render_class),
+        RenderSemanticModel::Er(m) => render_ascii(m, opts, merman_ascii::render_er),
+        RenderSemanticModel::Packet(m) => render_ascii(m, opts, merman_ascii::render_packet),
+        RenderSemanticModel::TreeView(m) => render_ascii(m, opts, merman_ascii::render_tree_view),
+        RenderSemanticModel::XyChart(m) => render_ascii(m, opts, merman_ascii::render_xychart),
+        RenderSemanticModel::Mindmap(m) => render_ascii(m, opts, merman_ascii::render_mindmap),
+        RenderSemanticModel::Gantt(m) => render_ascii(m, opts, merman_ascii::render_gantt),
+        RenderSemanticModel::GitGraph(m) => render_ascii(m, opts, merman_ascii::render_git_graph),
+        RenderSemanticModel::Journey(m) => render_ascii(m, opts, merman_ascii::render_journey),
+        RenderSemanticModel::Kanban(m) => render_ascii(m, opts, merman_ascii::render_kanban),
+        RenderSemanticModel::Timeline(m) => render_ascii(m, opts, merman_ascii::render_timeline),
 
         // --- mermansi structured terminal adapters ---
         RenderSemanticModel::Json(m) => render_json(m, opts),
         RenderSemanticModel::Architecture(m) => {
-            append_structured_model(render_architecture(m, opts)?, "architecture", m, opts)
+            render_structured_adapter("architecture", m, opts, || render_architecture(m, opts))
         }
-        RenderSemanticModel::C4(m) => append_structured_model(render_c4(m, opts)?, "c4", m, opts),
+        RenderSemanticModel::C4(m) => {
+            render_structured_adapter("c4", m, opts, || render_c4(m, opts))
+        }
         RenderSemanticModel::Pie(m) => {
-            append_structured_model(render_pie(m, opts)?, "pie", m, opts)
+            render_structured_adapter("pie", m, opts, || render_pie(m, opts))
         }
         RenderSemanticModel::Requirement(m) => {
-            append_structured_model(render_requirement(m, opts)?, "requirement", m, opts)
+            render_structured_adapter("requirement", m, opts, || render_requirement(m, opts))
         }
         RenderSemanticModel::Sankey(m) => {
-            append_structured_model(render_sankey(m, opts)?, "sankey", m, opts)
+            render_structured_adapter("sankey", m, opts, || render_sankey(m, opts))
         }
         RenderSemanticModel::Radar(m) => {
-            append_structured_model(render_radar(m, opts)?, "radar", m, opts)
+            render_structured_adapter("radar", m, opts, || render_radar(m, opts))
         }
         RenderSemanticModel::Info(m) => {
-            append_structured_model(render_info(m, opts)?, "info", m, opts)
+            render_structured_adapter("info", m, opts, || render_info(m, opts))
         }
         RenderSemanticModel::Treemap(m) => {
-            append_structured_model(render_treemap(m, opts)?, "treemap", m, opts)
+            render_structured_adapter("treemap", m, opts, || render_treemap(m, opts))
         }
         RenderSemanticModel::Block(m) => {
-            append_structured_model(render_block(m, opts)?, "block", m, opts)
+            render_structured_adapter("block", m, opts, || render_block(m, opts))
         }
         RenderSemanticModel::QuadrantChart(m) => {
-            append_structured_model(render_quadrant_chart(m, opts)?, "quadrantChart", m, opts)
+            render_structured_adapter("quadrantChart", m, opts, || render_quadrant_chart(m, opts))
         }
         RenderSemanticModel::Ishikawa(m) => {
-            append_structured_model(render_ishikawa(m, opts)?, "ishikawa", m, opts)
+            render_structured_adapter("ishikawa", m, opts, || render_ishikawa(m, opts))
         }
         RenderSemanticModel::EventModeling(m) => {
-            append_structured_model(render_eventmodeling(m, opts)?, "eventmodeling", m, opts)
+            render_structured_adapter("eventmodeling", m, opts, || render_eventmodeling(m, opts))
         }
         RenderSemanticModel::Venn(m) => {
-            append_structured_model(render_venn(m, opts)?, "venn", m, opts)
+            render_structured_adapter("venn", m, opts, || render_venn(m, opts))
         }
     }
+}
+
+fn render_ascii<T: Serialize>(
+    model: &T,
+    opts: &MermansiOptions,
+    renderer: fn(&T, &AsciiRenderOptions) -> merman_ascii::Result<String>,
+) -> Result<String> {
+    ensure_serialized_model_within_limit(model)?;
+    renderer(model, &to_ascii_options(opts)).map_err(Into::into)
 }
 
 /// Ensure a string is non-empty; if empty, substitute a placeholder.

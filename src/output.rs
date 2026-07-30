@@ -12,10 +12,25 @@ pub(crate) fn render_structured_model<T: Serialize>(
     model: &T,
     opts: &MermansiOptions,
 ) -> Result<String> {
-    append_structured_model(String::new(), family, model, opts)
+    ensure_serialized_model_within_limit(model)?;
+    append_preflighted_structured_model(String::new(), family, model, opts)
 }
 
-pub(crate) fn append_structured_model<T: Serialize>(
+pub(crate) fn render_structured_adapter<T, F>(
+    family: &str,
+    model: &T,
+    opts: &MermansiOptions,
+    render_preview: F,
+) -> Result<String>
+where
+    T: Serialize,
+    F: FnOnce() -> Result<String>,
+{
+    ensure_serialized_model_within_limit(model)?;
+    append_preflighted_structured_model(render_preview()?, family, model, opts)
+}
+
+fn append_preflighted_structured_model<T: Serialize>(
     mut preview: String,
     family: &str,
     model: &T,
@@ -59,6 +74,26 @@ pub(crate) fn append_structured_model<T: Serialize>(
     Ok(preview)
 }
 
+pub(crate) fn ensure_serialized_model_within_limit<T: Serialize>(model: &T) -> Result<()> {
+    let (serialization, exceeded) = {
+        let mut writer = BoundedCountWriter {
+            written: 0,
+            exceeded: None,
+        };
+        let serialization = serde_json::to_writer(&mut writer, model);
+        (serialization, writer.exceeded)
+    };
+    if let Some(requested) = exceeded {
+        return Err(MermansiError::RenderLimit {
+            context: "semantic model bytes",
+            requested,
+            limit: MAX_OUTPUT_BYTES,
+        });
+    }
+    serialization?;
+    Ok(())
+}
+
 fn ensure_byte_capacity(current: usize, additional: usize) -> Result<()> {
     let requested = current.saturating_add(additional);
     if requested > MAX_OUTPUT_BYTES {
@@ -74,6 +109,27 @@ fn ensure_byte_capacity(current: usize, additional: usize) -> Result<()> {
 struct BoundedStringWriter<'a> {
     output: &'a mut String,
     exceeded: Option<usize>,
+}
+
+struct BoundedCountWriter {
+    written: usize,
+    exceeded: Option<usize>,
+}
+
+impl std::io::Write for BoundedCountWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let requested = self.written.saturating_add(buf.len());
+        if requested > MAX_OUTPUT_BYTES {
+            self.exceeded = Some(requested);
+            return Err(std::io::Error::other("semantic model byte limit exceeded"));
+        }
+        self.written = requested;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 impl std::io::Write for BoundedStringWriter<'_> {
@@ -161,4 +217,30 @@ pub(crate) fn validate_output(output: &str, opts: &MermansiOptions) -> Result<()
         });
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    #[test]
+    fn oversized_structured_model_is_rejected_before_preview_rendering() {
+        let model = serde_json::json!({"label": "x".repeat(MAX_OUTPUT_BYTES)});
+        let preview_called = Cell::new(false);
+
+        let result = render_structured_adapter("json", &model, &MermansiOptions::unicode(), || {
+            preview_called.set(true);
+            Ok("unreachable preview".to_owned())
+        });
+
+        assert!(matches!(
+            result,
+            Err(MermansiError::RenderLimit {
+                context: "semantic model bytes",
+                ..
+            })
+        ));
+        assert!(!preview_called.get());
+    }
 }

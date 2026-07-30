@@ -134,13 +134,51 @@ fn structured_output_bytes_are_bounded() {
         "label": "x".repeat(MAX_OUTPUT_BYTES)
     }));
     let result = render_model(&model, &MermansiOptions::unicode());
-    assert!(matches!(
-        result,
-        Err(MermansiError::RenderLimit {
-            context: "output bytes",
-            ..
-        })
-    ));
+    assert!(
+        matches!(
+            &result,
+            Err(MermansiError::RenderLimit {
+                context: "semantic model bytes",
+                ..
+            })
+        ),
+        "expected semantic model byte limit, got {result:?}"
+    );
+}
+
+#[test]
+fn delegated_model_is_bounded_before_ascii_rendering() {
+    let engine = merman_core::Engine::new();
+    let parsed = engine
+        .parse_diagram_for_render_model_sync(
+            "sequenceDiagram\n  participant A",
+            merman_core::ParseOptions::strict(),
+        )
+        .expect("sequence source should parse")
+        .expect("sequence source should produce a model");
+    let RenderSemanticModel::Sequence(mut model) = parsed.model else {
+        panic!("expected sequence render model");
+    };
+    model
+        .actors
+        .get_mut("A")
+        .expect("participant A should exist")
+        .description = "x".repeat(MAX_OUTPUT_BYTES);
+
+    let result = render_model(
+        &RenderSemanticModel::Sequence(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(
+        matches!(
+            &result,
+            Err(MermansiError::RenderLimit {
+                context: "semantic model bytes",
+                ..
+            })
+        ),
+        "expected semantic model byte limit, got {result:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------
