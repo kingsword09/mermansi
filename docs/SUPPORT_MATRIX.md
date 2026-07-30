@@ -68,21 +68,21 @@ The authoritative semantic inventory from `merman-core::diagram::RenderSemanticM
 
 | Family | Renderer | Support level | English fixture | Chinese fixture | Status |
 |---|---|---|---|---|---|
-| Flowchart | merman-ascii + mermansi | Geometry with lossless structured fallback | `fixtures/flowchart.en.mmd` | `fixtures/flowchart.zh.mmd` | yes |
-| Sequence | merman-ascii | Full geometry | `fixtures/sequence.en.mmd` | `fixtures/sequence.zh.mmd` | ✅ |
-| State | merman-ascii | Partial geometry | `fixtures/state.en.mmd` | `fixtures/state.zh.mmd` | ✅ |
-| Class | merman-ascii | Partial geometry | `fixtures/class.en.mmd` | `fixtures/class.zh.mmd` | ✅ |
-| Er | merman-ascii | Partial geometry | `fixtures/er.en.mmd` | `fixtures/er.zh.mmd` | ✅ |
-| Packet | merman-ascii | Full geometry | `fixtures/packet.en.mmd` | `fixtures/packet.zh.mmd` | ✅ |
-| TreeView | merman-ascii | Full geometry | `fixtures/treeview.en.mmd` | `fixtures/treeview.zh.mmd` | ✅ |
-| XyChart | merman-ascii | Partial geometry | `fixtures/xychart.en.mmd` | `fixtures/xychart.zh.mmd` | ✅ |
-| Mindmap | merman-ascii | Summary | `fixtures/mindmap.en.mmd` | `fixtures/mindmap.zh.mmd` | ✅ |
-| Gantt | merman-ascii | Summary | `fixtures/gantt.en.mmd` | `fixtures/gantt.zh.mmd` | ✅ |
-| GitGraph | merman-ascii | Summary | `fixtures/gitgraph.en.mmd` | `fixtures/gitgraph.zh.mmd` | ✅ |
-| Journey | merman-ascii | Summary | `fixtures/journey.en.mmd` | `fixtures/journey.zh.mmd` | ✅ |
-| Kanban | merman-ascii | Summary | `fixtures/kanban.en.mmd` | `fixtures/kanban.zh.mmd` | ✅ |
-| Timeline | merman-ascii | Summary | `fixtures/timeline.en.mmd` | `fixtures/timeline.zh.mmd` | ✅ |
-| ZenUML | merman-ascii | Partial (seq) | `fixtures/zenuml.en.mmd` | `fixtures/zenuml.zh.mmd` | ✅ |
+| Flowchart | merman-ascii + mermansi | Geometry preview + canonical model | `fixtures/flowchart.en.mmd` | `fixtures/flowchart.zh.mmd` | yes |
+| Sequence | merman-ascii + mermansi | Full geometry + canonical model | `fixtures/sequence.en.mmd` | `fixtures/sequence.zh.mmd` | ✅ |
+| State | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/state.en.mmd` | `fixtures/state.zh.mmd` | ✅ |
+| Class | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/class.en.mmd` | `fixtures/class.zh.mmd` | ✅ |
+| Er | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/er.en.mmd` | `fixtures/er.zh.mmd` | ✅ |
+| Packet | merman-ascii + mermansi | Full geometry + canonical model | `fixtures/packet.en.mmd` | `fixtures/packet.zh.mmd` | ✅ |
+| TreeView | merman-ascii + mermansi | Full geometry + canonical model | `fixtures/treeview.en.mmd` | `fixtures/treeview.zh.mmd` | ✅ |
+| XyChart | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/xychart.en.mmd` | `fixtures/xychart.zh.mmd` | ✅ |
+| Mindmap | merman-ascii + mermansi | Summary + canonical model | `fixtures/mindmap.en.mmd` | `fixtures/mindmap.zh.mmd` | ✅ |
+| Gantt | merman-ascii + mermansi | Summary + canonical model | `fixtures/gantt.en.mmd` | `fixtures/gantt.zh.mmd` | ✅ |
+| GitGraph | merman-ascii + mermansi | Summary + canonical model | `fixtures/gitgraph.en.mmd` | `fixtures/gitgraph.zh.mmd` | ✅ |
+| Journey | merman-ascii + mermansi | Summary + canonical model | `fixtures/journey.en.mmd` | `fixtures/journey.zh.mmd` | ✅ |
+| Kanban | merman-ascii + mermansi | Summary + canonical model | `fixtures/kanban.en.mmd` | `fixtures/kanban.zh.mmd` | ✅ |
+| Timeline | merman-ascii + mermansi | Summary + canonical model | `fixtures/timeline.en.mmd` | `fixtures/timeline.zh.mmd` | ✅ |
+| ZenUML | merman-ascii + mermansi | Partial sequence geometry + canonical model | `fixtures/zenuml.en.mmd` | `fixtures/zenuml.zh.mmd` | ✅ |
 | Json | mermansi | Canonical structured text | `fixtures/json.en.mmd` | `fixtures/json.zh.mmd` | yes |
 | Architecture | mermansi | Structured text | `fixtures/architecture.en.mmd` | `fixtures/architecture.zh.mmd` | ✅ |
 | C4 | mermansi | Structured text | `fixtures/c4.en.mmd` | `fixtures/c4.zh.mmd` | ✅ |
@@ -101,7 +101,7 @@ The authoritative semantic inventory from `merman-core::diagram::RenderSemanticM
 ## Output guarantee
 
 Every family produces deterministic nonempty output. Geometry rows use terminal-native boxes,
-edges, and routing. Structured adapters emit a readable preview plus a canonical JSON semantic
-model, preserving every typed field without claiming SVG-coordinate parity. Flowcharts fall back
-to that representation when the geometric router reports an unsupported topology or would lose
-parallel-edge semantics.
+edges, and routing. Every adapter appends a canonical JSON semantic model to its readable preview,
+preserving every typed field without claiming SVG-coordinate parity. Flowcharts emit an empty
+preview plus that canonical representation when the geometric router reports an unsupported
+topology or would lose parallel-edge semantics.

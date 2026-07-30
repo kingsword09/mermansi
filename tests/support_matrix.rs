@@ -11,6 +11,7 @@
 use merman_core::diagram::RenderSemanticModel;
 use mermansi::ansi::strip_ansi;
 use mermansi::{ColorMode, MermansiOptions, render_model, render_source};
+use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 
@@ -243,83 +244,114 @@ fn is_non_ascii_decoration(ch: char) -> bool {
 fn assert_structured_model_round_trips(model: &RenderSemanticModel, output: &str, fixture: &str) {
     let (family, expected) = match model {
         RenderSemanticModel::Json(value) => ("json", value.clone()),
-        RenderSemanticModel::Architecture(value) => (
-            "architecture",
-            serde_json::to_value(value).expect("Architecture model should serialize"),
-        ),
-        RenderSemanticModel::C4(value) => (
-            "c4",
-            serde_json::to_value(value).expect("C4 model should serialize"),
-        ),
-        RenderSemanticModel::Pie(value) => (
-            "pie",
-            serde_json::to_value(value).expect("Pie model should serialize"),
-        ),
-        RenderSemanticModel::Requirement(value) => (
-            "requirement",
-            serde_json::to_value(value).expect("Requirement model should serialize"),
-        ),
-        RenderSemanticModel::Sankey(value) => (
-            "sankey",
-            serde_json::to_value(value).expect("Sankey model should serialize"),
-        ),
-        RenderSemanticModel::Radar(value) => (
-            "radar",
-            serde_json::to_value(value).expect("Radar model should serialize"),
-        ),
-        RenderSemanticModel::Info(value) => (
-            "info",
-            serde_json::to_value(value).expect("Info model should serialize"),
-        ),
-        RenderSemanticModel::Treemap(value) => (
-            "treemap",
-            serde_json::to_value(value).expect("Treemap model should serialize"),
-        ),
-        RenderSemanticModel::Block(value) => (
-            "block",
-            serde_json::to_value(value).expect("Block model should serialize"),
-        ),
-        RenderSemanticModel::QuadrantChart(value) => (
-            "quadrantChart",
-            serde_json::to_value(value).expect("QuadrantChart model should serialize"),
-        ),
-        RenderSemanticModel::Ishikawa(value) => (
-            "ishikawa",
-            serde_json::to_value(value).expect("Ishikawa model should serialize"),
-        ),
-        RenderSemanticModel::EventModeling(value) => (
-            "eventmodeling",
-            serde_json::to_value(value).expect("EventModeling model should serialize"),
-        ),
-        RenderSemanticModel::Venn(value) => (
-            "venn",
-            serde_json::to_value(value).expect("Venn model should serialize"),
-        ),
-        RenderSemanticModel::Mindmap(_)
-        | RenderSemanticModel::State(_)
-        | RenderSemanticModel::Sequence(_)
-        | RenderSemanticModel::Flowchart(_)
-        | RenderSemanticModel::Class(_)
-        | RenderSemanticModel::Kanban(_)
-        | RenderSemanticModel::Gantt(_)
-        | RenderSemanticModel::Packet(_)
-        | RenderSemanticModel::Timeline(_)
-        | RenderSemanticModel::Journey(_)
-        | RenderSemanticModel::Er(_)
-        | RenderSemanticModel::XyChart(_)
-        | RenderSemanticModel::GitGraph(_)
-        | RenderSemanticModel::TreeView(_) => return,
+        RenderSemanticModel::Mindmap(value) => serialized_model("mindmap", value),
+        RenderSemanticModel::State(value) => serialized_model("state", value),
+        RenderSemanticModel::Sequence(value) => serialized_model("sequence", value),
+        RenderSemanticModel::Flowchart(value) => serialized_model("flowchart", value),
+        RenderSemanticModel::Architecture(value) => serialized_model("architecture", value),
+        RenderSemanticModel::Class(value) => serialized_model("class", value),
+        RenderSemanticModel::C4(value) => serialized_model("c4", value),
+        RenderSemanticModel::Kanban(value) => serialized_model("kanban", value),
+        RenderSemanticModel::Gantt(value) => serialized_model("gantt", value),
+        RenderSemanticModel::Pie(value) => serialized_model("pie", value),
+        RenderSemanticModel::Packet(value) => serialized_model("packet", value),
+        RenderSemanticModel::Timeline(value) => serialized_model("timeline", value),
+        RenderSemanticModel::Journey(value) => serialized_model("journey", value),
+        RenderSemanticModel::Requirement(value) => serialized_model("requirement", value),
+        RenderSemanticModel::Sankey(value) => serialized_model("sankey", value),
+        RenderSemanticModel::Radar(value) => serialized_model("radar", value),
+        RenderSemanticModel::Info(value) => serialized_model("info", value),
+        RenderSemanticModel::Treemap(value) => serialized_model("treemap", value),
+        RenderSemanticModel::Block(value) => serialized_model("block", value),
+        RenderSemanticModel::Er(value) => serialized_model("er", value),
+        RenderSemanticModel::QuadrantChart(value) => serialized_model("quadrantChart", value),
+        RenderSemanticModel::XyChart(value) => serialized_model("xychart", value),
+        RenderSemanticModel::GitGraph(value) => serialized_model("gitGraph", value),
+        RenderSemanticModel::TreeView(value) => serialized_model("treeView", value),
+        RenderSemanticModel::Ishikawa(value) => serialized_model("ishikawa", value),
+        RenderSemanticModel::EventModeling(value) => serialized_model("eventmodeling", value),
+        RenderSemanticModel::Venn(value) => serialized_model("venn", value),
     };
 
+    let actual = parse_semantic_model(output, family, fixture);
+    assert_eq!(
+        actual, expected,
+        "fixture '{fixture}' dropped semantic data"
+    );
+}
+
+fn serialized_model<T: Serialize>(
+    family: &'static str,
+    model: &T,
+) -> (&'static str, serde_json::Value) {
+    let value = serde_json::to_value(model)
+        .unwrap_or_else(|error| panic!("{family} model should serialize: {error}"));
+    (family, value)
+}
+
+fn parse_semantic_model(output: &str, family: &str, fixture: &str) -> serde_json::Value {
     let marker = format!("[{family} semantic model]\n");
     let (_, json) = output
         .split_once(&marker)
         .unwrap_or_else(|| panic!("fixture '{fixture}' is missing marker '{marker}'"));
-    let actual = serde_json::from_str::<serde_json::Value>(json.trim())
-        .unwrap_or_else(|error| panic!("fixture '{fixture}' semantic JSON is invalid: {error}"));
+    serde_json::from_str(json.trim())
+        .unwrap_or_else(|error| panic!("fixture '{fixture}' semantic JSON is invalid: {error}"))
+}
+
+#[test]
+fn sequence_actor_links_are_preserved_in_delegated_output() {
+    let source = r#"sequenceDiagram
+participant Alice
+participant Bob
+link Alice: Documentation @ https://example.com/docs
+Alice->>Bob: Open docs
+"#;
+
+    let output = render_source(source, &MermansiOptions::unicode())
+        .expect("Sequence actor links should render");
+    let semantic = parse_semantic_model(&output, "sequence", "inline sequence actor links");
+
     assert_eq!(
-        actual, expected,
-        "fixture '{fixture}' dropped semantic data"
+        semantic["actors"]["Alice"]["links"]["Documentation"],
+        "https://example.com/docs"
+    );
+    assert!(
+        output
+            .split_once("[sequence semantic model]")
+            .expect("Sequence semantic marker should exist")
+            .0
+            .contains("Open docs"),
+        "Sequence geometry preview should remain visible:\n{output}"
+    );
+}
+
+#[test]
+fn flowchart_click_metadata_is_preserved_in_delegated_output() {
+    let source = r#"flowchart TD
+  A[Docs] --> B[Done]
+  click A href "https://example.com/docs" "Open documentation" _blank
+"#;
+
+    let output = render_source(source, &MermansiOptions::unicode())
+        .expect("Flowchart click metadata should render");
+    let semantic = parse_semantic_model(&output, "flowchart", "inline flowchart click metadata");
+    let node = semantic["nodes"]
+        .as_array()
+        .expect("Flowchart nodes should be an array")
+        .iter()
+        .find(|node| node["id"] == "A")
+        .expect("Flowchart node A should exist");
+
+    assert_eq!(node["link"], "https://example.com/docs");
+    assert_eq!(node["linkTarget"], "_blank");
+    assert_eq!(semantic["tooltips"]["A"], "Open documentation");
+    assert!(
+        output
+            .split_once("[flowchart semantic model]")
+            .expect("Flowchart semantic marker should exist")
+            .0
+            .contains("Docs"),
+        "Flowchart geometry preview should remain visible:\n{output}"
     );
 }
 

@@ -99,21 +99,21 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 
 | Family | Support level | Renderer |
 |---|---|---|
-| Flowchart / graph | Geometry with lossless structured fallback | merman-ascii + mermansi |
-| Sequence | Full geometry | merman-ascii |
-| State | Partial geometry | merman-ascii |
-| Class | Partial geometry | merman-ascii |
-| Er | Partial geometry | merman-ascii |
-| Packet | Full geometry | merman-ascii |
-| TreeView | Full geometry | merman-ascii |
-| XyChart | Partial geometry | merman-ascii |
-| Mindmap | Summary | merman-ascii |
-| Gantt | Summary | merman-ascii |
-| GitGraph | Summary | merman-ascii |
-| Journey | Summary | merman-ascii |
-| Kanban | Summary | merman-ascii |
-| Timeline | Summary | merman-ascii |
-| ZenUML | Partial (sequence) | merman-ascii |
+| Flowchart / graph | Geometry preview + canonical model | merman-ascii + mermansi |
+| Sequence | Full geometry + canonical model | merman-ascii + mermansi |
+| State | Partial geometry + canonical model | merman-ascii + mermansi |
+| Class | Partial geometry + canonical model | merman-ascii + mermansi |
+| Er | Partial geometry + canonical model | merman-ascii + mermansi |
+| Packet | Full geometry + canonical model | merman-ascii + mermansi |
+| TreeView | Full geometry + canonical model | merman-ascii + mermansi |
+| XyChart | Partial geometry + canonical model | merman-ascii + mermansi |
+| Mindmap | Summary + canonical model | merman-ascii + mermansi |
+| Gantt | Summary + canonical model | merman-ascii + mermansi |
+| GitGraph | Summary + canonical model | merman-ascii + mermansi |
+| Journey | Summary + canonical model | merman-ascii + mermansi |
+| Kanban | Summary + canonical model | merman-ascii + mermansi |
+| Timeline | Summary + canonical model | merman-ascii + mermansi |
+| ZenUML | Partial sequence geometry + canonical model | merman-ascii + mermansi |
 | Json | Canonical structured text | mermansi adapter |
 | Architecture | Structured text | mermansi adapter |
 | C4 | Structured text | mermansi adapter |

@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0001-create-and-completely-implement-mermansi#0004"
 number = 4
 title = "render_model renders fully before validation and clones whole models on delegated branches"
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "bounded-allocation"
 fingerprint = "sha256:ce116744446f4a1c7ce639b0a11eb9a15bb4c878cd08b29fd29c95b87923c55d"
 created_at = "unix:1785338735"
-updated_at = "unix:1785338735"
+updated_at = "unix:1785385589"
+resolved_at = "unix:1785385589"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Rule 7 (all allocations are bounded and return typed errors) is violat
 [acceptance]
 description = "Validate dimension and output bounds before full rendering; avoid cloning the whole model on delegated branches; ensure serde_json serialization respects the bounded writer. Add a test that confirms a typed size error is returned before full rendering for oversized inputs on structured and delegated paths."
 command = "cargo test --test bounds"
+
+[resolution]
+review = "../../reviews/iteration-0028.json"
+description = "Verified bounded semantic-model preflight via BoundedCountWriter before structured preview construction (output.rs lines 15, 29), before canonical Value allocation (output.rs line 55), and before all delegated merman-ascii rendering (adapters/mod.rs lines 59, 125). No model clone on any delegated path — render_ascii takes &T and passes &T to the renderer. BoundedStringWriter enforces MAX_OUTPUT_BYTES during final pretty-print serialization. Tests confirm oversized structured models reject the preview closure before it executes, and oversized delegated models reject before ASCII rendering. cargo test --test bounds: 30/30 passed."

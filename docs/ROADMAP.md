@@ -27,9 +27,10 @@ means the named behavior has focused tests; it does not imply that Review or rel
 - [x] Exhaustive dispatch for all 28 `RenderSemanticModel` variants
 - [x] Inventory test for all 33 pinned render parser IDs
 - [x] 29 English/Chinese fixture families, including the ZenUML transform
-- [x] `merman-ascii` geometry for its 14 typed model families
-- [x] Lossless flowchart fallback for unsupported and parallel-edge topologies
-- [x] Readable previews plus canonical typed semantic models for 14 structured variants
+- [x] `merman-ascii` geometry or summary previews for its 14 typed model families
+- [x] Lossless flowchart canonical output for supported, unsupported, and parallel-edge topologies
+- [x] Readable previews plus canonical typed semantic models for all 28 variants
+- [x] Delegated conformance round-trips every typed field, including Sequence actor links and Flowchart click metadata
 - [x] Deterministic Unicode and ASCII conformance for every fixture
 - [x] TD/TB/BT/LR/RL, self-loop, cycle, disconnected, nested, parallel, and dense graph tests
 

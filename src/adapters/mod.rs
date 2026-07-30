@@ -13,7 +13,7 @@ use crate::adapters::{
 };
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
-use crate::output::{ensure_serialized_model_within_limit, render_structured_adapter};
+use crate::output::render_structured_adapter;
 use merman_ascii::{AsciiColorMode, AsciiRenderOptions};
 use merman_core::diagram::RenderSemanticModel;
 use serde::Serialize;
@@ -56,22 +56,39 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
     match model {
         // --- merman-ascii delegated families ---
         RenderSemanticModel::Flowchart(m) => {
-            ensure_serialized_model_within_limit(m)?;
-            render_flowchart(m, opts)
+            render_structured_adapter("flowchart", m, opts, || render_flowchart(m, opts))
         }
-        RenderSemanticModel::Sequence(m) => render_ascii(m, opts, merman_ascii::render_sequence),
-        RenderSemanticModel::State(m) => render_ascii(m, opts, merman_ascii::render_state),
-        RenderSemanticModel::Class(m) => render_ascii(m, opts, merman_ascii::render_class),
-        RenderSemanticModel::Er(m) => render_ascii(m, opts, merman_ascii::render_er),
-        RenderSemanticModel::Packet(m) => render_ascii(m, opts, merman_ascii::render_packet),
-        RenderSemanticModel::TreeView(m) => render_ascii(m, opts, merman_ascii::render_tree_view),
-        RenderSemanticModel::XyChart(m) => render_ascii(m, opts, merman_ascii::render_xychart),
-        RenderSemanticModel::Mindmap(m) => render_ascii(m, opts, merman_ascii::render_mindmap),
-        RenderSemanticModel::Gantt(m) => render_ascii(m, opts, merman_ascii::render_gantt),
-        RenderSemanticModel::GitGraph(m) => render_ascii(m, opts, merman_ascii::render_git_graph),
-        RenderSemanticModel::Journey(m) => render_ascii(m, opts, merman_ascii::render_journey),
-        RenderSemanticModel::Kanban(m) => render_ascii(m, opts, merman_ascii::render_kanban),
-        RenderSemanticModel::Timeline(m) => render_ascii(m, opts, merman_ascii::render_timeline),
+        RenderSemanticModel::Sequence(m) => {
+            render_ascii("sequence", m, opts, merman_ascii::render_sequence)
+        }
+        RenderSemanticModel::State(m) => render_ascii("state", m, opts, merman_ascii::render_state),
+        RenderSemanticModel::Class(m) => render_ascii("class", m, opts, merman_ascii::render_class),
+        RenderSemanticModel::Er(m) => render_ascii("er", m, opts, merman_ascii::render_er),
+        RenderSemanticModel::Packet(m) => {
+            render_ascii("packet", m, opts, merman_ascii::render_packet)
+        }
+        RenderSemanticModel::TreeView(m) => {
+            render_ascii("treeView", m, opts, merman_ascii::render_tree_view)
+        }
+        RenderSemanticModel::XyChart(m) => {
+            render_ascii("xychart", m, opts, merman_ascii::render_xychart)
+        }
+        RenderSemanticModel::Mindmap(m) => {
+            render_ascii("mindmap", m, opts, merman_ascii::render_mindmap)
+        }
+        RenderSemanticModel::Gantt(m) => render_ascii("gantt", m, opts, merman_ascii::render_gantt),
+        RenderSemanticModel::GitGraph(m) => {
+            render_ascii("gitGraph", m, opts, merman_ascii::render_git_graph)
+        }
+        RenderSemanticModel::Journey(m) => {
+            render_ascii("journey", m, opts, merman_ascii::render_journey)
+        }
+        RenderSemanticModel::Kanban(m) => {
+            render_ascii("kanban", m, opts, merman_ascii::render_kanban)
+        }
+        RenderSemanticModel::Timeline(m) => {
+            render_ascii("timeline", m, opts, merman_ascii::render_timeline)
+        }
 
         // --- mermansi structured terminal adapters ---
         RenderSemanticModel::Json(m) => render_json(m, opts),
@@ -118,12 +135,14 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
 }
 
 fn render_ascii<T: Serialize>(
+    family: &str,
     model: &T,
     opts: &MermansiOptions,
     renderer: fn(&T, &AsciiRenderOptions) -> merman_ascii::Result<String>,
 ) -> Result<String> {
-    ensure_serialized_model_within_limit(model)?;
-    renderer(model, &to_ascii_options(opts)).map_err(Into::into)
+    render_structured_adapter(family, model, opts, || {
+        renderer(model, &to_ascii_options(opts)).map_err(Into::into)
+    })
 }
 
 /// Ensure a string is non-empty; if empty, substitute a placeholder.
