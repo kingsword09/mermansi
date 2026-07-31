@@ -1,7 +1,10 @@
 //! Sankey diagram adapter.
 
+use crate::adapters::{align_left_display, align_right_display};
+use crate::ansi::sanitize_label_text;
 use crate::error::Result;
 use crate::options::MermansiOptions;
+use crate::str_display_width;
 use merman_core::diagrams::sankey::SankeyDiagramRenderModel;
 
 pub fn render_sankey(model: &SankeyDiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
@@ -16,24 +19,57 @@ pub fn render_sankey(model: &SankeyDiagramRenderModel, opts: &MermansiOptions) -
     if !model.graph.nodes.is_empty() {
         out.push_str("Nodes:\n");
         for node in &model.graph.nodes {
-            out.push_str(&format!("  {}\n", node.id));
+            out.push_str(&format!("  {}\n", sanitize_label_text(&node.id)));
         }
         out.push('\n');
     }
 
     if !model.graph.links.is_empty() {
+        let links = model
+            .graph
+            .links
+            .iter()
+            .map(|link| {
+                (
+                    sanitize_label_text(&link.source),
+                    sanitize_label_text(&link.target),
+                    sanitize_label_text(&format_json_value(&link.value)),
+                )
+            })
+            .collect::<Vec<_>>();
+        let source_width = links
+            .iter()
+            .map(|(source, _, _)| str_display_width(source))
+            .max()
+            .unwrap_or_default()
+            .max(20);
+        let target_width = links
+            .iter()
+            .map(|(_, target, _)| str_display_width(target))
+            .max()
+            .unwrap_or_default()
+            .max(20);
+        let value_width = links
+            .iter()
+            .map(|(_, _, value)| str_display_width(value))
+            .max()
+            .unwrap_or_default()
+            .max(10);
         out.push_str("Flows:\n");
         out.push_str(&format!(
-            "{:<20} {:>20} {:>10}\n",
-            "Source", "Target", "Value"
+            "{} {} {}\n",
+            align_left_display("Source", source_width),
+            align_right_display("Target", target_width),
+            align_right_display("Value", value_width),
         ));
-        out.push_str(&"-".repeat(52));
+        out.push_str(&"-".repeat(source_width + target_width + value_width + 2));
         out.push('\n');
-        for link in &model.graph.links {
-            let value_str = format_json_value(&link.value);
+        for (source, target, value) in links {
             out.push_str(&format!(
-                "{:<20} {:>20} {:>10}\n",
-                link.source, link.target, value_str
+                "{} {} {}\n",
+                align_left_display(&source, source_width),
+                align_right_display(&target, target_width),
+                align_right_display(&value, value_width),
             ));
         }
     }

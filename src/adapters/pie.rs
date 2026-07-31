@@ -1,9 +1,10 @@
 //! Pie chart adapter.
 
-use crate::adapters::format_title;
+use crate::adapters::{align_left_display, align_right_display, format_title};
 use crate::ansi::sanitize_label_text;
 use crate::error::Result;
 use crate::options::{Charset, MermansiOptions};
+use crate::str_display_width;
 use merman_core::diagrams::pie::PieDiagramRenderModel;
 
 pub fn render_pie(model: &PieDiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
@@ -24,26 +25,57 @@ pub fn render_pie(model: &PieDiagramRenderModel, opts: &MermansiOptions) -> Resu
     }
 
     let bar_width = 30usize;
-    out.push_str(&format!("{:<30} {:>10} {:>8}\n", "Label", "Value", "Share"));
-    out.push_str(&"-".repeat(50));
+    let bar_glyph = match opts.charset {
+        Charset::Unicode => "█",
+        Charset::Ascii => "#",
+    };
+    let rows = model
+        .sections
+        .iter()
+        .map(|section| {
+            let pct = (section.value / total) * 100.0;
+            let bar_len = ((section.value / total) * bar_width as f64).round() as usize;
+            (
+                sanitize_label_text(&section.label),
+                format!("{:.2}", section.value),
+                format!("{pct:.1}%"),
+                bar_glyph.repeat(bar_len.min(bar_width)),
+            )
+        })
+        .collect::<Vec<_>>();
+    let label_width = rows
+        .iter()
+        .map(|(label, _, _, _)| str_display_width(label))
+        .max()
+        .unwrap_or_default()
+        .max(30);
+    let value_width = rows
+        .iter()
+        .map(|(_, value, _, _)| str_display_width(value))
+        .max()
+        .unwrap_or_default()
+        .max(10);
+    let share_width = rows
+        .iter()
+        .map(|(_, _, share, _)| str_display_width(share))
+        .max()
+        .unwrap_or_default()
+        .max(8);
+    out.push_str(&format!(
+        "{} {} {}\n",
+        align_left_display("Label", label_width),
+        align_right_display("Value", value_width),
+        align_right_display("Share", share_width),
+    ));
+    out.push_str(&"-".repeat(label_width + value_width + share_width + 2));
     out.push('\n');
 
-    for section in &model.sections {
-        let pct = (section.value / total) * 100.0;
-        let bar_len = ((section.value / total) * bar_width as f64).round() as usize;
-        let bar_len = bar_len.min(bar_width);
-        let bar_glyph = match opts.charset {
-            Charset::Unicode => "█",
-            Charset::Ascii => "#",
-        };
-        let bar: String = bar_glyph.repeat(bar_len);
-        // Sanitize label text before formatting so terminal-control sequences cannot
-        // affect Pie width calculation, column alignment, or bar geometry — in any
-        // ColorMode. This is the primary defense layer (Rule 6).
-        let label = sanitize_label_text(&section.label);
+    for (label, value, share, bar) in rows {
         out.push_str(&format!(
-            "{:<30} {:>10.2} {:>7.1}% {bar}\n",
-            label, section.value, pct
+            "{} {} {} {bar}\n",
+            align_left_display(&label, label_width),
+            align_right_display(&value, value_width),
+            align_right_display(&share, share_width),
         ));
     }
 

@@ -20,6 +20,7 @@ means the named behavior has focused tests; it does not imply that Review or rel
 - [x] ASCII-safe structural glyph selection
 - [x] ANSI16 and TrueColor roles that preserve plain geometry after SGR removal
 - [x] Multi-owner Canvas ANSI styling for ASCII, CJK, emoji, and combining graphemes
+- [x] Display-column-aligned Pie and Sankey tables for mixed ASCII/CJK labels
 - [x] Global output row, column, cell, and byte limits
 - [x] Bounded structured serializer writer
 

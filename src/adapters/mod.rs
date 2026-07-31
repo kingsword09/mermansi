@@ -14,6 +14,7 @@ use crate::adapters::{
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
 use crate::output::render_structured_adapter;
+use crate::str_display_width;
 use merman_ascii::{AsciiColorMode, AsciiRenderOptions};
 use merman_core::diagram::RenderSemanticModel;
 use serde::Serialize;
@@ -152,6 +153,16 @@ pub(crate) fn nonempty_or(s: &str, placeholder: &str) -> String {
     } else {
         s.to_string()
     }
+}
+
+pub(crate) fn align_left_display(text: &str, width: usize) -> String {
+    let padding = width.saturating_sub(str_display_width(text));
+    format!("{text}{}", " ".repeat(padding))
+}
+
+pub(crate) fn align_right_display(text: &str, width: usize) -> String {
+    let padding = width.saturating_sub(str_display_width(text));
+    format!("{}{text}", " ".repeat(padding))
 }
 
 /// Format a title block.

@@ -496,6 +496,58 @@ fn pie_chinese_preserved() {
     assert!(output.contains("猫"), "pie label '猫' missing:\n{output}");
 }
 
+fn display_column_of(line: &str, needle: &str) -> usize {
+    let byte = line
+        .find(needle)
+        .unwrap_or_else(|| panic!("'{needle}' missing from line: {line}"));
+    mermansi::str_display_width(&line[..byte])
+}
+
+#[test]
+fn pie_mixed_language_rows_align_by_display_column() {
+    let source = "pie\n  \"English\" : 10\n  \"中文\" : 20";
+    for options in [MermansiOptions::unicode(), MermansiOptions::ascii()] {
+        let output = render_source(source, &options).unwrap();
+        let english = output
+            .lines()
+            .find(|line| line.contains("English"))
+            .unwrap();
+        let chinese = output.lines().find(|line| line.contains("中文")).unwrap();
+        assert_eq!(
+            display_column_of(english, "10.00"),
+            display_column_of(chinese, "20.00")
+        );
+        assert_eq!(
+            display_column_of(english, "33.3%"),
+            display_column_of(chinese, "66.7%")
+        );
+    }
+}
+
+#[test]
+fn sankey_mixed_language_rows_align_by_display_column() {
+    let source = "sankey-beta\nEnglish,Test,10\n中文,目标,20";
+    for options in [MermansiOptions::unicode(), MermansiOptions::ascii()] {
+        let output = render_source(source, &options).unwrap();
+        let english = output
+            .lines()
+            .find(|line| line.contains("English") && line.contains("10.00"))
+            .unwrap();
+        let chinese = output
+            .lines()
+            .find(|line| line.contains("中文") && line.contains("20.00"))
+            .unwrap();
+        assert_eq!(
+            display_column_of(english, "Test"),
+            display_column_of(chinese, "目标")
+        );
+        assert_eq!(
+            display_column_of(english, "10.00"),
+            display_column_of(chinese, "20.00")
+        );
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Block diagram — hierarchy without duplicate nodes
 // ---------------------------------------------------------------------------
@@ -604,7 +656,7 @@ fn pie_label_no_control_bytes_in_plain_output() {
 
 #[test]
 fn pie_value_column_aligns_with_sanitized_and_clean_labels() {
-    // The "Value" column (numbers like "50.00") must appear at the same byte offset
+    // The "Value" column (numbers like "50.00") must appear at the same display column
     // regardless of whether the label was originally clean or contained control
     // sequences — proving sanitization happens before width calculation.
     let dirty_source = "pie title T\n  \"\u{1b}[31mDog\u{1b}[0m\" : 50\n  \"Cat\" : 25".to_string();
@@ -613,20 +665,19 @@ fn pie_value_column_aligns_with_sanitized_and_clean_labels() {
     let clean = render_source(&clean_source, &MermansiOptions::unicode()).unwrap();
 
     // Find the line containing "Dog" in each output, then locate "50.00" offset.
-    fn value_offset(output: &str, label: &str, value: &str) -> usize {
+    fn value_column(output: &str, label: &str, value: &str) -> usize {
         let line = output
             .lines()
             .find(|l| l.contains(label))
             .unwrap_or_else(|| panic!("line with '{label}' missing:\n{output}"));
-        line.find(value)
-            .unwrap_or_else(|| panic!("value '{value}' missing in line:\n{line}"))
+        display_column_of(line, value)
     }
 
-    let dirty_off = value_offset(&dirty, "Dog", "50.00");
-    let clean_off = value_offset(&clean, "Dog", "50.00");
+    let dirty_off = value_column(&dirty, "Dog", "50.00");
+    let clean_off = value_column(&clean, "Dog", "50.00");
     assert_eq!(
         dirty_off, clean_off,
-        "Value column offset must be identical after sanitization\n\
+        "Value display column must be identical after sanitization\n\
          dirty line offset={dirty_off}, clean={clean_off}\n\
          --- dirty ---\n{dirty}\n--- clean ---\n{clean}"
     );

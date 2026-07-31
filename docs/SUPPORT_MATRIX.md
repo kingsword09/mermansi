@@ -107,4 +107,5 @@ preview plus that canonical representation only when the delegated geometric rou
 unsupported topology. Self-loops and parallel edges use mermansi's bounded, display-column-aware
 Canvas with a distinct routed lane and endpoint marker for every edge. Canvas node labels, edge
 labels, and arrow markers use semantic ANSI roles on every grapheme owner; stripping those roles
-is byte-identical to plain geometry.
+is byte-identical to plain geometry. Pie and Sankey preview tables align columns by terminal
+display width rather than Unicode scalar count.
