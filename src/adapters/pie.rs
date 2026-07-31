@@ -5,8 +5,8 @@
 //! every label, value, percentage, title, and showData semantics.
 
 use crate::adapters::chart_primitives::{
-    self, MAX_CHART_ENTITIES, draw_circle_outline, draw_radial_line, ensure_entity_limit,
-    fill_pie_sector,
+    self, MAX_CHART_ENTITIES, checked_chart_dimensions, draw_circle_outline, draw_radial_line,
+    ensure_entity_limit, fill_pie_sector,
 };
 use crate::adapters::{align_left_display, align_right_display, format_title};
 use crate::ansi::sanitize_label_text;
@@ -42,10 +42,7 @@ pub fn render_pie(model: &PieDiagramRenderModel, opts: &MermansiOptions) -> Resu
     }
 
     // Compute chart dimensions within bounds.
-    let max_w = opts.max_width.clamp(20, 80);
-    let max_h = opts.max_height.clamp(10, 40);
-    let chart_w = max_w.min(max_h * 2); // terminals are ~2:1 aspect
-    let chart_h = usize::div_ceil(chart_w, 2);
+    let (chart_w, chart_h) = checked_chart_dimensions(opts, (20, 10), (80, 40))?;
 
     let radius = (chart_h / 2).saturating_sub(1).max(3) as i64;
     let cx = (chart_w / 2) as i64;

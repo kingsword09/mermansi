@@ -4,7 +4,9 @@
 //! plotted curve vertices normalized from configured min/max. Preserves every axis label,
 //! curve label/value, ticks, graticule choice, showLegend, and title.
 
-use crate::adapters::chart_primitives::{self, MAX_CHART_ENTITIES, ensure_entity_limit};
+use crate::adapters::chart_primitives::{
+    self, MAX_CHART_ENTITIES, checked_chart_dimensions, ensure_entity_limit,
+};
 use crate::adapters::format_title;
 use crate::ansi::sanitize_label_text;
 use crate::canvas::Canvas;
@@ -28,10 +30,7 @@ pub fn render_radar(model: &RadarDiagramRenderModel, opts: &MermansiOptions) -> 
     }
 
     let n_axes = model.axes.len();
-    let max_w = opts.max_width.clamp(20, 80);
-    let max_h = opts.max_height.clamp(10, 50);
-    let chart_w = max_w.min(max_h * 2);
-    let chart_h = usize::div_ceil(chart_w, 2);
+    let (chart_w, chart_h) = checked_chart_dimensions(opts, (20, 10), (80, 50))?;
 
     let radius = (chart_h / 2).saturating_sub(2).max(3) as f64;
     let cx = (chart_w / 2) as f64;

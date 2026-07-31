@@ -1,0 +1,120 @@
+{
+  "schema_version": 2,
+  "task": "task-0005-replace-the-structured-text-only-pie-rad",
+  "iteration": 6,
+  "loop_iteration": 1,
+  "created_at": "unix:1785497935",
+  "objective": "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared.",
+  "plan": {
+    "objective": "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared.",
+    "steps": [
+      {
+        "id": "review-actual-output",
+        "description": "Render the English Pie, Radar, QuadrantChart, and Venn fixtures at 80 columns, inspect the preview geometry and whitespace, and compare implementation behavior with the Task's bounds and semantic-preservation acceptance criteria."
+      },
+      {
+        "id": "record-findings",
+        "description": "Write an immutable changes-required Review and allocate one review-sourced Issue per coherent actionable defect without modifying implementation files."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Read-only current-Codex review. No implementation files changed. Actual 80-column previews measured about 50 Pie rows, 46 Radar rows, 49 QuadrantChart rows, and 49 Venn rows; the Venn preview visibly contained colliding intersection labels.",
+    "changed": false
+  },
+  "verification": {
+    "passed": true,
+    "summary": "The previously recorded full Rust verification remains green (202 tests), and direct CLI rendering reproduced the user-visible layout defects. Passing tests are insufficient because existing assertions do not reject collisions, excessive whitespace, or changed option semantics.",
+    "commands": []
+  },
+  "verdict": "changes_required",
+  "summary": "Current Codex whole-Task review rejects the prior visual pass. All four adapters emit real glyph geometry, but the output is not yet compact, collision-safe, or semantically complete. Five coherent findings cover the shared dimension contract and the concrete Pie, Radar, QuadrantChart, and Venn defects.",
+  "findings": [
+    {
+      "title": "Chart adapters allocate canvases larger than caller dimension limits",
+      "severity": "P1",
+      "category": "bounds-contract",
+      "location": {
+        "path": "src/adapters/pie.rs",
+        "line": 45
+      },
+      "problem": {
+        "description": "Pie, Radar, QuadrantChart, and Venn use opts.max_width.clamp(min, max) and equivalent height clamps. When a caller supplies a maximum below the hard-coded minimum, the renderer creates a larger Canvas before final output validation instead of respecting the maximum or returning a typed pre-allocation error.",
+        "impact": "This violates the Task's bounded-allocation contract and can allocate/render beyond the host terminal limits. The same defect is duplicated across all four chart adapters."
+      },
+      "acceptance": {
+        "description": "Centralize a minimal checked chart-dimension helper used by all four adapters. It must never return dimensions larger than opts.max_width/max_height, must return a typed error before Canvas::new when genuine geometry cannot fit, and must have exact tests for widths/heights below every former minimum.",
+        "command": "cargo test --test bounds chart_dimensions_never_exceed_requested_limits -- --exact"
+      }
+    },
+    {
+      "title": "Venn labels collide and are not proven to belong to their regions",
+      "severity": "P1",
+      "category": "layout-collision",
+      "location": {
+        "path": "src/adapters/venn.rs",
+        "line": 105
+      },
+      "problem": {
+        "description": "The English three-set fixture visibly renders overlapping text such as 'ManA∩CmenA∩B'. Subset labels are placed at the arithmetic centroid of set centers without proving that point lies in the requested geometric intersection, and text-node identity is preserved mainly in a trailing summary rather than as a label or connector associated with the region. The canvas also retains large leading/trailing blank areas.",
+        "impact": "The diagram is genuinely unreadable and can misassociate labels with the wrong set intersection, directly reproducing the user's report that rendered diagrams are chaotic."
+      },
+      "acceptance": {
+        "description": "Implement deterministic collision-free region label placement: test candidate cells for membership in every requested set, avoid occupied spans, and draw a connector to a compact external callout when no in-region span fits. Text nodes must be placed in or connected to their region. Crop unused rows/columns or size from geometry. Add structural tests that reject overlapping label spans and verify each label point/connector against its set membership.",
+        "command": "cargo test --test semantic_integrity venn_labels_are_collision_free_and_region_associated -- --exact"
+      }
+    },
+    {
+      "title": "Pie output is oversized and silently discards requested data semantics",
+      "severity": "P2",
+      "category": "semantic-preservation",
+      "location": {
+        "path": "src/adapters/pie.rs",
+        "line": 25
+      },
+      "problem": {
+        "description": "The default fixture consumes about 50 preview rows for four sections because the canvas is sized from broad maxima rather than the data and available legend space. Non-finite or negative constructed sections are filtered out entirely, so their labels and values disappear, and model.show_data is explicitly ignored while values are always printed.",
+        "impact": "The chart dominates normal terminal output and does not preserve every parsed/constructed label, value, and showData behavior promised by the Task."
+      },
+      "acceptance": {
+        "description": "Choose a compact radius from section count, label widths, and requested bounds; preserve invalid rows explicitly without using them as sector weights; honor show_data consistently; keep a closed proportional chart; and add snapshot-like structural assertions for compact row count, legend completeness, showData true/false, invalid values, ASCII, Unicode, and CJK.",
+        "command": "cargo test --test semantic_integrity pie_is_compact_and_honors_show_data_and_invalid_rows -- --exact"
+      }
+    },
+    {
+      "title": "Radar geometry is excessively dense and loses configured semantics",
+      "severity": "P2",
+      "category": "layout-and-semantics",
+      "location": {
+        "path": "src/adapters/radar.rs",
+        "line": 43
+      },
+      "problem": {
+        "description": "The default three-axis fixture renders roughly 46 rows of overlapping graticule dots, spokes, and curve strokes. Configured ticks are silently clamped to 10, total curve-entry count is not bounded before collecting vertex vectors, and curve lines only write into empty cells, so curve identity disappears at spoke/graticule crossings.",
+        "impact": "Users cannot reliably distinguish the data curve from the grid, large constructed models can allocate beyond the intended entity accounting, and valid configuration is silently changed."
+      },
+      "acceptance": {
+        "description": "Render a compact, legible radar with explicit layer precedence and distinguishable curve strokes/markers; either honor all supported ticks within checked geometry or return a typed limit error; bound total curve entries before allocation; preserve labels/legend options; and add connectivity/readability tests that inspect coordinates and crossings rather than only glyph presence.",
+        "command": "cargo test --test semantic_integrity radar_is_compact_readable_and_preserves_configured_ticks -- --exact"
+      }
+    },
+    {
+      "title": "QuadrantChart wastes terminal space and can lose point and label information",
+      "severity": "P2",
+      "category": "layout-and-semantics",
+      "location": {
+        "path": "src/adapters/quadrant_chart.rs",
+        "line": 26
+      },
+      "problem": {
+        "description": "A four-point fixture expands to roughly 49 preview rows and nearly 80 columns. Coordinates are used without finite/range validation, label helpers truncate to the canvas without a complete fallback, point-local style semantics are reduced to partial legends, and coincident points are shifted without reliably emitting the promised overlap callout.",
+        "impact": "Sparse charts appear chaotic and oversized, while invalid or colliding data can be silently moved, clipped, or omitted from the visual explanation."
+      },
+      "acceptance": {
+        "description": "Derive a compact plotting box from data/label extents and bounds; validate or explicitly represent invalid/out-of-range points; preserve every full label and local/class style through in-plot text or callouts; make collision behavior deterministic and truthfully call it out; and add coordinate-aware tests for compactness, closure, all labels, invalid points, and coincident points.",
+        "command": "cargo test --test semantic_integrity quadrant_is_compact_and_preserves_every_point_and_label -- --exact"
+      }
+    }
+  ],
+  "resolutions": []
+}

@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0005-replace-the-structured-text-only-pie-rad#0005"
+number = 5
+title = "Pie output is oversized and silently discards requested data semantics"
+status = "open"
+severity = "P2"
+category = "semantic-preservation"
+fingerprint = "sha256:bebb667dfa1f4f7ec304c0041bc48902dfaf5025b1eb0f2faea3cd05485a7af9"
+created_at = "unix:1785497935"
+updated_at = "unix:1785497935"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0006.json"
+
+[location]
+path = "src/adapters/pie.rs"
+line = 25
+
+[problem]
+description = "The default fixture consumes about 50 preview rows for four sections because the canvas is sized from broad maxima rather than the data and available legend space. Non-finite or negative constructed sections are filtered out entirely, so their labels and values disappear, and model.show_data is explicitly ignored while values are always printed."
+impact = "The chart dominates normal terminal output and does not preserve every parsed/constructed label, value, and showData behavior promised by the Task."
+
+[acceptance]
+description = "Choose a compact radius from section count, label widths, and requested bounds; preserve invalid rows explicitly without using them as sector weights; honor show_data consistently; keep a closed proportional chart; and add snapshot-like structural assertions for compact row count, legend completeness, showData true/false, invalid values, ASCII, Unicode, and CJK."
+command = "cargo test --test semantic_integrity pie_is_compact_and_honors_show_data_and_invalid_rows -- --exact"

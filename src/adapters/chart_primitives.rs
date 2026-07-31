@@ -6,10 +6,63 @@
 
 use crate::canvas::Canvas;
 use crate::error::{MermansiError, Result};
-use crate::options::Charset;
+use crate::options::{Charset, MermansiOptions};
 
 /// Maximum number of chart entities (sections, axes, curves, points, sets) rendered.
 pub const MAX_CHART_ENTITIES: usize = 4_096;
+
+/// Choose a terminal-chart canvas size without exceeding the caller's limits.
+///
+/// Terminal cells are approximately twice as tall as they are wide, so the returned width is
+/// capped at twice the available height. A chart that cannot meet its minimum dimensions returns
+/// a typed limit error before any [`Canvas`] is allocated.
+pub fn checked_chart_dimensions(
+    opts: &MermansiOptions,
+    minimum: (usize, usize),
+    preferred_maximum: (usize, usize),
+) -> Result<(usize, usize)> {
+    let (minimum_width, minimum_height) = minimum;
+    let (maximum_width, maximum_height) = preferred_maximum;
+
+    if opts.max_width < minimum_width {
+        return Err(MermansiError::RenderLimit {
+            context: "chart width",
+            requested: minimum_width,
+            limit: opts.max_width,
+        });
+    }
+    if opts.max_height < minimum_height {
+        return Err(MermansiError::RenderLimit {
+            context: "chart height",
+            requested: minimum_height,
+            limit: opts.max_height,
+        });
+    }
+
+    let available_height = opts.max_height.min(maximum_height);
+    let width = opts
+        .max_width
+        .min(maximum_width)
+        .min(available_height.saturating_mul(2));
+    if width < minimum_width {
+        return Err(MermansiError::RenderLimit {
+            context: "chart width",
+            requested: minimum_width,
+            limit: width,
+        });
+    }
+
+    let height = width.div_ceil(2).min(available_height);
+    if height < minimum_height {
+        return Err(MermansiError::RenderLimit {
+            context: "chart height",
+            requested: minimum_height,
+            limit: height,
+        });
+    }
+
+    Ok((width, height))
+}
 
 /// Ensure an entity count does not exceed the chart entity limit.
 pub fn ensure_entity_limit(context: &'static str, requested: usize) -> Result<()> {

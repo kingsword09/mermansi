@@ -4,7 +4,9 @@
 //! actual regions, endpoint axis labels, and every point placed from its normalized x/y
 //! coordinates with deterministic collision-safe markers.
 
-use crate::adapters::chart_primitives::{self, MAX_CHART_ENTITIES, ensure_entity_limit};
+use crate::adapters::chart_primitives::{
+    self, MAX_CHART_ENTITIES, checked_chart_dimensions, ensure_entity_limit,
+};
 use crate::adapters::format_title;
 use crate::ansi::sanitize_label_text;
 use crate::canvas::{Canvas, draw_box, draw_horizontal_line, draw_vertical_line};
@@ -23,10 +25,7 @@ pub fn render_quadrant_chart(
     ensure_entity_limit("quadrant points", model.points.len())?;
 
     // Compute chart dimensions within bounds.
-    let max_w = opts.max_width.clamp(20, 80);
-    let max_h = opts.max_height.clamp(10, 50);
-    let chart_w = max_w.min(max_h * 2);
-    let chart_h = usize::div_ceil(chart_w, 2);
+    let (chart_w, chart_h) = checked_chart_dimensions(opts, (20, 10), (80, 50))?;
 
     let mut canvas = Canvas::new(chart_w, chart_h)?;
 

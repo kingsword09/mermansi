@@ -723,6 +723,56 @@ fn chart_narrow_width_does_not_panic() {
 }
 
 #[test]
+fn chart_dimensions_never_exceed_requested_limits() {
+    let sources = [
+        "pie title Bounds\n  \"A\" : 10\n  \"B\" : 20",
+        "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}",
+        "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4",
+        "venn-beta\n  set A\n  set B\n  union A,B",
+    ];
+
+    for source in sources {
+        let width_result = render_source(
+            source,
+            &MermansiOptions::unicode()
+                .with_output_mode(OutputMode::Concise)
+                .with_max_width(19)
+                .with_max_height(50),
+        );
+        assert!(
+            matches!(
+                width_result,
+                Err(MermansiError::RenderLimit {
+                    context: "chart width",
+                    requested: 20,
+                    limit: 19,
+                })
+            ),
+            "expected a pre-allocation width error for {source:?}, got {width_result:?}"
+        );
+
+        let height_result = render_source(
+            source,
+            &MermansiOptions::unicode()
+                .with_output_mode(OutputMode::Concise)
+                .with_max_width(80)
+                .with_max_height(9),
+        );
+        assert!(
+            matches!(
+                height_result,
+                Err(MermansiError::RenderLimit {
+                    context: "chart height",
+                    requested: 10,
+                    limit: 9,
+                })
+            ),
+            "expected a pre-allocation height error for {source:?}, got {height_result:?}"
+        );
+    }
+}
+
+#[test]
 fn chart_ascii_mode_produces_nonempty_output() {
     let sources = [
         "pie title ASCII\n  \"A\" : 10\n  \"B\" : 20",

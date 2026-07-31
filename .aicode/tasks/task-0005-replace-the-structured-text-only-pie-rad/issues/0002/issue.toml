@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0005-replace-the-structured-text-only-pie-rad#0002"
 number = 2
 title = "AGENTS.md Modules table does not explicitly list chart_primitives module"
-status = "open"
+status = "resolved"
 severity = "P3"
 category = "documentation-completeness"
 fingerprint = "sha256:80f4145eb546a943c6f3eeca96e9bd5a9b4570b683fa7d2ffad650723efda75e"
 created_at = "unix:1785497058"
-updated_at = "unix:1785497058"
+updated_at = "unix:1785497686"
+resolved_at = "unix:1785497686"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Minimal. The chart_primitives module is correctly declared as `mod cha
 [acceptance]
 description = "Optionally add a row to the AGENTS.md Modules table such as '| src/adapters/chart_primitives.rs | Shared bounded chart primitives (circle, line, sector) for Pie/Radar/QuadrantChart/Venn |' for discoverability."
 command = "N/A — documentation polish, not a functional defect."
+
+[resolution]
+review = "../../reviews/iteration-0005.json"
+description = "AGENTS.md line 90 explicitly lists '| `src/adapters/chart_primitives.rs` | Shared bounded chart primitives (circle, line, sector) for Pie/Radar/QuadrantChart/Venn |', fulfilling the acceptance criteria of Issue #0002."

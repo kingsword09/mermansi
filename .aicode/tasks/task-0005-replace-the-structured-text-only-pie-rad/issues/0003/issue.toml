@@ -1,0 +1,31 @@
+schema_version = 2
+id = "task-0005-replace-the-structured-text-only-pie-rad#0003"
+number = 3
+title = "Chart adapters allocate canvases larger than caller dimension limits"
+status = "resolved"
+severity = "P1"
+category = "bounds-contract"
+fingerprint = "sha256:18cc9e9e10b2008cd18d2ce2b610f6eeae5898c64ed41582ea86fa07ef1f338b"
+created_at = "unix:1785497935"
+updated_at = "unix:1785498202"
+resolved_at = "unix:1785498202"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0006.json"
+
+[location]
+path = "src/adapters/pie.rs"
+line = 45
+
+[problem]
+description = "Pie, Radar, QuadrantChart, and Venn use opts.max_width.clamp(min, max) and equivalent height clamps. When a caller supplies a maximum below the hard-coded minimum, the renderer creates a larger Canvas before final output validation instead of respecting the maximum or returning a typed pre-allocation error."
+impact = "This violates the Task's bounded-allocation contract and can allocate/render beyond the host terminal limits. The same defect is duplicated across all four chart adapters."
+
+[acceptance]
+description = "Centralize a minimal checked chart-dimension helper used by all four adapters. It must never return dimensions larger than opts.max_width/max_height, must return a typed error before Canvas::new when genuine geometry cannot fit, and must have exact tests for widths/heights below every former minimum."
+command = "cargo test --test bounds chart_dimensions_never_exceed_requested_limits -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0007.json"
+description = "Acceptance met by the shared pre-allocation dimension helper, four migrated callers, exact four-family bounds test, and clean full verification."

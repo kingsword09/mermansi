@@ -1,0 +1,28 @@
+schema_version = 1
+task = "task-0005-replace-the-structured-text-only-pie-rad"
+iteration = 7
+loop_iteration = 1
+created_at = "unix:1785498029"
+objective = "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared."
+open_issue_ids = [
+    "task-0005-replace-the-structured-text-only-pie-rad#0003",
+    "task-0005-replace-the-structured-text-only-pie-rad#0004",
+    "task-0005-replace-the-structured-text-only-pie-rad#0005",
+    "task-0005-replace-the-structured-text-only-pie-rad#0006",
+    "task-0005-replace-the-structured-text-only-pie-rad#0007",
+]
+
+[plan]
+objective = "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared."
+
+[[plan.steps]]
+id = "step-1"
+description = "Add one shared checked_chart_dimensions helper in chart_primitives that rejects caller maxima below the minimum before Canvas allocation and never returns dimensions above MermansiOptions limits."
+
+[[plan.steps]]
+id = "step-2"
+description = "Replace the four duplicated clamp-based dimension calculations in Pie, Radar, QuadrantChart, and Venn with the shared helper; make no family-specific layout changes in this Issue."
+
+[[plan.steps]]
+id = "step-3"
+description = "Add an exact bounds test for every family at sub-minimum width and height, then run focused and full required verification."
