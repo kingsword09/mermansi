@@ -1,0 +1,14 @@
+schema_version = 1
+task = "task-0003-replace-the-non-geometric-requirement-mi"
+iteration = 4
+loop_iteration = 3
+created_at = "unix:1785488778"
+objective = "Replace the non-geometric Requirement, Mindmap, TreeView, and JSON outputs with genuine deterministic terminal geometry. Extend the existing shared box geometry engine with the minimal reusable layered directional layout needed by these four families. Requirement must render every requirement and element as a closed box, every typed relationship as a connected directed route, and honor TB/BT/LR/RL. Mindmap and TreeView must render every semantic node as a closed box with visible parent-child routes and real hierarchy, not |-- outlines. JSON objects, arrays, properties, indices, and scalar values must render as a bounded connected box tree, not raw pretty-print alone. Preserve English and Chinese text, ASCII and Unicode, deterministic output, all width/height/cell/byte/depth/node bounds, canonical semantic models in Complete mode, and concise geometry without structured-text fallback. Add strong geometry/direction/hierarchy/bounds tests and update README plus SUPPORT_MATRIX honestly. Do not modify or fork merman-core, merman-ascii, or any parser."
+open_issue_ids = ["task-0003-replace-the-non-geometric-requirement-mi#0002"]
+
+[plan]
+objective = "Replace the non-geometric Requirement, Mindmap, TreeView, and JSON outputs with genuine deterministic terminal geometry. Extend the existing shared box geometry engine with the minimal reusable layered directional layout needed by these four families. Requirement must render every requirement and element as a closed box, every typed relationship as a connected directed route, and honor TB/BT/LR/RL. Mindmap and TreeView must render every semantic node as a closed box with visible parent-child routes and real hierarchy, not |-- outlines. JSON objects, arrays, properties, indices, and scalar values must render as a bounded connected box tree, not raw pretty-print alone. Preserve English and Chinese text, ASCII and Unicode, deterministic output, all width/height/cell/byte/depth/node bounds, canonical semantic models in Complete mode, and concise geometry without structured-text fallback. Add strong geometry/direction/hierarchy/bounds tests and update README plus SUPPORT_MATRIX honestly. Do not modify or fork merman-core, merman-ascii, or any parser."
+
+[[plan.steps]]
+id = "step-1"
+description = '''Verify the AGENTS.md diagram fix is already applied: confirm Mindmap and TreeView are absent from the merman-ascii reuse branch (lines 28-30) and present together in the mermansi structured terminal adapters branch (line 34). Confirm the acceptance command grep -n 'Mindmap.*TreeView\|TreeView.*Mindmap' AGENTS.md returns line 34. Confirm cargo fmt --check, cargo clippy --all-targets --all-features -- -D warnings, and cargo test --all-targets --all-features all pass with zero warnings and zero failures.'''

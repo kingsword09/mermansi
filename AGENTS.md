@@ -86,7 +86,7 @@ Deterministic ASCII / Unicode text output
 | `src/ansi.rs` | Optional ANSI roles |
 | `src/output.rs` | Canonical structured output and final output bounds |
 | `src/adapters/mod.rs` | Dispatch by `RenderSemanticModel` variant |
-| `src/adapters/*.rs` | Per-family structured terminal adapters |
+| `src/adapters/*.rs` | Per-family terminal geometry and structured adapters |
 | `src/bin/mermansi.rs` | CLI binary |
 | `tests/support_matrix.rs` | Executable conformance test |
 | `tests/semantic_integrity.rs` | Label preservation, box closure, direction tests |
