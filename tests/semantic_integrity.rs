@@ -83,6 +83,35 @@ fn label_renders_in_ascii_mode_too() {
     );
 }
 
+#[test]
+fn decision_node_has_one_closed_border_in_each_charset() {
+    let source = "flowchart TD\n  A{Is it?}";
+
+    let unicode = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let unicode_preview = unicode
+        .split("[flowchart semantic model]")
+        .next()
+        .unwrap_or(&unicode)
+        .trim_end();
+    assert_eq!(
+        unicode_preview,
+        "╭────────╮\n│        │\n< Is it? >\n│        │\n╰────────╯"
+    );
+    assert_eq!(unicode_preview.matches('╭').count(), 1);
+    assert_eq!(unicode_preview.matches('╰').count(), 1);
+
+    let ascii = render_source(source, &MermansiOptions::ascii()).unwrap();
+    let ascii_preview = ascii
+        .split("[flowchart semantic model]")
+        .next()
+        .unwrap_or(&ascii)
+        .trim_end();
+    assert_eq!(
+        ascii_preview,
+        "/--------\\\n|        |\n< Is it? >\n|        |\n\\--------/"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Edge / relationship label and endpoint preservation
 // ---------------------------------------------------------------------------

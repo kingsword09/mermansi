@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0001-create-and-completely-implement-mermansi#0005"
 number = 5
 title = "Sequence actor links and Flowchart click URL/tooltip are silently dropped in delegated output; support_matrix skips every delegated variant"
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "semantic-entity-preservation"
 fingerprint = "sha256:6cf9cfacf271dc79b0750dc4cee74ceb8b1c15c7fba032f4a3d220cb953eda33"
 created_at = "unix:1785338735"
-updated_at = "unix:1785338735"
+updated_at = "unix:1785389749"
+resolved_at = "unix:1785389749"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Rule 4 (no family may silently drop parsed semantic entities, relation
 [acceptance]
 description = "Render or faithfully summarize Sequence actor links and Flowchart click URL/tooltip in delegated output; remove the early-return from support_matrix for delegated variants so conformance exercises these fields. Add tests asserting the fields appear in output."
 command = "cargo test --test support_matrix"
+
+[resolution]
+review = "../../reviews/iteration-0034.json"
+description = "Verified delegated preview plus canonical semantic output, all-variant conformance round trips, Sequence actor-link preservation, Flowchart click metadata preservation, retained previews, clone-free dispatch, and passing host verification."
