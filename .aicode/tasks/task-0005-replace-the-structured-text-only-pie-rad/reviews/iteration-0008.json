@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "task": "task-0005-replace-the-structured-text-only-pie-rad",
+  "iteration": 8,
+  "loop_iteration": 1,
+  "created_at": "unix:1785499287",
+  "objective": "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared.",
+  "plan": {
+    "objective": "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Replace centroid-only Venn labels with a small SetCircle/RegionLabel layout: ellipse membership checks, deterministic candidate ordering, exact-region preference, and occupied display-span checks."
+      },
+      {
+        "id": "step-2",
+        "description": "Place every subset and text-node label inside its region when possible; otherwise place a marker in the region and connect it to a collision-free right-side callout. Preserve existing size/style summaries."
+      },
+      {
+        "id": "step-3",
+        "description": "Size the Venn canvas from set count and crop unused outer whitespace while respecting checked dimensions and CJK display widths."
+      },
+      {
+        "id": "step-4",
+        "description": "Add exact integration and private geometry tests for collision-free labels, visible text-node identity, region membership, connectors, compactness, ASCII/Unicode, and determinism; run focused and full verification."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Replaced centroid overwrites with deterministic ellipse-aware region placement. Labels reserve complete display spans with padding; overflow labels receive in-region markers, short leaders, and a monotonic right-side callout lane. Text-node identities now appear in geometry/callouts, unused canvas margins are cropped, singleton size ratios remain encoded, and metadata summaries remain intact.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "The exact Unicode/ASCII collision, region-association, compactness, and determinism test passed; private membership/crop tests passed; cargo fmt --check, clippy with -D warnings, and all-target/all-feature tests passed. 206 tests passed with zero failures. Manual fixture inspection confirmed the original merged-label defect is gone and geometry fell from about 49 to about 20 rows.",
+    "commands": []
+  },
+  "verdict": "pass",
+  "summary": "Current Codex diff and rendered-output review found no actionable defects for Issue #0004. Every normal parsed subset/text node is either placed on a fully membership-checked free span or represented by a membership-checked marker and keyed callout; callout rows preserve anchor order, labels cannot overwrite one another, CJK widths use display columns, and output remains bounded/deterministic. The implementation stays local to the Venn adapter (KISS/SRP) and reuses existing chart primitives (DRY).",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 4,
+      "description": "Acceptance met by collision-free membership-aware label placement, connected keyed callouts, cropped compact geometry, exact structural tests, visual inspection, and clean full verification."
+    }
+  ]
+}

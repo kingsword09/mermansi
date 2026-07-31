@@ -1885,6 +1885,50 @@ fn venn_preserves_text_nodes() {
 }
 
 #[test]
+fn venn_labels_are_collision_free_and_region_associated() {
+    let source = "venn-beta\n  title Skill Overlap\n  set A[\"Programming\"]\n  set B[\"Design\"]\n  set C[\"Management\"]\n  union A,B[\"Engineering\"]\n  union A,C[\"Leadership\"]\n  union A,B,C[\"Full Stack\"]\ntext A,B fullstack";
+    for (options, connector) in [
+        (MermansiOptions::unicode(), '·'),
+        (MermansiOptions::ascii(), '.'),
+    ] {
+        let options = options
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(80)
+            .with_max_height(40);
+        let output = render_source(source, &options).expect("collision-free Venn geometry");
+        let geometry = output.split("\nIntersections:").next().unwrap_or(&output);
+
+        for label in [
+            "Programming",
+            "Design",
+            "Management",
+            "Engineering",
+            "Leadership",
+            "Full Stack",
+            "fullstack",
+        ] {
+            assert_eq!(
+                geometry.matches(label).count(),
+                1,
+                "label must appear exactly once in geometry or a connected callout: {label}\n{geometry}"
+            );
+        }
+        assert!(
+            geometry.contains(connector),
+            "labels that do not fit their region must have a visible connector:\n{geometry}"
+        );
+        assert!(
+            geometry.lines().count() <= 28,
+            "Venn geometry should be compact, got {} rows:\n{geometry}",
+            geometry.lines().count()
+        );
+
+        let repeated = render_source(source, &options).expect("deterministic Venn geometry");
+        assert_eq!(output, repeated, "Venn placement must be deterministic");
+    }
+}
+
+#[test]
 fn venn_title_preserved() {
     let source = "venn-beta\n  title Skill Overlap\n  set A\n  set B\n  union A,B";
     let output = render_source(source, &MermansiOptions::unicode()).unwrap();

@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0005-replace-the-structured-text-only-pie-rad#0004"
 number = 4
 title = "Venn labels collide and are not proven to belong to their regions"
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "layout-collision"
 fingerprint = "sha256:52dc490e30cddd6c74687d53bb233fc9eb28c9d9a044374fe339d27cadc47391"
 created_at = "unix:1785497935"
-updated_at = "unix:1785497935"
+updated_at = "unix:1785499287"
+resolved_at = "unix:1785499287"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "The diagram is genuinely unreadable and can misassociate labels with t
 [acceptance]
 description = "Implement deterministic collision-free region label placement: test candidate cells for membership in every requested set, avoid occupied spans, and draw a connector to a compact external callout when no in-region span fits. Text nodes must be placed in or connected to their region. Crop unused rows/columns or size from geometry. Add structural tests that reject overlapping label spans and verify each label point/connector against its set membership."
 command = "cargo test --test semantic_integrity venn_labels_are_collision_free_and_region_associated -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0008.json"
+description = "Acceptance met by collision-free membership-aware label placement, connected keyed callouts, cropped compact geometry, exact structural tests, visual inspection, and clean full verification."
