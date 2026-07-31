@@ -343,6 +343,23 @@ fn parallel_self_loops_have_separate_routes() {
 }
 
 #[test]
+fn colored_flowchart_lanes_strip_user_terminal_controls_before_canvas_layout() {
+    let dirty = "\u{1b}[31mStart red\u{1b}[0m\u{1b}]0;title\u{07}";
+    let source = format!("flowchart TD\n  A[\"{dirty}\"] -->|first| B[End]\n  A -->|safe| B");
+    let plain = render_source(&source, &MermansiOptions::unicode()).unwrap();
+    assert!(plain.contains("Start"));
+    assert!(plain.contains("red"));
+
+    for mode in [ColorMode::Ansi16, ColorMode::TrueColor] {
+        let colored = render_source(&source, &MermansiOptions::unicode().with_color(mode)).unwrap();
+        assert!(!colored.contains("\u{1b}[31m"), "{colored:?}");
+        assert!(!colored.contains("\u{1b}]0;title"), "{colored:?}");
+        assert!(!colored.contains('\u{07}'), "{colored:?}");
+        assert_eq!(mermansi::ansi::strip_ansi(&colored), plain);
+    }
+}
+
+#[test]
 fn dense_relations_parsed_and_rendered() {
     let source = "flowchart TD\n  A --> B\n  A --> C\n  A --> D\n  B --> C\n  B --> D\n  C --> D";
     let output =

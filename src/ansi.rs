@@ -128,9 +128,9 @@ pub fn strip_ansi(input: &str) -> String {
 ///   text. TAB, LF, and CR are layout-changing and can break column alignment.
 ///
 /// All visible Unicode text (including CJK, combining marks, and emoji) is preserved.
-/// Currently called only by the Pie adapter before label text is formatted, so raw
-/// control sequences can never affect Pie width, column alignment, or bar geometry —
-/// regardless of the active `ColorMode`.
+/// Called by terminal adapters before label text is measured or placed, so raw control
+/// sequences cannot affect table alignment or Canvas geometry regardless of the active
+/// `ColorMode`.
 pub(crate) fn sanitize_label_text(input: &str) -> String {
     let mut output = String::with_capacity(input.len());
     let mut chars = input.chars().peekable();

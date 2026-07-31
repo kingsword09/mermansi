@@ -19,6 +19,7 @@ means the named behavior has focused tests; it does not imply that Review or rel
 - [x] Directional stroke merging, closed corners, and deterministic overwrite priority
 - [x] ASCII-safe structural glyph selection
 - [x] ANSI16 and TrueColor roles that preserve plain geometry after SGR removal
+- [x] Multi-owner Canvas ANSI styling for ASCII, CJK, emoji, and combining graphemes
 - [x] Global output row, column, cell, and byte limits
 - [x] Bounded structured serializer writer
 

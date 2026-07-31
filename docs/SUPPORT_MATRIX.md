@@ -105,4 +105,6 @@ edges, and routing. Every adapter appends a canonical JSON semantic model to its
 preserving every typed field without claiming SVG-coordinate parity. Flowcharts emit an empty
 preview plus that canonical representation only when the delegated geometric router reports an
 unsupported topology. Self-loops and parallel edges use mermansi's bounded, display-column-aware
-Canvas with a distinct routed lane and endpoint marker for every edge.
+Canvas with a distinct routed lane and endpoint marker for every edge. Canvas node labels, edge
+labels, and arrow markers use semantic ANSI roles on every grapheme owner; stripping those roles
+is byte-identical to plain geometry.

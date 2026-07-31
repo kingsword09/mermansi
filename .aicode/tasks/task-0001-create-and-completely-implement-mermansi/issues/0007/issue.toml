@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0001-create-and-completely-implement-mermansi#0007"
 number = 7
 title = "Self-loops and parallel Flowchart edges render as semantic JSON rather than terminal geometry"
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "terminal-geometry"
 fingerprint = "sha256:58d9108f9543de9268e20dd1ad23d17c366ad26b732b63be224dc4eb5b37484c"
 created_at = "unix:1785338735"
-updated_at = "unix:1785338735"
+updated_at = "unix:1785459024"
+resolved_at = "unix:1785459024"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Rule 5 (terminal-native geometry where meaningful) and Rule 4 are viol
 [acceptance]
 description = "Render self-loops and parallel edges with distinct, visible terminal geometry (not a JSON fallback). Extend tests to assert that the geometric output contains the expected self-loop and parallel-edge routing shapes, not just label text."
 command = "cargo test --test semantic_integrity"
+
+[resolution]
+review = "../../reviews/iteration-0041.json"
+description = "Verified terminal-native self-loop and parallel-edge geometry with one deterministic lane and endpoint marker per edge across TD/TB/BT/LR/RL and both charsets, plus label preservation, bounded Canvas allocation, deterministic output, focused snapshots, and passing host verification."

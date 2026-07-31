@@ -8,11 +8,15 @@
 //! - Large inputs are bounded and return typed errors, not panics.
 
 use merman_core::diagram::RenderSemanticModel;
+use mermansi::ansi::strip_ansi;
 use mermansi::canvas::Canvas;
 use mermansi::options::{
     DEFAULT_MAX_HEIGHT, DEFAULT_MAX_WIDTH, MAX_CANVAS_CELLS, MAX_OUTPUT_BYTES,
 };
-use mermansi::{MAX_SOURCE_BYTES, MermansiError, MermansiOptions, render_model, render_source};
+use mermansi::{
+    AnsiEncoder, AnsiRole, ColorMode, MAX_SOURCE_BYTES, MermansiError, MermansiOptions,
+    render_model, render_source,
+};
 
 // ---------------------------------------------------------------------------
 // Option validation
@@ -248,6 +252,41 @@ fn canvas_set_text_with_chinese() {
 }
 
 #[test]
+fn canvas_styled_text_applies_to_every_grapheme_owner() {
+    let encoder = AnsiEncoder::new(ColorMode::Ansi16);
+    let prefix = encoder.prefix(AnsiRole::NodeText);
+    let suffix = encoder.suffix();
+    let text = "A中👩‍💻e\u{301}";
+    let mut canvas = Canvas::new(10, 1).expect("canvas");
+    canvas
+        .set_styled_text(0, 0, text, prefix, suffix)
+        .expect("styled text");
+
+    let rendered = canvas.render();
+    assert_eq!(rendered.matches(prefix).count(), 4, "{rendered:?}");
+    assert_eq!(rendered.matches(suffix).count(), 4, "{rendered:?}");
+    assert_eq!(strip_ansi(&rendered), format!("{text}\n"));
+    assert_eq!(canvas.continuation_owner(2, 0), Some((1, 0)));
+    assert_eq!(canvas.continuation_owner(4, 0), Some((3, 0)));
+}
+
+#[test]
+fn canvas_styled_combining_append_styles_its_existing_owner() {
+    let encoder = AnsiEncoder::new(ColorMode::TrueColor);
+    let prefix = encoder.prefix(AnsiRole::EdgeLabel);
+    let suffix = encoder.suffix();
+    let mut canvas = Canvas::new(3, 1).expect("canvas");
+    canvas.set_text(0, 0, "e").expect("base grapheme");
+    canvas
+        .set_styled_text(1, 0, "\u{301}", prefix, suffix)
+        .expect("combining append");
+
+    let rendered = canvas.render();
+    assert_eq!(rendered.matches(prefix).count(), 1, "{rendered:?}");
+    assert_eq!(strip_ansi(&rendered), "e\u{301}\n");
+}
+
+#[test]
 fn canvas_stores_decomposed_grapheme_as_one_cell() {
     let mut canvas = Canvas::new(5, 1).expect("canvas");
     canvas
@@ -381,6 +420,20 @@ fn flowchart_edge_lane_geometry_is_deterministic() {
         for _ in 0..4 {
             assert_eq!(render_source(source, &options).unwrap(), first);
         }
+    }
+}
+
+#[test]
+fn flowchart_edge_lane_canvas_emits_roles_without_changing_geometry() {
+    let source = "flowchart TD\n  A[开始] -->|first| B[结束]\n  A -->|second| B";
+    let plain = render_source(source, &MermansiOptions::unicode()).unwrap();
+    for mode in [ColorMode::Ansi16, ColorMode::TrueColor] {
+        let encoder = AnsiEncoder::new(mode);
+        let colored = render_source(source, &MermansiOptions::unicode().with_color(mode)).unwrap();
+        assert!(colored.contains(encoder.prefix(AnsiRole::NodeText)));
+        assert!(colored.contains(encoder.prefix(AnsiRole::EdgeLabel)));
+        assert!(colored.contains(encoder.prefix(AnsiRole::EdgeArrow)));
+        assert_eq!(strip_ansi(&colored), plain);
     }
 }
 

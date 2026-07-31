@@ -1,6 +1,6 @@
 //! Deterministic edge-lane geometry for Flowchart self-loops and parallel edges.
 
-use crate::ansi::sanitize_label_text;
+use crate::ansi::{AnsiEncoder, AnsiRole, sanitize_label_text};
 use crate::canvas::{Canvas, draw_box, draw_horizontal_line, draw_vertical_line};
 use crate::error::{MermansiError, Result};
 use crate::{Charset, MermansiOptions, str_display_width};
@@ -326,7 +326,7 @@ fn render_vertical(
         }
     }
 
-    finish_canvas(canvas, &rects, labels, markers, edge_labels)
+    finish_canvas(canvas, &rects, labels, markers, edge_labels, opts)
 }
 
 fn render_horizontal(
@@ -481,7 +481,7 @@ fn render_horizontal(
         }
     }
 
-    finish_canvas(canvas, &rects, labels, markers, edge_labels)
+    finish_canvas(canvas, &rects, labels, markers, edge_labels, opts)
 }
 
 fn ordered_indices(count: usize, reverse: bool) -> Vec<usize> {
@@ -523,21 +523,42 @@ fn finish_canvas(
     labels: &Labels,
     markers: Vec<MarkerPlacement>,
     edge_labels: Vec<LabelPlacement>,
+    opts: &MermansiOptions,
 ) -> Result<String> {
+    let encoder = AnsiEncoder::new(opts.color_mode);
     for marker in markers {
-        canvas.set_char(marker.x, marker.y, marker.value)?;
+        let mut encoded = [0u8; 4];
+        canvas.set_styled_text(
+            marker.x,
+            marker.y,
+            marker.value.encode_utf8(&mut encoded),
+            encoder.prefix(AnsiRole::EdgeArrow),
+            encoder.suffix(),
+        )?;
     }
     for placement in edge_labels {
         let label = &labels.edges[placement.edge];
         if !label.is_empty() {
-            canvas.set_text(placement.x, placement.y, label)?;
+            canvas.set_styled_text(
+                placement.x,
+                placement.y,
+                label,
+                encoder.prefix(AnsiRole::EdgeLabel),
+                encoder.suffix(),
+            )?;
         }
     }
     for (node_index, rect) in rects.iter().enumerate() {
         let label = &labels.nodes[node_index];
         let x = rect.x + rect.width.saturating_sub(str_display_width(label)) / 2;
         let y = rect.y + rect.height / 2;
-        canvas.set_text(x, y, label)?;
+        canvas.set_styled_text(
+            x,
+            y,
+            label,
+            encoder.prefix(AnsiRole::NodeText),
+            encoder.suffix(),
+        )?;
     }
     let rendered = canvas.render();
     let rendered = rendered.trim_matches('\n');

@@ -308,12 +308,15 @@ impl Canvas {
         prefix: &str,
         suffix: &str,
     ) -> Result<()> {
-        self.set_text(x, y, text)?;
-        let owner = self
-            .index(x, y)
-            .and_then(|index| self.owner_for_index(index))
-            .or_else(|| self.preceding_owner(x, y));
-        if let Some(owner) = owner {
+        let plan = self.plan_text(x, y, text)?;
+        let owners = plan
+            .writes
+            .iter()
+            .map(|write| write.owner)
+            .chain(plan.appends.iter().map(|(owner, _)| *owner))
+            .collect::<BTreeSet<_>>();
+        self.apply_text_plan(plan)?;
+        for owner in owners {
             self.style_prefix[owner] = prefix.to_string();
             self.style_suffix[owner] = suffix.to_string();
         }
