@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0001-create-and-completely-implement-mermansi#0006"
 number = 6
 title = "Flowchart decision node renders with duplicated rounded borders"
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "terminal-geometry"
 fingerprint = "sha256:67214bb84279e2a66bb34f75e8e01a6066f99365a05e2530169646d33eea25d5"
 created_at = "unix:1785338735"
-updated_at = "unix:1785338735"
+updated_at = "unix:1785457489"
+resolved_at = "unix:1785457489"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Rule 4 and Rule 5 (faithful terminal-native geometry) are violated; bo
 [acceptance]
 description = "Render each flowchart decision node with a single, correctly closed border (no duplicated rounded frames). Add a snapshot-style test asserting the decision node produces exactly one top-border line and one bottom-border line."
 command = "cargo test --test semantic_integrity"
+
+[resolution]
+review = "../../reviews/iteration-0040.json"
+description = "Verified one closed decision border in Unicode and ASCII, preservation of multiline labels, CJK display columns, adjacent-node routing connectors and ANSI geometry, focused snapshot coverage, and passing host verification."

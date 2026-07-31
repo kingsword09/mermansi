@@ -7,6 +7,14 @@
 
 use mermansi::{ColorMode, MermansiOptions, render_source};
 
+fn flowchart_preview(output: &str) -> &str {
+    output
+        .split("[flowchart semantic model]")
+        .next()
+        .unwrap_or(output)
+        .trim_matches('\n')
+}
+
 // ---------------------------------------------------------------------------
 // Label preservation
 // ---------------------------------------------------------------------------
@@ -88,11 +96,7 @@ fn decision_node_has_one_closed_border_in_each_charset() {
     let source = "flowchart TD\n  A{Is it?}";
 
     let unicode = render_source(source, &MermansiOptions::unicode()).unwrap();
-    let unicode_preview = unicode
-        .split("[flowchart semantic model]")
-        .next()
-        .unwrap_or(&unicode)
-        .trim_end();
+    let unicode_preview = flowchart_preview(&unicode);
     assert_eq!(
         unicode_preview,
         "╭────────╮\n│        │\n< Is it? >\n│        │\n╰────────╯"
@@ -101,11 +105,7 @@ fn decision_node_has_one_closed_border_in_each_charset() {
     assert_eq!(unicode_preview.matches('╰').count(), 1);
 
     let ascii = render_source(source, &MermansiOptions::ascii()).unwrap();
-    let ascii_preview = ascii
-        .split("[flowchart semantic model]")
-        .next()
-        .unwrap_or(&ascii)
-        .trim_end();
+    let ascii_preview = flowchart_preview(&ascii);
     assert_eq!(
         ascii_preview,
         "/--------\\\n|        |\n< Is it? >\n|        |\n\\--------/"
@@ -215,12 +215,19 @@ fn direction_rl_renders() {
 
 #[test]
 fn self_relation_parsed_and_rendered() {
-    let source = "flowchart TD\n  A --> A";
-    let output = render_source(source, &MermansiOptions::unicode())
-        .expect("self-relation must render successfully");
-    assert!(
-        output.contains("A"),
-        "self-relation node A missing:\n{output}"
+    let source = "flowchart TD\n  A[Loop] -->|again| A";
+    let unicode = render_source(source, &MermansiOptions::unicode())
+        .expect("self-relation must render Unicode geometry");
+    assert_eq!(
+        flowchart_preview(&unicode),
+        "  ┌──────┐\n  │      ├──┐ again\n  │ Loop ├◀─┘\n  │      │\n  └──────┘"
+    );
+
+    let ascii = render_source(source, &MermansiOptions::ascii())
+        .expect("self-relation must render ASCII geometry");
+    assert_eq!(
+        flowchart_preview(&ascii),
+        "  +------+\n  |      +--+ again\n  | Loop +<-+\n  |      |\n  +------+"
     );
 }
 
@@ -272,15 +279,66 @@ fn nested_group_renders() {
 #[test]
 fn parallel_edges_parsed_and_rendered() {
     let source = "flowchart TD\n  A -->|first| B\n  A -->|second| B";
-    let output = render_source(source, &MermansiOptions::unicode())
-        .expect("parallel labeled edges should render");
-    assert!(
-        output.contains("first"),
-        "edge label 'first' missing:\n{output}"
+    let unicode = render_source(source, &MermansiOptions::unicode())
+        .expect("parallel labeled edges should render Unicode geometry");
+    let unicode_preview = flowchart_preview(&unicode);
+    assert_eq!(
+        unicode_preview.matches('▶').count(),
+        2,
+        "parallel edges must have separate target arrows:\n{unicode_preview}"
     );
     assert!(
-        output.contains("second"),
-        "edge label 'second' missing:\n{output}"
+        unicode_preview.contains("└─────────┼──▶") && unicode_preview.contains("└──▶"),
+        "parallel edges must use distinct routed lanes:\n{unicode_preview}"
+    );
+    assert!(unicode_preview.contains("first"));
+    assert!(unicode_preview.contains("second"));
+
+    let ascii = render_source(source, &MermansiOptions::ascii())
+        .expect("parallel labeled edges should render ASCII geometry");
+    let ascii_preview = flowchart_preview(&ascii);
+    assert_eq!(ascii_preview.matches('>').count(), 2);
+    assert!(ascii_preview.contains("+---------+-->"));
+    assert!(ascii_preview.contains("+-->"));
+}
+
+#[test]
+fn self_loops_and_parallel_edges_render_geometry_in_every_direction() {
+    for direction in ["TD", "TB", "BT", "LR", "RL"] {
+        let parallel =
+            format!("flowchart {direction}\n  A[开始] -->|first| B[结束]\n  A -->|second| B");
+        let output = render_source(&parallel, &MermansiOptions::unicode())
+            .unwrap_or_else(|error| panic!("{direction} parallel geometry failed: {error}"));
+        let preview = flowchart_preview(&output);
+        let arrows = preview.matches('▶').count() + preview.matches('▼').count();
+        assert_eq!(
+            arrows, 2,
+            "{direction} must render one arrow per parallel edge:\n{preview}"
+        );
+        assert!(preview.contains("开始"));
+        assert!(preview.contains("结束"));
+
+        let self_loop = format!("flowchart {direction}\n  A[Loop] -->|again| A");
+        let output = render_source(&self_loop, &MermansiOptions::unicode())
+            .unwrap_or_else(|error| panic!("{direction} self-loop geometry failed: {error}"));
+        let preview = flowchart_preview(&output);
+        assert!(
+            preview.contains('◀') || preview.contains('▲'),
+            "{direction} self-loop must have a visible return arrow:\n{preview}"
+        );
+        assert!(preview.contains("again"));
+    }
+}
+
+#[test]
+fn parallel_self_loops_have_separate_routes() {
+    let source = "flowchart TD\n  A -->|one| A\n  A -->|two| A";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = flowchart_preview(&output);
+    assert_eq!(preview.matches('◀').count(), 2, "{preview}");
+    assert_eq!(
+        preview,
+        "  ┌─────┐\n  │     ├──┐ one\n  │     ├◀─┘\n  │  A  ├─────┐ two\n  │     ├◀────┘\n  └─────┘"
     );
 }
 

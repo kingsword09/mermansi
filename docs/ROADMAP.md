@@ -29,6 +29,7 @@ means the named behavior has focused tests; it does not imply that Review or rel
 - [x] 29 English/Chinese fixture families, including the ZenUML transform
 - [x] `merman-ascii` geometry or summary previews for its 14 typed model families
 - [x] Lossless flowchart canonical output for supported, unsupported, and parallel-edge topologies
+- [x] Canvas-backed, distinct terminal lanes for Flowchart self-loops and parallel edges
 - [x] Readable previews plus canonical typed semantic models for all 28 variants
 - [x] Delegated conformance round-trips every typed field, including Sequence actor links and Flowchart click metadata
 - [x] Deterministic Unicode and ASCII conformance for every fixture

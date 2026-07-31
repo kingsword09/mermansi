@@ -6,11 +6,14 @@ use crate::error::Result;
 use crate::options::{Charset, MermansiOptions};
 use merman_ascii::AsciiError;
 use merman_core::diagrams::flowchart::FlowchartV2Model;
-use std::collections::HashSet;
+
+mod lanes;
 
 pub fn render_flowchart(model: &FlowchartV2Model, opts: &MermansiOptions) -> Result<String> {
-    if has_parallel_edges(model) {
-        return Ok(String::new());
+    if lanes::requires_lane_geometry(model)
+        && let Some(output) = lanes::render_lane_geometry(model, opts)?
+    {
+        return Ok(output);
     }
 
     match merman_ascii::render_flowchart(model, &to_ascii_options(opts)) {
@@ -18,14 +21,6 @@ pub fn render_flowchart(model: &FlowchartV2Model, opts: &MermansiOptions) -> Res
         Err(AsciiError::UnsupportedFeature { .. }) => Ok(String::new()),
         Err(error) => Err(error.into()),
     }
-}
-
-fn has_parallel_edges(model: &FlowchartV2Model) -> bool {
-    let mut endpoints = HashSet::with_capacity(model.edges.len());
-    model
-        .edges
-        .iter()
-        .any(|edge| !endpoints.insert((edge.from.as_str(), edge.to.as_str())))
 }
 
 fn normalize_decision_borders(

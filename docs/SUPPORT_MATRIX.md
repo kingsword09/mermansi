@@ -103,5 +103,6 @@ The authoritative semantic inventory from `merman-core::diagram::RenderSemanticM
 Every family produces deterministic nonempty output. Geometry rows use terminal-native boxes,
 edges, and routing. Every adapter appends a canonical JSON semantic model to its readable preview,
 preserving every typed field without claiming SVG-coordinate parity. Flowcharts emit an empty
-preview plus that canonical representation when the geometric router reports an unsupported
-topology or would lose parallel-edge semantics.
+preview plus that canonical representation only when the delegated geometric router reports an
+unsupported topology. Self-loops and parallel edges use mermansi's bounded, display-column-aware
+Canvas with a distinct routed lane and endpoint marker for every edge.

@@ -181,6 +181,29 @@ fn delegated_model_is_bounded_before_ascii_rendering() {
     );
 }
 
+#[test]
+fn flowchart_edge_lane_dimensions_are_bounded_before_canvas_creation() {
+    let wide = "flowchart TD\n  A -->|a very long first parallel edge label| B\n  A -->|a very long second parallel edge label| B";
+    let width_result = render_source(wide, &MermansiOptions::unicode().with_max_width(40));
+    assert!(matches!(
+        width_result,
+        Err(MermansiError::RenderLimit {
+            context: "flowchart preview columns",
+            ..
+        })
+    ));
+
+    let tall = "flowchart LR\n  A --> B\n  A --> B\n  A --> B\n  A --> B";
+    let height_result = render_source(tall, &MermansiOptions::unicode().with_max_height(10));
+    assert!(matches!(
+        height_result,
+        Err(MermansiError::RenderLimit {
+            context: "flowchart preview rows",
+            ..
+        })
+    ));
+}
+
 // ---------------------------------------------------------------------------
 // Canvas bounds
 // ---------------------------------------------------------------------------
@@ -347,6 +370,17 @@ fn deterministic_ascii_across_repeated_calls() {
         let a = render_source(source, &MermansiOptions::ascii()).unwrap();
         let b = render_source(source, &MermansiOptions::ascii()).unwrap();
         assert_eq!(a, b);
+    }
+}
+
+#[test]
+fn flowchart_edge_lane_geometry_is_deterministic() {
+    let source = "flowchart TD\n  A[开始] -->|first| B[结束]\n  A -->|second| B\n  B -->|again| B";
+    for options in [MermansiOptions::unicode(), MermansiOptions::ascii()] {
+        let first = render_source(source, &options).unwrap();
+        for _ in 0..4 {
+            assert_eq!(render_source(source, &options).unwrap(), first);
+        }
     }
 }
 
