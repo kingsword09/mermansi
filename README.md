@@ -24,6 +24,9 @@ family.
 - **Deterministic output** — identical input always produces byte-identical output.
 - **International labels** — English, Chinese (CJK wide), combining marks, and emoji all
   preserve geometry.
+- **Terminal chart geometry** — Pie, Radar, QuadrantChart, and Venn render genuine
+  deterministic canvas geometry (closed circles, radial spokes, Cartesian plotting areas,
+  overlapping set outlines) rather than structured-text-only output.
 - **No Mermaid parser bundled** — uses `merman-core` as the single source of truth.
 
 ## Install
@@ -134,17 +137,17 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 | Json | Layered box-tree geometry + canonical model | mermansi adapter |
 | Architecture | Nested box geometry + canonical model | mermansi adapter |
 | C4 | Nested box geometry + canonical model | mermansi adapter |
-| Pie | Structured text | mermansi adapter |
+| Pie | Circular sector geometry + legend | mermansi adapter |
 | Requirement | Directional box geometry + canonical model | mermansi adapter |
 | Sankey | Structured text | mermansi adapter |
-| Radar | Structured text | mermansi adapter |
+| Radar | Radial spoke/graticule geometry + legend | mermansi adapter |
 | Info | Structured text | mermansi adapter |
 | Treemap | Structured text | mermansi adapter |
 | Block | Nested box geometry + canonical model | mermansi adapter |
-| QuadrantChart | Structured text | mermansi adapter |
+| QuadrantChart | Cartesian quadrant geometry + legend | mermansi adapter |
 | Ishikawa | Structured text | mermansi adapter |
 | EventModeling | Structured text | mermansi adapter |
-| Venn | Structured text | mermansi adapter |
+| Venn | Overlapping set-circle geometry + legend | mermansi adapter |
 
 See `docs/SUPPORT_MATRIX.md` for the full machine-checkable support matrix.
 

@@ -87,6 +87,7 @@ Deterministic ASCII / Unicode text output
 | `src/output.rs` | Canonical structured output and final output bounds |
 | `src/adapters/mod.rs` | Dispatch by `RenderSemanticModel` variant |
 | `src/adapters/*.rs` | Per-family terminal geometry and structured adapters |
+| `src/adapters/chart_primitives.rs` | Shared bounded chart primitives (circle, line, sector) for Pie/Radar/QuadrantChart/Venn |
 | `src/bin/mermansi.rs` | CLI binary |
 | `tests/support_matrix.rs` | Executable conformance test |
 | `tests/semantic_integrity.rs` | Label preservation, box closure, direction tests |

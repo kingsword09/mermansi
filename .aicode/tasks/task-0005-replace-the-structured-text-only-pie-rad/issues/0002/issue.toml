@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0005-replace-the-structured-text-only-pie-rad#0002"
+number = 2
+title = "AGENTS.md Modules table does not explicitly list chart_primitives module"
+status = "open"
+severity = "P3"
+category = "documentation-completeness"
+fingerprint = "sha256:80f4145eb546a943c6f3eeca96e9bd5a9b4570b683fa7d2ffad650723efda75e"
+created_at = "unix:1785497058"
+updated_at = "unix:1785497058"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0002.json"
+
+[location]
+path = "AGENTS.md"
+line = 89
+
+[problem]
+description = "The AGENTS.md Modules table entry 'src/adapters/*.rs | Per-family terminal geometry and structured adapters' technically covers chart_primitives.rs as one of the *.rs files, but does not make it discoverable to a reader looking for the shared bounded chart geometry primitives now used by Pie, Radar, QuadrantChart, and Venn."
+impact = "Minimal. The chart_primitives module is correctly declared as `mod chart_primitives` in src/adapters/mod.rs and its doc comment clearly states it is shared by all four chart adapters. A developer reading the adapter source will find it immediately. No functional impact."
+
+[acceptance]
+description = "Optionally add a row to the AGENTS.md Modules table such as '| src/adapters/chart_primitives.rs | Shared bounded chart primitives (circle, line, sector) for Pie/Radar/QuadrantChart/Venn |' for discoverability."
+command = "N/A — documentation polish, not a functional defect."

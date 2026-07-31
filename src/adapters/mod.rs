@@ -25,6 +25,7 @@ pub mod architecture;
 pub mod block;
 mod box_geometry;
 pub mod c4;
+mod chart_primitives;
 pub mod eventmodeling;
 pub mod flowchart;
 pub mod info;

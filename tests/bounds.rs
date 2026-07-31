@@ -14,7 +14,7 @@ use mermansi::options::{
     DEFAULT_MAX_HEIGHT, DEFAULT_MAX_WIDTH, MAX_CANVAS_CELLS, MAX_OUTPUT_BYTES,
 };
 use mermansi::{
-    AnsiEncoder, AnsiRole, ColorMode, MAX_SOURCE_BYTES, MermansiError, MermansiOptions,
+    AnsiEncoder, AnsiRole, ColorMode, MAX_SOURCE_BYTES, MermansiError, MermansiOptions, OutputMode,
     render_model, render_source,
 };
 
@@ -674,4 +674,406 @@ fn empty_string_produces_error_not_empty_output() {
         result.is_err(),
         "empty input should produce a parse error, not empty output"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Chart geometry determinism and bounds
+// ---------------------------------------------------------------------------
+
+#[test]
+fn deterministic_for_radar() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Q{4,3,5}";
+    let a = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let b = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert_eq!(a, b);
+}
+
+#[test]
+fn deterministic_for_quadrant() {
+    let source = "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4\n  A: [0.5, 0.5]";
+    let a = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let b = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert_eq!(a, b);
+}
+
+#[test]
+fn deterministic_for_venn() {
+    let source = "venn-beta\n  set A\n  set B\n  union A,B";
+    let a = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let b = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert_eq!(a, b);
+}
+
+#[test]
+fn chart_narrow_width_does_not_panic() {
+    let opts = MermansiOptions::unicode().with_max_width(40);
+    let sources = [
+        "pie title Narrow\n  \"A\" : 10\n  \"B\" : 20",
+        "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}",
+        "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4",
+        "venn-beta\n  set A\n  set B\n  union A,B",
+    ];
+    for source in &sources {
+        let result = render_source(source, &opts);
+        assert!(
+            result.is_ok(),
+            "narrow width render failed for: {source}\n{result:?}"
+        );
+    }
+}
+
+#[test]
+fn chart_ascii_mode_produces_nonempty_output() {
+    let sources = [
+        "pie title ASCII\n  \"A\" : 10\n  \"B\" : 20",
+        "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}",
+        "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4",
+        "venn-beta\n  set A\n  set B\n  union A,B",
+    ];
+    for source in &sources {
+        let output = render_source(source, &MermansiOptions::ascii()).unwrap();
+        assert!(
+            !output.trim().is_empty(),
+            "ASCII output is empty for: {source}"
+        );
+    }
+}
+
+#[test]
+fn chart_concise_mode_produces_geometry() {
+    let opts = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let sources = [
+        "pie title Concise\n  \"A\" : 10\n  \"B\" : 20",
+        "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}",
+        "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4",
+        "venn-beta\n  set A\n  set B\n  union A,B",
+    ];
+    for source in &sources {
+        let output = render_source(source, &opts).unwrap();
+        assert!(
+            !output.trim().is_empty(),
+            "Concise output is empty for: {source}"
+        );
+        // In concise mode, the semantic model should NOT appear (no structured text fallback).
+        assert!(
+            !output.contains("semantic model]"),
+            "Concise mode should not include structured-text fallback for: {source}\n{output}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Constructed-model bounds and empty/zero/invalid tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn pie_empty_constructed_model_produces_nonempty_output() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::pie::PieDiagramRenderModel;
+
+    let model = PieDiagramRenderModel {
+        show_data: false,
+        title: Some("Empty".to_string()),
+        acc_title: None,
+        acc_descr: None,
+        sections: vec![],
+    };
+    let output = render_model(
+        &RenderSemanticModel::Pie(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(
+        output.is_ok(),
+        "Empty pie model should not error: {:?}",
+        output
+    );
+    let out = output.unwrap();
+    assert!(
+        !out.trim().is_empty(),
+        "Empty pie model should produce nonempty output"
+    );
+}
+
+#[test]
+fn pie_zero_total_constructed_model_produces_nonempty_output() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::pie::{PieDiagramRenderModel, PieRenderSection};
+
+    let model = PieDiagramRenderModel {
+        show_data: false,
+        title: Some("Zero".to_string()),
+        acc_title: None,
+        acc_descr: None,
+        sections: vec![
+            PieRenderSection {
+                label: "A".to_string(),
+                value: 0.0,
+            },
+            PieRenderSection {
+                label: "B".to_string(),
+                value: 0.0,
+            },
+        ],
+    };
+    let output = render_model(
+        &RenderSemanticModel::Pie(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(output.is_ok(), "Zero-total pie should not error");
+    let out = output.unwrap();
+    assert!(!out.trim().is_empty());
+}
+
+#[test]
+fn pie_nan_inf_values_filtered_safely() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::pie::{PieDiagramRenderModel, PieRenderSection};
+
+    let model = PieDiagramRenderModel {
+        show_data: false,
+        title: Some("Invalid".to_string()),
+        acc_title: None,
+        acc_descr: None,
+        sections: vec![
+            PieRenderSection {
+                label: "NaN".to_string(),
+                value: f64::NAN,
+            },
+            PieRenderSection {
+                label: "Inf".to_string(),
+                value: f64::INFINITY,
+            },
+            PieRenderSection {
+                label: "Valid".to_string(),
+                value: 10.0,
+            },
+            PieRenderSection {
+                label: "Neg".to_string(),
+                value: -5.0,
+            },
+        ],
+    };
+    let output = render_model(
+        &RenderSemanticModel::Pie(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(output.is_ok(), "Invalid values should not error");
+    let out = output.unwrap();
+    assert!(
+        out.contains("Valid"),
+        "Valid section should survive filtering"
+    );
+}
+
+#[test]
+fn radar_empty_constructed_model_produces_nonempty_output() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::radar::RadarDiagramRenderModel;
+
+    let model = RadarDiagramRenderModel::default();
+    let output = render_model(
+        &RenderSemanticModel::Radar(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(output.is_ok(), "Empty radar model should not error");
+    let out = output.unwrap();
+    assert!(!out.trim().is_empty());
+}
+
+#[test]
+fn quadrant_empty_constructed_model_produces_nonempty_output() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::quadrant_chart::{
+        QuadrantChartAxesModel, QuadrantChartQuadrantsModel, QuadrantChartRenderModel,
+    };
+
+    let model = QuadrantChartRenderModel {
+        title: Some("Empty".to_string()),
+        acc_title: None,
+        acc_descr: None,
+        quadrants: QuadrantChartQuadrantsModel {
+            quadrant1_text: "Q1".to_string(),
+            quadrant2_text: "Q2".to_string(),
+            quadrant3_text: "Q3".to_string(),
+            quadrant4_text: "Q4".to_string(),
+        },
+        axes: QuadrantChartAxesModel {
+            x_axis_left_text: String::new(),
+            x_axis_right_text: String::new(),
+            y_axis_bottom_text: String::new(),
+            y_axis_top_text: String::new(),
+        },
+        points: vec![],
+        classes: Default::default(),
+    };
+    let output = render_model(
+        &RenderSemanticModel::QuadrantChart(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(output.is_ok(), "Empty quadrant model should not error");
+    let out = output.unwrap();
+    assert!(!out.trim().is_empty());
+}
+
+#[test]
+fn venn_empty_constructed_model_produces_nonempty_output() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::venn::VennDiagramRenderModel;
+
+    let model = VennDiagramRenderModel::default();
+    let output = render_model(
+        &RenderSemanticModel::Venn(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(output.is_ok(), "Empty venn model should not error");
+    let out = output.unwrap();
+    assert!(!out.trim().is_empty());
+}
+
+#[test]
+fn chart_entity_limit_enforced_for_pie() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::pie::{PieDiagramRenderModel, PieRenderSection};
+
+    let sections: Vec<PieRenderSection> = (0..5000)
+        .map(|i| PieRenderSection {
+            label: format!("S{i}"),
+            value: 1.0,
+        })
+        .collect();
+    let model = PieDiagramRenderModel {
+        show_data: false,
+        title: None,
+        acc_title: None,
+        acc_descr: None,
+        sections,
+    };
+    let result = render_model(
+        &RenderSemanticModel::Pie(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(
+        matches!(&result, Err(MermansiError::RenderLimit { context, .. }) if *context == "pie sections"),
+        "Expected pie sections entity limit error, got: {result:?}"
+    );
+}
+
+#[test]
+fn chart_entity_limit_enforced_for_radar() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::radar::{RadarDiagramRenderModel, RadarRenderAxis};
+
+    let axes: Vec<RadarRenderAxis> = (0..5000)
+        .map(|i| RadarRenderAxis {
+            name: format!("A{i}"),
+            label: format!("A{i}"),
+        })
+        .collect();
+    let model = RadarDiagramRenderModel {
+        title: None,
+        acc_title: None,
+        acc_descr: None,
+        axes,
+        curves: vec![],
+        options: Default::default(),
+    };
+    let result = render_model(
+        &RenderSemanticModel::Radar(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(
+        matches!(&result, Err(MermansiError::RenderLimit { context, .. }) if *context == "radar axes"),
+        "Expected radar axes entity limit error, got: {result:?}"
+    );
+}
+
+#[test]
+fn chart_entity_limit_enforced_for_quadrant() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::quadrant_chart::{
+        QuadrantChartAxesModel, QuadrantChartPointModel, QuadrantChartQuadrantsModel,
+        QuadrantChartRenderModel, QuadrantChartStyles,
+    };
+
+    let points: Vec<QuadrantChartPointModel> = (0..5000)
+        .map(|i| QuadrantChartPointModel {
+            text: format!("P{i}"),
+            x: 0.5,
+            y: 0.5,
+            class_name: None,
+            styles: QuadrantChartStyles::default(),
+        })
+        .collect();
+    let model = QuadrantChartRenderModel {
+        title: None,
+        acc_title: None,
+        acc_descr: None,
+        quadrants: QuadrantChartQuadrantsModel {
+            quadrant1_text: "Q1".to_string(),
+            quadrant2_text: "Q2".to_string(),
+            quadrant3_text: "Q3".to_string(),
+            quadrant4_text: "Q4".to_string(),
+        },
+        axes: QuadrantChartAxesModel {
+            x_axis_left_text: String::new(),
+            x_axis_right_text: String::new(),
+            y_axis_bottom_text: String::new(),
+            y_axis_top_text: String::new(),
+        },
+        points,
+        classes: Default::default(),
+    };
+    let result = render_model(
+        &RenderSemanticModel::QuadrantChart(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(
+        matches!(&result, Err(MermansiError::RenderLimit { context, .. }) if *context == "quadrant points"),
+        "Expected quadrant points entity limit error, got: {result:?}"
+    );
+}
+
+#[test]
+fn chart_entity_limit_enforced_for_venn() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::venn::{VennDiagramRenderModel, VennSubsetRenderModel};
+
+    let subsets: Vec<VennSubsetRenderModel> = (0..5000)
+        .map(|i| VennSubsetRenderModel {
+            sets: vec![format!("S{i}")],
+            size: 10.0,
+            label: None,
+        })
+        .collect();
+    let model = VennDiagramRenderModel {
+        acc_title: None,
+        acc_descr: None,
+        title: None,
+        subsets,
+        text_nodes: vec![],
+        style_entries: vec![],
+    };
+    let result = render_model(
+        &RenderSemanticModel::Venn(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(
+        matches!(&result, Err(MermansiError::RenderLimit { context, .. }) if *context == "venn subsets"),
+        "Expected venn subsets entity limit error, got: {result:?}"
+    );
+}
+
+#[test]
+fn chart_geometry_is_deterministic_across_calls() {
+    let sources = [
+        "pie title Det\n  \"A\" : 30\n  \"B\" : 70",
+        "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}",
+        "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4\n  P: [0.5, 0.5]",
+        "venn-beta\n  set A\n  set B\n  union A,B",
+    ];
+    for source in &sources {
+        let a = render_source(source, &MermansiOptions::unicode()).unwrap();
+        let b = render_source(source, &MermansiOptions::unicode()).unwrap();
+        assert_eq!(a, b, "Non-deterministic output for: {source}");
+    }
 }

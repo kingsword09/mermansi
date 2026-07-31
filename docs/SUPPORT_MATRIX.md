@@ -89,17 +89,17 @@ parser.
 | Json | mermansi | Layered box-tree geometry + canonical model | `fixtures/json.en.mmd` | `fixtures/json.zh.mmd` | yes |
 | Architecture | mermansi | Nested box geometry + canonical model | `fixtures/architecture.en.mmd` | `fixtures/architecture.zh.mmd` | ✅ |
 | C4 | mermansi | Nested box geometry + canonical model | `fixtures/c4.en.mmd` | `fixtures/c4.zh.mmd` | ✅ |
-| Pie | mermansi | Structured text | `fixtures/pie.en.mmd` | `fixtures/pie.zh.mmd` | ✅ |
+| Pie | mermansi | Circular sector geometry + legend | `fixtures/pie.en.mmd` | `fixtures/pie.zh.mmd` | ✅ |
 | Requirement | mermansi | Directional box geometry + canonical model | `fixtures/requirement.en.mmd` | `fixtures/requirement.zh.mmd` | ✅ |
 | Sankey | mermansi | Structured text | `fixtures/sankey.en.mmd` | `fixtures/sankey.zh.mmd` | ✅ |
-| Radar | mermansi | Structured text | `fixtures/radar.en.mmd` | `fixtures/radar.zh.mmd` | ✅ |
+| Radar | mermansi | Radial spoke/graticule geometry + legend | `fixtures/radar.en.mmd` | `fixtures/radar.zh.mmd` | ✅ |
 | Info | mermansi | Structured text | `fixtures/info.en.mmd` | `fixtures/info.zh.mmd` | ✅ |
 | Treemap | mermansi | Structured text | `fixtures/treemap.en.mmd` | `fixtures/treemap.zh.mmd` | ✅ |
 | Block | mermansi | Nested box geometry + canonical model | `fixtures/block.en.mmd` | `fixtures/block.zh.mmd` | ✅ |
-| QuadrantChart | mermansi | Structured text | `fixtures/quadrant.en.mmd` | `fixtures/quadrant.zh.mmd` | ✅ |
+| QuadrantChart | mermansi | Cartesian quadrant geometry + legend | `fixtures/quadrant.en.mmd` | `fixtures/quadrant.zh.mmd` | ✅ |
 | Ishikawa | mermansi | Structured text | `fixtures/ishikawa.en.mmd` | `fixtures/ishikawa.zh.mmd` | ✅ |
 | EventModeling | mermansi | Structured text | `fixtures/eventmodeling.en.mmd` | `fixtures/eventmodeling.zh.mmd` | ✅ |
-| Venn | mermansi | Structured text | `fixtures/venn.en.mmd` | `fixtures/venn.zh.mmd` | ✅ |
+| Venn | mermansi | Overlapping set-circle geometry + legend | `fixtures/venn.en.mmd` | `fixtures/venn.zh.mmd` | ✅ |
 
 ## Output guarantee
 
@@ -114,5 +114,7 @@ preview plus that canonical representation only when the delegated geometric rou
 unsupported topology. Self-loops and parallel edges use mermansi's bounded, display-column-aware
 Canvas with a distinct routed lane and endpoint marker for every edge. Canvas node labels, edge
 labels, and arrow markers use semantic ANSI roles on every grapheme owner; stripping those roles
-is byte-identical to plain geometry. Pie and Sankey preview tables align columns by terminal
-display width rather than Unicode scalar count.
+is byte-identical to plain geometry. Pie, Radar, QuadrantChart, and Venn now render genuine
+terminal chart geometry — closed circles, radial spokes, Cartesian plotting areas, and
+overlapping set outlines — using shared bounded chart primitives (`chart_primitives`).
+Preview tables align columns by terminal display width rather than Unicode scalar count.

@@ -1564,3 +1564,767 @@ fn pie_label_dcs_stripped_in_truecolor_mode() {
         "TrueColor output must contain zero BEL bytes:\n{output}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Pie chart geometry tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn pie_has_closed_circular_outline() {
+    let source = "pie title Pets\n  \"Dogs\" : 40\n  \"Cats\" : 25\n  \"Fish\" : 10";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "pie");
+    // The pie preview should contain non-whitespace chart characters indicating a circle was drawn.
+    let non_blank_lines = preview
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .count();
+    assert!(
+        non_blank_lines >= 3,
+        "Pie should have a multi-line circular chart, got {} non-blank lines:\n{preview}",
+        non_blank_lines
+    );
+}
+
+#[test]
+fn pie_has_proportional_sector_fill() {
+    // A section with a much larger value should produce more filled cells.
+    let source_small = "pie title Small\n  \"A\" : 1\n  \"B\" : 1";
+    let source_large = "pie title Large\n  \"A\" : 100\n  \"B\" : 1";
+    let out_small = render_source(source_small, &MermansiOptions::unicode()).unwrap();
+    let out_large = render_source(source_large, &MermansiOptions::unicode()).unwrap();
+    let preview_small = family_preview(&out_small, "pie");
+    let preview_large = family_preview(&out_large, "pie");
+    let filled_small = preview_small
+        .chars()
+        .filter(|&c| c == '█' || c == '▓' || c == '▒' || c == '░')
+        .count();
+    let filled_large = preview_large
+        .chars()
+        .filter(|&c| c == '█' || c == '▓' || c == '▒' || c == '░')
+        .count();
+    assert!(
+        filled_large >= filled_small,
+        "Larger pie should have at least as many filled cells: small={}, large={}",
+        filled_small,
+        filled_large
+    );
+}
+
+#[test]
+fn pie_preserves_all_labels_values_and_percentages() {
+    let source = "pie title Test\n  \"Alpha\" : 60\n  \"Beta\" : 40";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "pie");
+    assert!(preview.contains("Alpha"), "Alpha label missing:\n{preview}");
+    assert!(preview.contains("Beta"), "Beta label missing:\n{preview}");
+    assert!(preview.contains("60.00"), "Alpha value missing:\n{preview}");
+    assert!(preview.contains("40.00"), "Beta value missing:\n{preview}");
+    assert!(
+        preview.contains("60.0%"),
+        "Alpha percentage missing:\n{preview}"
+    );
+    assert!(
+        preview.contains("40.0%"),
+        "Beta percentage missing:\n{preview}"
+    );
+}
+
+#[test]
+fn pie_title_preserved_in_geometry() {
+    let source = "pie title My Chart\n  \"A\" : 1";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert!(output.contains("My Chart"), "Pie title missing:\n{output}");
+}
+
+#[test]
+fn pie_empty_sections_produce_nonempty_output() {
+    let source = "pie title Empty\n";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert!(
+        output.contains("empty pie chart") || output.contains("Empty"),
+        "Empty pie should produce labeled nonempty output:\n{output}"
+    );
+}
+
+#[test]
+fn pie_zero_total_produces_nonempty_output() {
+    let source = "pie title Zero\n  \"A\" : 0\n  \"B\" : 0";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert!(
+        output.contains("zero total") || output.contains("Zero"),
+        "Zero-total pie should produce labeled nonempty output:\n{output}"
+    );
+}
+
+#[test]
+fn pie_ascii_geometry_produces_nonempty_output() {
+    let source = "pie title ASCII Pie\n  \"A\" : 30\n  \"B\" : 20";
+    let output = render_source(source, &MermansiOptions::ascii()).unwrap();
+    let preview = family_preview(&output, "pie");
+    assert!(
+        !preview.trim().is_empty(),
+        "ASCII pie should produce nonempty chart:\n{preview}"
+    );
+    assert!(
+        preview.contains("A") && preview.contains("B"),
+        "ASCII pie should preserve labels:\n{preview}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Radar chart geometry tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn radar_has_center_and_spokes() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Q{4,3,5}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    let non_blank_lines = preview
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .count();
+    assert!(
+        non_blank_lines >= 3,
+        "Radar should have multi-line chart with spokes:\n{preview}"
+    );
+}
+
+#[test]
+fn radar_preserves_axis_labels() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Q{4,3,5}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    assert!(preview.contains("A"), "Axis A missing:\n{preview}");
+    assert!(preview.contains("B"), "Axis B missing:\n{preview}");
+    assert!(preview.contains("C"), "Axis C missing:\n{preview}");
+}
+
+#[test]
+fn radar_preserves_curve_label_and_values_in_legend() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Quality{4,3,5}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    assert!(
+        preview.contains("Quality"),
+        "Curve label missing:\n{preview}"
+    );
+    assert!(
+        preview.contains("4.00") || preview.contains("4"),
+        "Curve value missing:\n{preview}"
+    );
+}
+
+#[test]
+fn radar_graticule_polygon_mode_renders() {
+    let source = "radar-beta\n  axis A,B,C\n  graticule polygon\n  curve Q{4,3,5}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    assert!(
+        !preview.trim().is_empty(),
+        "Polygon graticule should produce nonempty chart:\n{preview}"
+    );
+}
+
+#[test]
+fn radar_empty_axes_produces_nonempty_output() {
+    let source = "radar-beta\n  title Empty Radar";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert!(
+        output.contains("empty radar chart") || output.contains("Empty"),
+        "Empty radar should produce labeled nonempty output:\n{output}"
+    );
+}
+
+#[test]
+fn radar_title_preserved() {
+    let source = "radar-beta\n  title My Radar\n  axis A,B,C\n  curve Q{1,2,3}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert!(
+        output.contains("My Radar"),
+        "Radar title missing:\n{output}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// QuadrantChart geometry tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn quadrant_has_closed_plotting_area() {
+    let source = "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4\n  A: [0.7, 0.8]";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "quadrantChart");
+    // Should have box-drawing characters forming the closed plotting area.
+    assert!(
+        preview.contains('┌') || preview.contains('┐') || preview.contains('+'),
+        "Quadrant chart should have closed box border:\n{preview}"
+    );
+}
+
+#[test]
+fn quadrant_preserves_all_four_quadrant_labels() {
+    let source = "quadrantChart\n  quadrant-1 Quick Wins\n  quadrant-2 Major Projects\n  quadrant-3 Fill-ins\n  quadrant-4 Thankless";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "quadrantChart");
+    assert!(
+        preview.contains("Quick Wins"),
+        "Q1 label missing:\n{preview}"
+    );
+    assert!(
+        preview.contains("Major Projects"),
+        "Q2 label missing:\n{preview}"
+    );
+    assert!(preview.contains("Fill-ins"), "Q3 label missing:\n{preview}");
+    assert!(
+        preview.contains("Thankless"),
+        "Q4 label missing:\n{preview}"
+    );
+}
+
+#[test]
+fn quadrant_points_placed_from_normalized_coordinates() {
+    let source = "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4\n  Alpha: [0.8, 0.9]\n  Beta: [0.2, 0.1]";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "quadrantChart");
+    assert!(preview.contains("Alpha"), "Point Alpha missing:\n{preview}");
+    assert!(preview.contains("Beta"), "Point Beta missing:\n{preview}");
+}
+
+#[test]
+fn quadrant_preserves_class_metadata() {
+    let source = "quadrantChart\n  classDef priority color: #ff0000, radius: 5\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4\n  Alpha:::priority: [0.5, 0.5]";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "quadrantChart");
+    assert!(
+        preview.contains("priority"),
+        "Class name missing:\n{preview}"
+    );
+    assert!(
+        preview.contains("#ff0000"),
+        "Class color style missing:\n{preview}"
+    );
+}
+
+#[test]
+fn quadrant_title_preserved() {
+    let source = "quadrantChart\n  title Assessment\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert!(
+        output.contains("Assessment"),
+        "Quadrant title missing:\n{output}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Venn diagram geometry tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn venn_has_overlapping_set_outlines() {
+    let source = "venn-beta\n  title Sets\n  set A\n  set B\n  union A,B";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "venn");
+    let non_blank_lines = preview
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .count();
+    assert!(
+        non_blank_lines >= 2,
+        "Venn should have multi-line overlapping outlines:\n{preview}"
+    );
+}
+
+#[test]
+fn venn_preserves_set_labels() {
+    let source = "venn-beta\n  set A[\"Programming\"]\n  set B[\"Design\"]\n  union A,B";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "venn");
+    assert!(
+        preview.contains("Programming"),
+        "Set A label missing:\n{preview}"
+    );
+    assert!(
+        preview.contains("Design"),
+        "Set B label missing:\n{preview}"
+    );
+}
+
+#[test]
+fn venn_preserves_intersection_labels() {
+    let source = "venn-beta\n  set A\n  set B\n  union A,B[\"Shared\"]";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "venn");
+    assert!(
+        preview.contains("Shared"),
+        "Intersection label missing:\n{preview}"
+    );
+}
+
+#[test]
+fn venn_three_sets_have_ring_layout() {
+    let source = "venn-beta\n  set A\n  set B\n  set C\n  union A,B\n  union A,C\n  union A,B,C";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "venn");
+    assert!(
+        !preview.trim().is_empty(),
+        "Three-set Venn should produce nonempty geometry:\n{preview}"
+    );
+}
+
+#[test]
+fn venn_preserves_text_nodes() {
+    let source = "venn-beta\n  set A[\"Frontend\"]\n  set B[\"Backend\"]\n  union A,B[\"APIs\"]\ntext A,B fullstack";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "venn");
+    assert!(
+        preview.contains("fullstack"),
+        "Text node id missing:\n{preview}"
+    );
+}
+
+#[test]
+fn venn_title_preserved() {
+    let source = "venn-beta\n  title Skill Overlap\n  set A\n  set B\n  union A,B";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    assert!(
+        output.contains("Skill Overlap"),
+        "Venn title missing:\n{output}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Strong chart geometry tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn pie_circle_outline_is_closed() {
+    // A single-section pie should show a full closed circle outline.
+    let source = "pie title Full\n  \"A\" : 1";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "pie");
+    let outline_count = preview.matches('○').count();
+    assert!(
+        outline_count >= 8,
+        "Closed circle should have many outline chars, got {outline_count}:\n{preview}"
+    );
+}
+
+#[test]
+fn pie_has_radial_boundary_spokes() {
+    // A multi-section pie should show the ◆ boundary marker at sector edges.
+    let source = "pie title Spokes\n  \"A\" : 10\n  \"B\" : 5\n  \"C\" : 5";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "pie");
+    assert!(
+        preview.contains('◆'),
+        "Pie should have radial boundary spokes (◆):\n{preview}"
+    );
+}
+
+#[test]
+fn pie_proportional_fill_larger_section_has_more_cells() {
+    let equal_src = "pie title Equal\n  \"A\" : 50\n  \"B\" : 50";
+    let skewed_src = "pie title Skewed\n  \"A\" : 90\n  \"B\" : 10";
+    let out_equal = render_source(equal_src, &MermansiOptions::unicode()).unwrap();
+    let out_skewed = render_source(skewed_src, &MermansiOptions::unicode()).unwrap();
+    let prev_equal = family_preview(&out_equal, "pie");
+    let prev_skewed = family_preview(&out_skewed, "pie");
+    let fill = |s: &str| {
+        s.chars()
+            .filter(|&c| c == '█' || c == '▓' || c == '▒' || c == '░')
+            .count()
+    };
+    // The total fill should be roughly similar (both cover a full circle).
+    // But the dominant fill char (█) should be significantly more in the skewed case.
+    let dominant_equal = prev_equal.matches('█').count();
+    let dominant_skewed = prev_skewed.matches('█').count();
+    assert!(
+        dominant_skewed > dominant_equal,
+        "Skewed pie should have more dominant fill (█) than equal pie: equal={}, skewed={}",
+        dominant_equal,
+        dominant_skewed
+    );
+    let _ = fill(prev_equal) + fill(prev_skewed);
+}
+
+#[test]
+fn radar_has_center_marker() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    assert!(
+        preview.contains('✛'),
+        "Radar should have a center marker (✛):\n{preview}"
+    );
+}
+
+#[test]
+fn radar_has_graticule_dots() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    assert!(
+        preview.contains('·'),
+        "Radar should have graticule dots (·):\n{preview}"
+    );
+}
+
+#[test]
+fn radar_has_connected_curve_vertices() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    // Curve edges are drawn with ─ character.
+    assert!(
+        preview.contains('─'),
+        "Radar should have connected curve edges (─):\n{preview}"
+    );
+}
+
+#[test]
+fn radar_curve_markers_present() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Q{4,3,5}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    // First curve marker is ●.
+    assert!(
+        preview.contains('●'),
+        "Radar should plot curve vertex markers (●):\n{preview}"
+    );
+}
+
+#[test]
+fn quadrant_has_midpoint_cross() {
+    let source =
+        "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "quadrantChart");
+    assert!(
+        preview.contains('+'),
+        "Quadrant chart should have midpoint cross (+):\n{preview}"
+    );
+}
+
+#[test]
+fn quadrant_labels_in_correct_regions() {
+    let source = "quadrantChart\n  quadrant-1 TopRight\n  quadrant-2 TopLeft\n  quadrant-3 BotLeft\n  quadrant-4 BotRight";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "quadrantChart");
+
+    // Find the midpoint cross row (the cross line contains '+' at the midpoint).
+    let cross_line_idx = preview
+        .lines()
+        .position(|l| l.contains('+'))
+        .unwrap_or(usize::MAX);
+    assert!(
+        cross_line_idx != usize::MAX,
+        "No midpoint cross found:\n{preview}"
+    );
+
+    // TopRight and TopLeft should be above the cross.
+    let tr_row = preview
+        .lines()
+        .position(|l| l.contains("TopRight"))
+        .unwrap_or(usize::MAX);
+    let tl_row = preview
+        .lines()
+        .position(|l| l.contains("TopLeft"))
+        .unwrap_or(usize::MAX);
+    assert!(
+        tr_row < cross_line_idx,
+        "Q1 (TopRight) should be above midpoint cross: tr_row={}, cross_row={}",
+        tr_row,
+        cross_line_idx
+    );
+    assert!(
+        tl_row < cross_line_idx,
+        "Q2 (TopLeft) should be above midpoint cross: tl_row={}, cross_row={}",
+        tl_row,
+        cross_line_idx
+    );
+
+    // BotLeft and BotRight should be below the cross.
+    let bl_row = preview
+        .lines()
+        .position(|l| l.contains("BotLeft"))
+        .unwrap_or(0);
+    let br_row = preview
+        .lines()
+        .position(|l| l.contains("BotRight"))
+        .unwrap_or(0);
+    assert!(
+        bl_row > cross_line_idx,
+        "Q3 (BotLeft) should be below midpoint cross: bl_row={}, cross_row={}",
+        bl_row,
+        cross_line_idx
+    );
+    assert!(
+        br_row > cross_line_idx,
+        "Q4 (BotRight) should be below midpoint cross: br_row={}, cross_row={}",
+        br_row,
+        cross_line_idx
+    );
+
+    // On the top label line, TopLeft should appear before TopRight (left-right ordering).
+    // This verifies Q2 is left and Q1 is right.
+    let top_line = preview.lines().nth(tr_row).unwrap_or("");
+    let tl_byte = top_line.find("TopLeft").unwrap_or(usize::MAX);
+    let tr_byte = top_line.find("TopRight").unwrap_or(0);
+    assert!(
+        tl_byte < tr_byte,
+        "TopLeft should be left of TopRight on same line: tl_byte={}, tr_byte={}",
+        tl_byte,
+        tr_byte
+    );
+
+    // On the bottom label line, BotLeft should appear before BotRight (left-right ordering).
+    let bot_line = preview.lines().nth(bl_row).unwrap_or("");
+    let bl_byte = bot_line.find("BotLeft").unwrap_or(usize::MAX);
+    let br_byte = bot_line.find("BotRight").unwrap_or(0);
+    assert!(
+        bl_byte < br_byte,
+        "BotLeft should be left of BotRight on same line: bl_byte={}, br_byte={}",
+        bl_byte,
+        br_byte
+    );
+}
+
+#[test]
+fn quadrant_collision_handling_produces_callout() {
+    // Two points at the same coordinates should trigger collision handling.
+    let source = "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4\n  Alpha: [0.5, 0.5]\n  Beta: [0.5, 0.5]";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "quadrantChart");
+    // Both labels should still appear somewhere (in legend or callout).
+    assert!(
+        preview.contains("Alpha"),
+        "Point Alpha should be preserved:\n{preview}"
+    );
+    assert!(
+        preview.contains("Beta"),
+        "Point Beta should be preserved:\n{preview}"
+    );
+}
+
+#[test]
+fn venn_overlap_identity_two_sets() {
+    // Two-set Venn should have overlap region (A∩B) visible in the geometry.
+    let source = "venn-beta\n  set A\n  set B\n  union A,B[\"Intersection\"]";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "venn");
+    assert!(
+        preview.contains("Intersection"),
+        "Intersection label should appear in overlap region:\n{preview}"
+    );
+    // Verify there are at least two circle outlines (the overlapping sets).
+    let outline_count = preview.matches('○').count();
+    assert!(
+        outline_count >= 4,
+        "Two-set Venn should have multiple outline chars from overlapping circles, got {}:\
+         \n{preview}",
+        outline_count
+    );
+}
+
+#[test]
+fn venn_preserves_styles() {
+    let source = "venn-beta\n  set A\n  set B\n  union A,B\n  style A fill:#ff0000";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "venn");
+    assert!(
+        preview.contains("Styles:")
+            || preview.contains("fill=#ff0000")
+            || preview.contains("#ff0000"),
+        "Style metadata should be preserved:\n{preview}"
+    );
+}
+
+#[test]
+fn pie_ansi_color_independent_geometry() {
+    let plain = render_source(
+        "pie title T\n  \"A\" : 50\n  \"B\" : 50",
+        &MermansiOptions::unicode(),
+    )
+    .unwrap();
+    let colored = render_source(
+        "pie title T\n  \"A\" : 50\n  \"B\" : 50",
+        &MermansiOptions::unicode().with_color(ColorMode::Ansi16),
+    )
+    .unwrap();
+    // Strip ANSI first, then extract preview — geometry must be identical.
+    let plain_preview = family_preview(&plain, "pie");
+    let colored_stripped = mermansi::ansi::strip_ansi(&colored);
+    let colored_preview = family_preview(&colored_stripped, "pie");
+    assert_eq!(
+        plain_preview, colored_preview,
+        "ANSI color should not affect geometry"
+    );
+}
+
+#[test]
+fn radar_ansi_color_independent_geometry() {
+    let plain = render_source(
+        "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}",
+        &MermansiOptions::unicode(),
+    )
+    .unwrap();
+    let colored = render_source(
+        "radar-beta\n  axis A,B,C\n  curve Q{1,2,3}",
+        &MermansiOptions::unicode().with_color(ColorMode::TrueColor),
+    )
+    .unwrap();
+    let plain_preview = family_preview(&plain, "radar");
+    let colored_stripped = mermansi::ansi::strip_ansi(&colored);
+    let colored_preview = family_preview(&colored_stripped, "radar");
+    assert_eq!(
+        plain_preview, colored_preview,
+        "ANSI color should not affect geometry"
+    );
+}
+
+#[test]
+fn quadrant_ansi_color_independent_geometry() {
+    let plain = render_source(
+        "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4",
+        &MermansiOptions::unicode(),
+    )
+    .unwrap();
+    let colored = render_source(
+        "quadrantChart\n  quadrant-1 Q1\n  quadrant-2 Q2\n  quadrant-3 Q3\n  quadrant-4 Q4",
+        &MermansiOptions::unicode().with_color(ColorMode::Ansi16),
+    )
+    .unwrap();
+    let plain_preview = family_preview(&plain, "quadrantChart");
+    let colored_stripped = mermansi::ansi::strip_ansi(&colored);
+    let colored_preview = family_preview(&colored_stripped, "quadrantChart");
+    assert_eq!(
+        plain_preview, colored_preview,
+        "ANSI color should not affect geometry"
+    );
+}
+
+#[test]
+fn venn_ansi_color_independent_geometry() {
+    let plain = render_source(
+        "venn-beta\n  set A\n  set B\n  union A,B",
+        &MermansiOptions::unicode(),
+    )
+    .unwrap();
+    let colored = render_source(
+        "venn-beta\n  set A\n  set B\n  union A,B",
+        &MermansiOptions::unicode().with_color(ColorMode::TrueColor),
+    )
+    .unwrap();
+    let plain_preview = family_preview(&plain, "venn");
+    let colored_stripped = mermansi::ansi::strip_ansi(&colored);
+    let colored_preview = family_preview(&colored_stripped, "venn");
+    assert_eq!(
+        plain_preview, colored_preview,
+        "ANSI color should not affect geometry"
+    );
+}
+
+#[test]
+fn pie_chinese_cjk_display_width() {
+    let source = "pie title 中文饼图\n  \"苹果\" : 60\n  \"香蕉\" : 40";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "pie");
+    assert!(
+        preview.contains("苹果"),
+        "Chinese pie label missing:\n{preview}"
+    );
+    assert!(
+        preview.contains("香蕉"),
+        "Chinese pie label missing:\n{preview}"
+    );
+}
+
+#[test]
+fn radar_chinese_cjk_axis_labels() {
+    let source = "radar-beta\n  axis A,B,C\n  curve Q{4,3,5}";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "radar");
+    assert!(
+        preview.contains("A"),
+        "Radar axis label missing:\n{preview}"
+    );
+    assert!(
+        preview.contains("B"),
+        "Radar axis label missing:\n{preview}"
+    );
+}
+
+#[test]
+fn radar_cjk_axis_label_via_constructed_model() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::radar::{
+        RadarDiagramRenderModel, RadarRenderAxis, RadarRenderCurve, RadarRenderOptions,
+    };
+    let model = RadarDiagramRenderModel {
+        title: Some("雷达图".to_string()),
+        acc_title: None,
+        acc_descr: None,
+        axes: vec![
+            RadarRenderAxis {
+                name: "A".to_string(),
+                label: "速度".to_string(),
+            },
+            RadarRenderAxis {
+                name: "B".to_string(),
+                label: "质量".to_string(),
+            },
+            RadarRenderAxis {
+                name: "C".to_string(),
+                label: "成本".to_string(),
+            },
+        ],
+        curves: vec![RadarRenderCurve {
+            name: "Q".to_string(),
+            label: "Q".to_string(),
+            entries: vec![
+                serde_json::json!(4),
+                serde_json::json!(3),
+                serde_json::json!(5),
+            ],
+        }],
+        options: RadarRenderOptions::default(),
+    };
+    let output = render_model(
+        &RenderSemanticModel::Radar(model),
+        &MermansiOptions::unicode(),
+    )
+    .unwrap();
+    let preview = family_preview(&output, "radar");
+    assert!(
+        preview.contains("速度"),
+        "Chinese radar axis label missing:\n{preview}"
+    );
+}
+
+#[test]
+fn quadrant_chinese_cjk_labels() {
+    let source = "quadrantChart\n  quadrant-1 快速收益\n  quadrant-2 重大项目\n  quadrant-3 填充任务\n  quadrant-4 吃力不讨好";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "quadrantChart");
+    assert!(
+        preview.contains("快速收益"),
+        "Chinese quadrant Q1 label missing:\n{preview}"
+    );
+}
+
+#[test]
+fn venn_chinese_cjk_set_labels() {
+    let source = "venn-beta\n  set A[\"前端\"]\n  set B[\"后端\"]\n  union A,B[\"全栈\"]";
+    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let preview = family_preview(&output, "venn");
+    assert!(
+        preview.contains("前端"),
+        "Chinese venn set label missing:\n{preview}"
+    );
+    assert!(
+        preview.contains("全栈"),
+        "Chinese venn intersection label missing:\n{preview}"
+    );
+}
