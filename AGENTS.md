@@ -79,6 +79,7 @@ Deterministic ASCII / Unicode text output
 |---|---|
 | `src/lib.rs` | Public API, re-exports |
 | `src/error.rs` | Typed errors |
+| `src/input.rs` | Source classification, raw JSON decoding, and merman-core integration |
 | `src/options.rs` | Render options (charset, color mode, dimensions) |
 | `src/canvas.rs` | Display-column-aware bounded canvas with Unicode width |
 | `src/ansi.rs` | Optional ANSI roles |

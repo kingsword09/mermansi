@@ -25,6 +25,7 @@ pub mod adapters;
 pub mod ansi;
 pub mod canvas;
 pub mod error;
+mod input;
 pub mod options;
 mod output;
 
@@ -38,10 +39,10 @@ use merman_core::diagram::RenderSemanticModel;
 /// Maximum source text length accepted by [`render_source`].
 pub const MAX_SOURCE_BYTES: usize = options::MAX_SOURCE_BYTES;
 
-/// Render a Mermaid source string to terminal text.
+/// Render a Mermaid source string or raw JSON object/array to terminal text.
 ///
-/// Parses the Mermaid source with `merman_core::Engine` using strict options, then renders the
-/// resulting [`RenderSemanticModel`] via [`render_model`].
+/// Parses Mermaid with `merman_core::Engine` using strict options. Raw JSON is decoded directly
+/// into [`RenderSemanticModel::Json`]. The resulting model is rendered via [`render_model`].
 pub fn render_source(mermaid_text: &str, opts: &MermansiOptions) -> Result<String> {
     opts.validate()?;
 
@@ -53,12 +54,8 @@ pub fn render_source(mermaid_text: &str, opts: &MermansiOptions) -> Result<Strin
         });
     }
 
-    let engine = merman_core::Engine::new();
-    let parsed = engine
-        .parse_diagram_for_render_model_sync(mermaid_text, merman_core::ParseOptions::strict())?;
-
-    match parsed {
-        Some(render_diagram) => render_model(&render_diagram.model, opts),
+    match input::parse_source_model(mermaid_text)? {
+        Some(model) => render_model(&model, opts),
         None => Ok("(no diagram detected)\n".to_string()),
     }
 }

@@ -132,6 +132,9 @@ fn run_with_io(
         Err(mermansi::MermansiError::Parse(error)) => {
             fail(stderr, 1, &format!("parse error: {error}"))
         }
+        Err(mermansi::MermansiError::JsonSource { source }) => {
+            fail(stderr, 1, &format!("parse error: {source}"))
+        }
         Err(mermansi::MermansiError::InvalidOption { field, message }) => {
             fail(stderr, 3, &format!("invalid option '{field}': {message}"))
         }

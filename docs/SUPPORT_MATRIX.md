@@ -41,7 +41,10 @@ The authoritative semantic inventory from `merman-core::diagram::RenderSemanticM
 
 ## Parser aliases
 
-`merman-core` accepts multiple Mermaid headers for the same semantic family:
+`merman-core` accepts multiple Mermaid headers for the same semantic family. The exact
+`flowchart-v2` parser-id header is the one exception: mermansi normalizes that header to
+`flowchart` and invokes merman-core's known-type API, so merman-core remains the sole Mermaid
+parser.
 
 | Canonical metadata id | Parser aliases / headers |
 |---|---|
@@ -99,6 +102,9 @@ The authoritative semantic inventory from `merman-core::diagram::RenderSemanticM
 | Venn | mermansi | Structured text | `fixtures/venn.en.mmd` | `fixtures/venn.zh.mmd` | ✅ |
 
 ## Output guarantee
+
+Json fixtures contain raw JSON objects and exercise the same public `render_source` and CLI paths
+as Mermaid fixtures; raw JSON arrays are supported by the same bounded decoder.
 
 Every family produces deterministic nonempty output. Geometry rows use terminal-native boxes,
 edges, and routing. Every adapter appends a canonical JSON semantic model to its readable preview,

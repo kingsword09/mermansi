@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0001-create-and-completely-implement-mermansi#0009"
 number = 9
 title = "Scalar-width formatting misaligns CJK and mixed-ASCII Pie and Sankey columns"
-status = "open"
+status = "resolved"
 severity = "P2"
 category = "terminal-geometry"
 fingerprint = "sha256:8c1c92171f58ed9e27bd462bb32ddb539147432c6e048e8fca9c430eed2f1a75"
 created_at = "unix:1785338735"
-updated_at = "unix:1785338735"
+updated_at = "unix:1785460459"
+resolved_at = "unix:1785460459"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Rule 5 (display-column-aware geometry) is violated; labels with CJK ch
 [acceptance]
 description = "Use Unicode display width (not scalar count) for column padding in Pie and Sankey adapters so mixed ASCII/CJK rows align correctly. Add tests comparing column alignment for mixed-language label rows."
 command = "cargo test --test semantic_integrity"
+
+[resolution]
+review = "../../reviews/iteration-0043.json"
+description = "Verified display-column-aware, dynamically sized Pie and Sankey tables after terminal-safe text preparation, mixed ASCII/CJK alignment in both charsets, preserved values and canonical models, and passing host verification."

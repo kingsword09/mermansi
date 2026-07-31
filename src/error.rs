@@ -14,6 +14,13 @@ pub enum MermansiError {
     #[error("Mermaid parse error: {0}")]
     Parse(#[from] merman_core::Error),
 
+    /// A source recognized as raw JSON could not be decoded.
+    #[error("JSON source parse error: {source}")]
+    JsonSource {
+        #[source]
+        source: serde_json::Error,
+    },
+
     /// A render error propagated from `merman-ascii`.
     #[error("Render error: {0}")]
     AsciiRender(#[from] merman_ascii::AsciiError),

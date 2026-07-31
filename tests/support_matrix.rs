@@ -10,7 +10,7 @@
 
 use merman_core::diagram::RenderSemanticModel;
 use mermansi::ansi::strip_ansi;
-use mermansi::{ColorMode, MermansiOptions, render_model, render_source};
+use mermansi::{ColorMode, MermansiOptions, render_source};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -174,9 +174,6 @@ fn every_fixture_renders_nonempty_in_unicode_and_ascii() {
     assert!(total >= 58, "expected at least 58 fixtures, found {total}");
 
     for (family, f) in &fixtures {
-        if family == "json" {
-            continue;
-        }
         for file in &f.all {
             let path = format!("{FIXTURE_DIR}/{file}");
             let source =
@@ -210,12 +207,21 @@ fn every_fixture_renders_nonempty_in_unicode_and_ascii() {
                 "ASCII output for family '{family}' fixture '{file}' contains Unicode drawing decoration:\n{ascii}"
             );
 
-            let engine = merman_core::Engine::new();
-            let parsed = engine
-                .parse_diagram_for_render_model_sync(&source, merman_core::ParseOptions::strict())
-                .expect("fixture should parse for structured-model verification")
-                .expect("fixture should produce a render model");
-            assert_structured_model_round_trips(&parsed.model, &unicode, file);
+            let model = if family == "json" {
+                RenderSemanticModel::Json(
+                    serde_json::from_str(&source).expect("JSON fixture should contain valid JSON"),
+                )
+            } else {
+                merman_core::Engine::new()
+                    .parse_diagram_for_render_model_sync(
+                        &source,
+                        merman_core::ParseOptions::strict(),
+                    )
+                    .expect("fixture should parse for structured-model verification")
+                    .expect("fixture should produce a render model")
+                    .model
+            };
+            assert_structured_model_round_trips(&model, &unicode, file);
 
             // Determinism: re-render and compare.
             let unicode2 = render_source(&source, &MermansiOptions::unicode())
@@ -358,10 +364,7 @@ fn flowchart_click_metadata_is_preserved_in_delegated_output() {
 #[test]
 fn ansi_modes_do_not_change_rendered_geometry_or_text() {
     let fixtures = collect_fixtures();
-    for (family, fixture_set) in fixtures {
-        if family == "json" {
-            continue;
-        }
+    for (_family, fixture_set) in fixtures {
         for file in fixture_set.all {
             let path = format!("{FIXTURE_DIR}/{file}");
             let source = fs::read_to_string(&path).expect("fixture should be readable");
@@ -405,12 +408,25 @@ fn graph_alias_renders_as_flowchart() {
 }
 
 #[test]
-fn flowchart_alias_renders_as_flowchart() {
-    // `flowchart-v2` and `flowchart-elk` are aliases for `flowchart`.
-    let source = "flowchart TD\n  A --> B";
-    let output = render_source(source, &MermansiOptions::unicode())
-        .expect("'flowchart' should parse and render");
-    assert!(!output.trim().is_empty());
+fn flowchart_parser_aliases_render_as_flowchart() {
+    for (alias, source) in [
+        ("flowchart-v2", "flowchart-v2 TD\n  A --> B"),
+        (
+            "flowchart-v2 with directive",
+            "%%{init: {\"theme\":\"default\"}}%%\nflowchart-v2 TD\n  A --> B",
+        ),
+        ("flowchart-elk", "flowchart-elk TD\n  A --> B"),
+    ] {
+        let output = render_source(source, &MermansiOptions::unicode())
+            .unwrap_or_else(|error| panic!("'{alias}' should parse and render: {error}"));
+        let semantic = parse_semantic_model(&output, "flowchart", alias);
+        assert_eq!(semantic["direction"], "TB");
+        assert_eq!(
+            semantic["edges"].as_array().map(Vec::len),
+            Some(1),
+            "'{alias}' should resolve to a Flowchart model"
+        );
+    }
 }
 
 #[test]
@@ -430,7 +446,7 @@ fn class_diagram_v1_alias_renders() {
 }
 
 #[test]
-fn json_render_model_adapter_produces_output() {
+fn json_source_fixtures_produce_output() {
     for (file, expected) in [("json.en.mmd", "Alice"), ("json.zh.mmd", "爱丽丝")] {
         let path = format!("{FIXTURE_DIR}/{file}");
         let source = fs::read_to_string(&path).expect("JSON fixture should be readable");
@@ -438,7 +454,7 @@ fn json_render_model_adapter_produces_output() {
         let model = RenderSemanticModel::Json(value);
 
         for options in [MermansiOptions::unicode(), MermansiOptions::ascii()] {
-            let output = render_model(&model, &options).expect("JSON render model should render");
+            let output = render_source(&source, &options).expect("JSON source should render");
             assert!(!output.trim().is_empty(), "JSON output should be nonempty");
             assert!(
                 output.contains(expected),
@@ -446,7 +462,7 @@ fn json_render_model_adapter_produces_output() {
             );
             assert_structured_model_round_trips(&model, &output, file);
             let repeated =
-                render_model(&model, &options).expect("JSON render should be deterministic");
+                render_source(&source, &options).expect("JSON render should be deterministic");
             assert_eq!(output, repeated, "JSON output should be deterministic");
         }
     }

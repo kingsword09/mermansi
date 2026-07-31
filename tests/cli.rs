@@ -28,7 +28,7 @@ fn every_mermaid_fixture_renders_through_cli_in_both_charsets() {
     for entry in fs::read_dir(FIXTURE_DIR).expect("fixture directory should exist") {
         let entry = entry.expect("fixture entry should be readable");
         let file = entry.file_name().to_string_lossy().into_owned();
-        if !file.ends_with(".mmd") || file.starts_with("json.") {
+        if !file.ends_with(".mmd") {
             continue;
         }
         let source = fs::read_to_string(entry.path()).expect("fixture should be readable");
@@ -51,6 +51,9 @@ fn every_mermaid_fixture_renders_through_cli_in_both_charsets() {
 fn cli_exit_codes_distinguish_parse_render_and_option_errors() {
     let parse = run_cli("not a mermaid diagram", &[]);
     assert_eq!(parse.status.code(), Some(1));
+
+    let json_parse = run_cli("{\"broken\":}", &[]);
+    assert_eq!(json_parse.status.code(), Some(1));
 
     let render = run_cli("flowchart TD\nA[long label] --> B", &["--width", "2"]);
     assert_eq!(render.status.code(), Some(2));

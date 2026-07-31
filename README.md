@@ -14,7 +14,8 @@ family.
 
 - **All 28 `RenderSemanticModel` variants supported** — 33 pinned render parser IDs and 29
   fixture families (including the ZenUML-to-Sequence transform) are checked at runtime.
-- **One public source-to-text API** — `render_source(mermaid_text, &options)`.
+- **One public source-to-text API** — `render_source(source, &options)` accepts Mermaid or a raw
+  JSON object/array.
 - **ASCII and Unicode output** — switchable charset with display-column-aware layout.
 - **Optional ANSI color roles** — geometry-independent color that never breaks alignment.
 - **Bounded allocations** — typed errors when source, canvas, or output limits are exceeded.
@@ -85,6 +86,10 @@ flowchart TD
 let output = render_source(mermaid_text, &MermansiOptions::unicode()).unwrap();
 println!("{output}");
 ```
+
+Raw JSON objects and arrays use the same entry point and render as canonical structured text.
+The exact `flowchart-v2` parser-id header is normalized to the public `flowchart` grammar header,
+then parsed by `merman-core` through its known-type API.
 
 ### Convenience functions
 
