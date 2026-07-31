@@ -5,7 +5,11 @@
 //! self-relations, cycles, disconnected components, nested groups, and parallel/dense
 //! relations.
 
-use mermansi::{ColorMode, MermansiOptions, OutputMode, render_source};
+use merman_core::diagram::RenderSemanticModel;
+use merman_core::diagrams::journey::{JourneyDiagramRenderModel, JourneyRenderTask};
+use merman_core::diagrams::kanban::{KanbanDiagramRenderModel, KanbanRenderNode};
+use merman_core::diagrams::timeline::{TimelineDiagramRenderModel, TimelineRenderTask};
+use mermansi::{ColorMode, MermansiOptions, OutputMode, render_model, render_source};
 
 fn family_preview<'a>(output: &'a str, family: &str) -> &'a str {
     let marker = format!("[{family} semantic model]");
@@ -598,6 +602,27 @@ fn assert_closed_unicode_boxes(preview: &str, expected: usize) {
     );
 }
 
+fn assert_exact_closed_unicode_boxes(preview: &str, expected: usize) {
+    for corner in ['┌', '┐', '└', '┘'] {
+        assert_eq!(
+            preview.matches(corner).count(),
+            expected,
+            "expected exactly {expected} '{corner}' box corners:\n{preview}"
+        );
+    }
+}
+
+fn assert_clean_vertical_chain(preview: &str, expected_arrows: usize) {
+    assert_eq!(preview.matches('▼').count(), expected_arrows, "{preview}");
+    for line in preview.lines().filter(|line| line.contains('▼')) {
+        assert_eq!(
+            line.trim(),
+            "▼",
+            "vertical arrow overlapped other geometry:\n{preview}"
+        );
+    }
+}
+
 #[test]
 fn block_nested_three_levels_no_duplicate_nodes() {
     let source = "block-beta\n  block:L1[\"Level 1\"]\n    block:L2[\"Level 2\"]\n      Leaf[\"Leaf\"]\n    end\n  end\n";
@@ -955,6 +980,371 @@ fn new_box_tree_adapters_preserve_bilingual_labels_and_ascii_geometry() {
             !output.contains("|--"),
             "outline fallback leaked:\n{output}"
         );
+    }
+}
+
+#[test]
+fn kanban_timeline_and_journey_fixtures_are_complete_closed_geometry() {
+    let cases = [
+        (
+            "kanban",
+            include_str!("fixtures/kanban.en.mmd"),
+            9,
+            0,
+            "Kanban",
+            "Task E",
+        ),
+        (
+            "kanban",
+            include_str!("fixtures/kanban.zh.mmd"),
+            7,
+            0,
+            "Kanban",
+            "任务 E",
+        ),
+        (
+            "timeline",
+            include_str!("fixtures/timeline.en.mmd"),
+            8,
+            7,
+            "Company History",
+            "[Period] IPO",
+        ),
+        (
+            "timeline",
+            include_str!("fixtures/timeline.zh.mmd"),
+            8,
+            7,
+            "公司历史",
+            "[Period] 上市",
+        ),
+        (
+            "journey",
+            include_str!("fixtures/journey.en.mmd"),
+            8,
+            7,
+            "User Shopping Experience",
+            "[Task] Receive confirmation",
+        ),
+        (
+            "journey",
+            include_str!("fixtures/journey.zh.mmd"),
+            8,
+            7,
+            "用户购物体验",
+            "[Task] 收到确认",
+        ),
+    ];
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+
+    for (family, source, boxes, arrows, title, final_label) in cases {
+        let output = render_source(source, &options)
+            .unwrap_or_else(|error| panic!("{family} geometry failed: {error}"));
+        assert_exact_closed_unicode_boxes(&output, boxes);
+        assert_eq!(output.matches('▼').count(), arrows, "{family}:\n{output}");
+        if arrows > 0 {
+            assert_clean_vertical_chain(&output, arrows);
+        }
+        assert!(
+            output.contains(title),
+            "{family} lost title '{title}':\n{output}"
+        );
+        assert!(
+            output.contains(final_label),
+            "{family} lost '{final_label}':\n{output}"
+        );
+        assert_no_structured_fallback(&output);
+        assert!(
+            !output.contains("semantic model"),
+            "concise output leaked the canonical model:\n{output}"
+        );
+    }
+}
+
+#[test]
+fn timeline_events_are_closed_nodes_on_one_ordered_spine() {
+    let source = "timeline\n  title Release\n  section Plan\n    Design: Kickoff: Review\n    Build\n      : Deploy: Observe\n  section Ship\n    Launch: Announce";
+    let output = render_source(
+        source,
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    assert_exact_closed_unicode_boxes(&output, 10);
+    assert_clean_vertical_chain(&output, 9);
+    let labels = [
+        "[Section] Plan",
+        "[Period] Design",
+        "[Event] Kickoff",
+        "[Event] Review",
+        "[Period] Build",
+        "[Event] Deploy",
+        "[Event] Observe",
+        "[Section] Ship",
+        "[Period] Launch",
+        "[Event] Announce",
+    ];
+    for pair in labels.windows(2) {
+        assert!(
+            label_position(&output, pair[0]).0 < label_position(&output, pair[1]).0,
+            "timeline order was not preserved:\n{output}"
+        );
+    }
+    assert_no_structured_fallback(&output);
+}
+
+#[test]
+fn kanban_geometry_preserves_metadata_orphans_and_duplicate_ids() {
+    let node = |id: &str,
+                label: &str,
+                is_group: bool,
+                parent_id: Option<&str>,
+                ticket: Option<&str>,
+                priority: Option<&str>,
+                assigned: Option<&str>,
+                icon: Option<&str>| KanbanRenderNode {
+        id: id.to_owned(),
+        label: label.to_owned(),
+        is_group,
+        parent_id: parent_id.map(str::to_owned),
+        ticket: ticket.map(str::to_owned),
+        priority: priority.map(str::to_owned),
+        assigned: assigned.map(str::to_owned),
+        icon: icon.map(str::to_owned),
+    };
+    let model = KanbanDiagramRenderModel {
+        nodes: vec![
+            node("todo", "待办", true, None, None, None, None, None),
+            node(
+                "card",
+                "修复登录",
+                false,
+                Some("todo"),
+                Some("K-1"),
+                Some("high"),
+                Some("alice"),
+                Some("bug"),
+            ),
+            node("todo", "重复列", true, None, None, None, None, None),
+            node(
+                "card",
+                "孤立卡片",
+                false,
+                Some("missing"),
+                Some("K-2"),
+                None,
+                None,
+                None,
+            ),
+        ],
+    };
+    let output = render_model(
+        &RenderSemanticModel::Kanban(model),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    assert_exact_closed_unicode_boxes(&output, 4);
+    for text in [
+        "todo · 待办",
+        "todo · 重复列",
+        "card · 修复登录",
+        "card · 孤立卡片",
+        "ticket: K-1",
+        "priority: high",
+        "assigned: alice",
+        "icon: bug",
+        "column: missing",
+    ] {
+        assert!(output.contains(text), "Kanban lost '{text}':\n{output}");
+    }
+    assert!(
+        !output.contains("kanban-"),
+        "synthetic id leaked:\n{output}"
+    );
+    assert_no_structured_fallback(&output);
+}
+
+#[test]
+fn timeline_and_journey_handle_duplicate_empty_and_orphan_sections() {
+    let timeline = TimelineDiagramRenderModel {
+        title: Some("Edge cases".to_owned()),
+        acc_title: None,
+        acc_descr: None,
+        sections: vec![String::new(), "Plan".to_owned(), "Plan".to_owned()],
+        tasks: vec![
+            TimelineRenderTask {
+                id: 0,
+                section: String::new(),
+                task_type: String::new(),
+                task: "Unsectioned".to_owned(),
+                score: 0,
+                events: Vec::new(),
+            },
+            TimelineRenderTask {
+                id: 1,
+                section: "Plan".to_owned(),
+                task_type: "milestone".to_owned(),
+                task: "Design".to_owned(),
+                score: 3,
+                events: vec!["Gate".to_owned()],
+            },
+            TimelineRenderTask {
+                id: 2,
+                section: "Other".to_owned(),
+                task_type: "Other".to_owned(),
+                task: "Deploy".to_owned(),
+                score: 0,
+                events: Vec::new(),
+            },
+        ],
+    };
+    let timeline_output = render_model(
+        &RenderSemanticModel::Timeline(timeline),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_exact_closed_unicode_boxes(&timeline_output, 8);
+    assert_clean_vertical_chain(&timeline_output, 7);
+    assert_eq!(timeline_output.matches("[Section] Plan").count(), 2);
+    for text in [
+        "[Section] (unnamed)",
+        "[Section] Other",
+        "type: milestone",
+        "score: 3",
+        "[Event] Gate",
+    ] {
+        assert!(
+            timeline_output.contains(text),
+            "missing '{text}':\n{timeline_output}"
+        );
+    }
+
+    let journey = JourneyDiagramRenderModel {
+        title: Some("Score edges".to_owned()),
+        acc_title: None,
+        acc_descr: None,
+        sections: vec![String::new(), "Plan".to_owned(), "Plan".to_owned()],
+        tasks: vec![
+            JourneyRenderTask {
+                score: -2,
+                score_is_nan: false,
+                people: vec!["Alice".to_owned()],
+                section: String::new(),
+                task_type: String::new(),
+                task: "Negative".to_owned(),
+            },
+            JourneyRenderTask {
+                score: 9,
+                score_is_nan: false,
+                people: vec!["Bob".to_owned(), "用户".to_owned()],
+                section: "Plan".to_owned(),
+                task_type: "milestone".to_owned(),
+                task: "Overflow".to_owned(),
+            },
+            JourneyRenderTask {
+                score: 0,
+                score_is_nan: true,
+                people: vec!["Alice".to_owned(), "用户".to_owned()],
+                section: "Other".to_owned(),
+                task_type: "Other".to_owned(),
+                task: "Unknown".to_owned(),
+            },
+        ],
+        actors: vec!["Alice".to_owned(), "Bob".to_owned(), "用户".to_owned()],
+    };
+    let journey_output = render_model(
+        &RenderSemanticModel::Journey(journey),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_exact_closed_unicode_boxes(&journey_output, 8);
+    assert_clean_vertical_chain(&journey_output, 7);
+    assert_eq!(journey_output.matches("[Section] Plan").count(), 2);
+    for text in [
+        "Alice, Bob, 用户",
+        "[Section] (unnamed)",
+        "[Section] Other",
+        "score: -2/5 ░░░░░",
+        "score: 9/5 █████",
+        "score: NaN/5 ?????",
+        "actors: Bob, 用户",
+        "type: milestone",
+    ] {
+        assert!(
+            journey_output.contains(text),
+            "missing '{text}':\n{journey_output}"
+        );
+    }
+    assert_no_structured_fallback(&timeline_output);
+    assert_no_structured_fallback(&journey_output);
+}
+
+#[test]
+fn native_board_and_spines_are_ascii_narrow_and_deterministic() {
+    let cases = [
+        ("kanban", include_str!("fixtures/kanban.en.mmd"), "Task E"),
+        (
+            "timeline",
+            include_str!("fixtures/timeline.en.mmd"),
+            "[Period] IPO",
+        ),
+        (
+            "journey",
+            include_str!("fixtures/journey.en.mmd"),
+            "[Task] Receive",
+        ),
+    ];
+    for options in [
+        MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(40),
+        MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(40),
+    ] {
+        for (family, source, label) in cases {
+            let first = render_source(source, &options)
+                .unwrap_or_else(|error| panic!("{family} narrow render failed: {error}"));
+            assert_eq!(render_source(source, &options).unwrap(), first);
+            assert!(first.contains(label), "{family} lost '{label}':\n{first}");
+            assert!(
+                first
+                    .lines()
+                    .all(|line| mermansi::str_display_width(line) <= 40),
+                "{family} exceeded narrow width:\n{first}"
+            );
+            if options.charset == mermansi::Charset::Ascii {
+                assert!(first.is_ascii(), "{family} emitted Unicode:\n{first}");
+                assert!(first.contains('+') && first.contains('-') && first.contains('|'));
+            }
+            assert_no_structured_fallback(&first);
+        }
+    }
+}
+
+#[test]
+fn empty_native_models_have_explicit_non_summary_empty_states() {
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let cases = [
+        (
+            RenderSemanticModel::Kanban(KanbanDiagramRenderModel::default()),
+            "Kanban\n\n(empty board)\n",
+        ),
+        (
+            RenderSemanticModel::Timeline(TimelineDiagramRenderModel::default()),
+            "Timeline\n\n(empty timeline)\n",
+        ),
+        (
+            RenderSemanticModel::Journey(JourneyDiagramRenderModel::default()),
+            "Journey\n\n(empty journey)\n",
+        ),
+    ];
+    for (model, expected) in cases {
+        let output = render_model(&model, &options).unwrap();
+        assert_eq!(output, expected);
+        assert_no_structured_fallback(&output);
+        assert!(!output.contains("semantic model"));
     }
 }
 

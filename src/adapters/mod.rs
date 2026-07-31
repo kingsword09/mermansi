@@ -7,9 +7,11 @@
 use crate::adapters::{
     architecture::render_architecture, block::render_block, c4::render_c4,
     eventmodeling::render_eventmodeling, flowchart::render_flowchart, info::render_info,
-    ishikawa::render_ishikawa, json::render_json, mindmap::render_mindmap, pie::render_pie,
-    quadrant_chart::render_quadrant_chart, radar::render_radar, requirement::render_requirement,
-    sankey::render_sankey, treemap::render_treemap, treeview::render_treeview, venn::render_venn,
+    ishikawa::render_ishikawa, journey::render_journey, json::render_json, kanban::render_kanban,
+    mindmap::render_mindmap, pie::render_pie, quadrant_chart::render_quadrant_chart,
+    radar::render_radar, requirement::render_requirement, sankey::render_sankey,
+    timeline::render_timeline, treemap::render_treemap, treeview::render_treeview,
+    venn::render_venn,
 };
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
@@ -27,13 +29,16 @@ pub mod eventmodeling;
 pub mod flowchart;
 pub mod info;
 pub mod ishikawa;
+pub mod journey;
 pub mod json;
+pub mod kanban;
 pub mod mindmap;
 pub mod pie;
 pub mod quadrant_chart;
 pub mod radar;
 pub mod requirement;
 pub mod sankey;
+pub mod timeline;
 pub mod treemap;
 pub mod treeview;
 pub mod venn;
@@ -85,13 +90,13 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
             render_ascii("gitGraph", m, opts, merman_ascii::render_git_graph)
         }
         RenderSemanticModel::Journey(m) => {
-            render_ascii("journey", m, opts, merman_ascii::render_journey)
+            render_structured_adapter("journey", m, opts, || render_journey(m, opts))
         }
         RenderSemanticModel::Kanban(m) => {
-            render_ascii("kanban", m, opts, merman_ascii::render_kanban)
+            render_structured_adapter("kanban", m, opts, || render_kanban(m, opts))
         }
         RenderSemanticModel::Timeline(m) => {
-            render_ascii("timeline", m, opts, merman_ascii::render_timeline)
+            render_structured_adapter("timeline", m, opts, || render_timeline(m, opts))
         }
 
         // --- mermansi structured terminal adapters ---
@@ -158,6 +163,18 @@ pub(crate) fn nonempty_or(s: &str, placeholder: &str) -> String {
     } else {
         s.to_string()
     }
+}
+
+pub(crate) fn starts_new_section_run<'a>(previous: &mut Option<&'a str>, section: &'a str) -> bool {
+    if section.trim().is_empty() {
+        *previous = None;
+        return false;
+    }
+    if *previous == Some(section) {
+        return false;
+    }
+    *previous = Some(section);
+    true
 }
 
 pub(crate) fn align_left_display(text: &str, width: usize) -> String {

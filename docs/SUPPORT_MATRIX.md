@@ -82,9 +82,9 @@ parser.
 | Mindmap | mermansi | Layered box-tree geometry + canonical model | `fixtures/mindmap.en.mmd` | `fixtures/mindmap.zh.mmd` | ✅ |
 | Gantt | merman-ascii + mermansi | Summary + canonical model | `fixtures/gantt.en.mmd` | `fixtures/gantt.zh.mmd` | ✅ |
 | GitGraph | merman-ascii + mermansi | Summary + canonical model | `fixtures/gitgraph.en.mmd` | `fixtures/gitgraph.zh.mmd` | ✅ |
-| Journey | merman-ascii + mermansi | Summary + canonical model | `fixtures/journey.en.mmd` | `fixtures/journey.zh.mmd` | ✅ |
-| Kanban | merman-ascii + mermansi | Summary + canonical model | `fixtures/kanban.en.mmd` | `fixtures/kanban.zh.mmd` | ✅ |
-| Timeline | merman-ascii + mermansi | Summary + canonical model | `fixtures/timeline.en.mmd` | `fixtures/timeline.zh.mmd` | ✅ |
+| Journey | mermansi | Connected scored task-path geometry + canonical model | `fixtures/journey.en.mmd` | `fixtures/journey.zh.mmd` | ✅ |
+| Kanban | mermansi | Nested board geometry + canonical model | `fixtures/kanban.en.mmd` | `fixtures/kanban.zh.mmd` | ✅ |
+| Timeline | mermansi | Connected period/event geometry + canonical model | `fixtures/timeline.en.mmd` | `fixtures/timeline.zh.mmd` | ✅ |
 | ZenUML | merman-ascii + mermansi | Partial sequence geometry + canonical model | `fixtures/zenuml.en.mmd` | `fixtures/zenuml.zh.mmd` | ✅ |
 | Json | mermansi | Layered box-tree geometry + canonical model | `fixtures/json.en.mmd` | `fixtures/json.zh.mmd` | yes |
 | Architecture | mermansi | Nested box geometry + canonical model | `fixtures/architecture.en.mmd` | `fixtures/architecture.zh.mmd` | ✅ |

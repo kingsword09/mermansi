@@ -1,0 +1,34 @@
+schema_version = 1
+task = "task-0004-replace-the-summary-only-kanban-timeline"
+iteration = 1
+loop_iteration = 1
+created_at = "unix:1785490553"
+objective = "Replace the summary-only Kanban, Timeline, and Journey outputs with genuine deterministic terminal geometry. Add mermansi-native adapters using the existing bounded Canvas and shared box geometry only where behavior is genuinely shared; do not add speculative abstractions. Kanban must render every semantic group as a visible closed board column and every card as a closed or clearly bounded item while preserving labels, parentage, tickets, priorities, assignees, and icons. Timeline must render a connected ordered time spine with closed period and event shapes plus visible section grouping. Journey must render a connected ordered task path with visible section grouping, proportional score geometry, and every actor. Preserve titles, English and Chinese display widths, ASCII and Unicode output, deterministic output, all width/height/cell/byte/node bounds, canonical semantic models in Complete mode, and concise geometry with no summary-text fallback. Add strong closure, ordering, connection, metadata, bilingual, ASCII, determinism, and bounds tests. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Do not modify or fork merman-core, merman-ascii, Selkie, or any parser."
+open_issue_ids = ["task-0004-replace-the-summary-only-kanban-timeline#0001"]
+
+[plan]
+objective = "Replace the summary-only Kanban, Timeline, and Journey outputs with genuine deterministic terminal geometry. Add mermansi-native adapters using the existing bounded Canvas and shared box geometry only where behavior is genuinely shared; do not add speculative abstractions. Kanban must render every semantic group as a visible closed board column and every card as a closed or clearly bounded item while preserving labels, parentage, tickets, priorities, assignees, and icons. Timeline must render a connected ordered time spine with closed period and event shapes plus visible section grouping. Journey must render a connected ordered task path with visible section grouping, proportional score geometry, and every actor. Preserve titles, English and Chinese display widths, ASCII and Unicode output, deterministic output, all width/height/cell/byte/node bounds, canonical semantic models in Complete mode, and concise geometry with no summary-text fallback. Add strong closure, ordering, connection, metadata, bilingual, ASCII, determinism, and bounds tests. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Do not modify or fork merman-core, merman-ascii, Selkie, or any parser."
+
+[[plan.steps]]
+id = "step-1"
+description = "Create src/adapters/kanban.rs: build BoxGroups (one per group node) and BoxNodes (one per card with parent_id set) preserving label, ticket, priority, assigned, icon; dispatch through box_geometry::render with BoxLayout::Packed to produce closed columns and closed card items. Handle empty nodes gracefully."
+
+[[plan.steps]]
+id = "step-2"
+description = "Create src/adapters/timeline.rs: build a vertical time spine (│) connecting ordered period boxes (closed ┌─┐ shapes) using the bounded Canvas directly; render section headers as separators; render each event as a bounded sub-item below its period; preserve title. Use canvas draw_box/draw_vertical_line/set_text primitives with charset-aware glyphs."
+
+[[plan.steps]]
+id = "step-3"
+description = "Create src/adapters/journey.rs: build a connected vertical or horizontal task path using Canvas; render each task as a closed box with a proportional score bar (e.g., bar fill proportional to score/5), list every actor, show section separators, and connect tasks with ordered connectors. Preserve title and score_is_nan."
+
+[[plan.steps]]
+id = "step-4"
+description = "Update src/adapters/mod.rs: replace the three render_ascii dispatch calls for Journey, Kanban, and Timeline with render_structured_adapter calls to the new mermansi-native adapter functions; add module declarations (pub mod kanban, timeline, journey) and imports."
+
+[[plan.steps]]
+id = "step-5"
+description = "Add strong tests to tests/semantic_integrity.rs: assert closed boxes (┌┐└┘ in Unicode, +-| in ASCII) for all three families; assert ordering (cards under correct columns, periods in sequence, tasks in order); assert connection (kanban columns visible, timeline spine contiguous, journey path connected); assert metadata preservation (kanban tickets/priorities/assignees/icons, timeline events, journey scores/actors); assert bilingual (en/zh) labels preserved; assert no summary-text fallback markers; assert determinism."
+
+[[plan.steps]]
+id = "step-6"
+description = "Update AGENTS.md adapter dispatch table to move Kanban, Timeline, Journey from the merman-ascii reuse list to the mermansi structured adapter list. Update README.md support matrix table entries for Journey/Kanban/Timeline from 'Summary' to their new geometry descriptions. Update docs/SUPPORT_MATRIX.md support matrix table similarly."

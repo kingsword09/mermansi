@@ -167,6 +167,25 @@ pub(crate) fn directed_ranks(nodes: &[BoxNode], edges: &[BoxEdge]) -> HashMap<St
         .collect()
 }
 
+pub(crate) fn directed_chain_edges(
+    prefix: &str,
+    count: usize,
+    direction: BoxDirection,
+) -> Vec<BoxEdge> {
+    let (from_side, to_side) = direction.edge_sides();
+    (1..count)
+        .map(|index| BoxEdge {
+            from: format!("{prefix}-{}", index - 1),
+            to: format!("{prefix}-{index}"),
+            label: String::new(),
+            arrow_start: false,
+            arrow_end: true,
+            from_side: Some(from_side),
+            to_side: Some(to_side),
+        })
+        .collect()
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Side {
     Left,
@@ -662,7 +681,11 @@ fn pack_layer_rows(layers: Vec<Vec<Item>>) -> (Vec<PlacedItem>, usize, usize) {
         let layer_width = layer.iter().map(|item| item.width).sum::<usize>()
             + ITEM_GAP_X * layer.len().saturating_sub(1);
         let layer_height = layer.iter().map(|item| item.height).max().unwrap_or(0);
-        let mut x = total_width.saturating_sub(layer_width) / 2;
+        let mut x = if layer.len() == 1 {
+            (total_width / 2).saturating_sub(layer[0].width / 2)
+        } else {
+            total_width.saturating_sub(layer_width) / 2
+        };
         for item in layer {
             let item_width = item.width;
             let item_height = item.height;
@@ -693,7 +716,11 @@ fn pack_layer_columns(layers: Vec<Vec<Item>>) -> (Vec<PlacedItem>, usize, usize)
         let layer_width = layer.iter().map(|item| item.width).max().unwrap_or(0);
         let layer_height = layer.iter().map(|item| item.height).sum::<usize>()
             + ITEM_GAP_Y * layer.len().saturating_sub(1);
-        let mut y = total_height.saturating_sub(layer_height) / 2;
+        let mut y = if layer.len() == 1 {
+            (total_height / 2).saturating_sub(layer[0].height / 2)
+        } else {
+            total_height.saturating_sub(layer_height) / 2
+        };
         for item in layer {
             let item_width = item.width;
             let item_height = item.height;

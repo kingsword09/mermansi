@@ -127,9 +127,9 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 | Mindmap | Layered box-tree geometry + canonical model | mermansi adapter |
 | Gantt | Summary + canonical model | merman-ascii + mermansi |
 | GitGraph | Summary + canonical model | merman-ascii + mermansi |
-| Journey | Summary + canonical model | merman-ascii + mermansi |
-| Kanban | Summary + canonical model | merman-ascii + mermansi |
-| Timeline | Summary + canonical model | merman-ascii + mermansi |
+| Journey | Connected scored task-path geometry + canonical model | mermansi adapter |
+| Kanban | Nested board geometry + canonical model | mermansi adapter |
+| Timeline | Connected period/event geometry + canonical model | mermansi adapter |
 | ZenUML | Partial sequence geometry + canonical model | merman-ascii + mermansi |
 | Json | Layered box-tree geometry + canonical model | mermansi adapter |
 | Architecture | Nested box geometry + canonical model | mermansi adapter |

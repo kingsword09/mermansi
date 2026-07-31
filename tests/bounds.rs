@@ -263,6 +263,96 @@ fn treeview_node_count_is_bounded_before_canvas_allocation() {
 }
 
 #[test]
+fn native_kanban_timeline_and_journey_node_counts_are_bounded() {
+    use merman_core::diagrams::journey::{JourneyDiagramRenderModel, JourneyRenderTask};
+    use merman_core::diagrams::kanban::{KanbanDiagramRenderModel, KanbanRenderNode};
+    use merman_core::diagrams::timeline::{TimelineDiagramRenderModel, TimelineRenderTask};
+
+    let kanban = KanbanDiagramRenderModel {
+        nodes: (0..4_097)
+            .map(|index| KanbanRenderNode {
+                id: format!("card-{index}"),
+                label: "card".to_owned(),
+                is_group: false,
+                parent_id: None,
+                ticket: None,
+                priority: None,
+                assigned: None,
+                icon: None,
+            })
+            .collect(),
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Kanban(kanban),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "kanban nodes",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+
+    let timeline = TimelineDiagramRenderModel {
+        title: None,
+        acc_title: None,
+        acc_descr: None,
+        sections: Vec::new(),
+        tasks: (0..4_097)
+            .map(|id| TimelineRenderTask {
+                id,
+                section: String::new(),
+                task_type: String::new(),
+                task: "period".to_owned(),
+                score: 0,
+                events: Vec::new(),
+            })
+            .collect(),
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Timeline(timeline),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "timeline nodes",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+
+    let journey = JourneyDiagramRenderModel {
+        title: None,
+        acc_title: None,
+        acc_descr: None,
+        sections: Vec::new(),
+        tasks: (0..4_097)
+            .map(|_| JourneyRenderTask {
+                score: 0,
+                score_is_nan: false,
+                people: Vec::new(),
+                section: String::new(),
+                task_type: String::new(),
+                task: "task".to_owned(),
+            })
+            .collect(),
+        actors: Vec::new(),
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Journey(journey),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "journey nodes",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+}
+
+#[test]
 fn delegated_model_is_bounded_before_ascii_rendering() {
     let engine = merman_core::Engine::new();
     let parsed = engine
