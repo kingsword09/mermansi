@@ -1,6 +1,6 @@
 //! C4 diagram terminal geometry.
 
-use crate::adapters::box_geometry::{self, BoxDiagram, BoxEdge, BoxGroup, BoxNode};
+use crate::adapters::box_geometry::{self, BoxDiagram, BoxEdge, BoxGroup, BoxLayout, BoxNode};
 use crate::adapters::detail_separator;
 use crate::error::Result;
 use crate::options::{Charset, MermansiOptions};
@@ -52,6 +52,8 @@ pub fn render_c4(model: &C4DiagramRenderModel, opts: &MermansiOptions) -> Result
                 .collect(),
             columns: positive(model.layout.c4_boundary_in_row)
                 .or_else(|| positive(model.layout.c4_shape_in_row)),
+            layout: BoxLayout::Packed,
+            show_edge_legend: true,
         },
         opts,
     )

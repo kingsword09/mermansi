@@ -1,6 +1,8 @@
 //! Block diagram terminal geometry.
 
-use crate::adapters::box_geometry::{self, BoxDiagram, BoxEdge, BoxGroup, BoxNode, BoxSpacer};
+use crate::adapters::box_geometry::{
+    self, BoxDiagram, BoxEdge, BoxGroup, BoxLayout, BoxNode, BoxSpacer,
+};
 use crate::adapters::detail_separator;
 use crate::error::{MermansiError, Result};
 use crate::options::{Charset, MermansiOptions};
@@ -80,6 +82,8 @@ pub fn render_block(model: &BlockDiagramRenderModel, opts: &MermansiOptions) -> 
             spacers,
             edges: model.edges.iter().map(block_edge).collect(),
             columns: root.and_then(|root| positive(root.columns)),
+            layout: BoxLayout::Packed,
+            show_edge_legend: true,
         },
         opts,
     )

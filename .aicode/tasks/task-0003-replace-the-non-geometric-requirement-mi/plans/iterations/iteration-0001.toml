@@ -1,0 +1,42 @@
+schema_version = 1
+task = "task-0003-replace-the-non-geometric-requirement-mi"
+iteration = 1
+loop_iteration = 1
+created_at = "unix:1785484462"
+objective = "Replace the non-geometric Requirement, Mindmap, TreeView, and JSON outputs with genuine deterministic terminal geometry. Extend the existing shared box geometry engine with the minimal reusable layered directional layout needed by these four families. Requirement must render every requirement and element as a closed box, every typed relationship as a connected directed route, and honor TB/BT/LR/RL. Mindmap and TreeView must render every semantic node as a closed box with visible parent-child routes and real hierarchy, not |-- outlines. JSON objects, arrays, properties, indices, and scalar values must render as a bounded connected box tree, not raw pretty-print alone. Preserve English and Chinese text, ASCII and Unicode, deterministic output, all width/height/cell/byte/depth/node bounds, canonical semantic models in Complete mode, and concise geometry without structured-text fallback. Add strong geometry/direction/hierarchy/bounds tests and update README plus SUPPORT_MATRIX honestly. Do not modify or fork merman-core, merman-ascii, or any parser."
+open_issue_ids = ["task-0003-replace-the-non-geometric-requirement-mi#0001"]
+
+[plan]
+objective = "Replace the non-geometric Requirement, Mindmap, TreeView, and JSON outputs with genuine deterministic terminal geometry. Extend the existing shared box geometry engine with the minimal reusable layered directional layout needed by these four families. Requirement must render every requirement and element as a closed box, every typed relationship as a connected directed route, and honor TB/BT/LR/RL. Mindmap and TreeView must render every semantic node as a closed box with visible parent-child routes and real hierarchy, not |-- outlines. JSON objects, arrays, properties, indices, and scalar values must render as a bounded connected box tree, not raw pretty-print alone. Preserve English and Chinese text, ASCII and Unicode, deterministic output, all width/height/cell/byte/depth/node bounds, canonical semantic models in Complete mode, and concise geometry without structured-text fallback. Add strong geometry/direction/hierarchy/bounds tests and update README plus SUPPORT_MATRIX honestly. Do not modify or fork merman-core, merman-ascii, or any parser."
+
+[[plan.steps]]
+id = "step-1"
+description = "Extend src/adapters/box_geometry.rs: add a minimal 'layered tree layout' mode to BoxDiagram. Add an optional `direction: BoxDirection` field (TB/BT/LR/RL, default TB) to BoxDiagram. When direction is LR/RL, place children in successive rows (vertical stacking) instead of side-by-side columns, and draw parent→child BoxEdges automatically via the existing route engine. When direction is TB/BT, use the existing horizontal row packing (rows of children stacked vertically). Add the Direction enum, wire it through the `render` function's layout selection, and ensure deterministic output. This is the shared reusable primitive used by all four families."
+
+[[plan.steps]]
+id = "step-2"
+description = "Rewrite src/adapters/requirement.rs to build a BoxDiagram: each RequirementRenderNode and RequirementRenderElement becomes a closed BoxNode (id, name, type, text/risk/verify fields as multi-line). Each RequirementRenderRelationship becomes a directed BoxEdge (arrow_end=true) with the rel_type as label. Honor model.direction (TB/BT/LR/RL) by mapping to BoxDirection. Requirements and elements with no parent are roots; orphaned relationships still reference correct node ids. Delegate to box_geometry::render and wrap in render_structured_adapter for Complete mode."
+
+[[plan.steps]]
+id = "step-3"
+description = "Create src/adapters/mindmap.rs: map MindmapDiagramRenderModel to BoxDiagram. Each MindmapDiagramRenderNode becomes a closed BoxNode (id + label). Build parent-child BoxEdges from MindmapDiagramRenderEdge (start→end, arrow_end=true). Compute hierarchy from edges (root = node with no incoming edge). Use BoxDirection::LR for a left-to-right layered tree (or detect from level/section ordering). Delegate to box_geometry::render via render_structured_adapter."
+
+[[plan.steps]]
+id = "step-4"
+description = "Create src/adapters/treeview.rs: map TreeViewDiagramRenderModel (recursive root.children) to BoxDiagram. Walk the tree recursively (bounded depth via existing MAX_DEPTH). Each TreeViewNodeRenderModel becomes a closed BoxNode with a unique synthetic id (e.g., 'n{id}' or depth-index path). Parent→child relationships become BoxEdges. Use BoxDirection::LR or TB depending on tree shape. Delegate to box_geometry::render via render_structured_adapter. Handle the root sentinel (level=-1, name='/') by treating its children as roots."
+
+[[plan.steps]]
+id = "step-5"
+description = "Rewrite src/adapters/json.rs to render a bounded connected box tree from serde_json::Value. Recursively convert: Object→root BoxNode with children BoxNodes per key (label=key, child=value subtree); Array→root BoxNode with children per index (label=[index]); Scalars→leaf BoxNode (label=value). Connect parent→child with BoxEdges. Bound recursion depth. Delegate to box_geometry::render. Keep the render_structured_model wrapper for Complete mode so the canonical JSON still appears."
+
+[[plan.steps]]
+id = "step-6"
+description = "Update src/adapters/mod.rs dispatch: change Mindmap and TreeView from merman-ascii delegation (render_ascii) to mermansi's own structured adapters (render_structured_adapter), matching the Requirement/Architecture/Block pattern. Register mindmap and treeview modules as `pub mod`."
+
+[[plan.steps]]
+id = "step-7"
+description = "Add strong geometry/direction/hierarchy/bounds tests in tests/semantic_integrity.rs: requirement box closure (every req/element is a closed box), requirement relationship routing (every typed relationship has a visible arrow), requirement direction TB/BT/LR/RL ordering, mindmap hierarchy (parent above/before child, closed boxes), treeview hierarchy (closed boxes, parent-child visible), json box tree (nested boxes for objects/arrays/scalars). Add determinism and bounds tests for all four families in tests/bounds.rs. Ensure the support_matrix.rs round-trip tests still pass (semantic model is preserved in Complete mode)."
+
+[[plan.steps]]
+id = "step-8"
+description = "Update README.md support matrix table and docs/SUPPORT_MATRIX.md: change Requirement from 'Structured text' to 'Box geometry + canonical model', Mindmap from 'Summary + canonical model' to 'Box geometry + canonical model', TreeView from 'Full geometry + canonical model' (merman-ascii) to 'Box geometry + canonical model' (mermansi), Json from 'Canonical structured text' to 'Box tree geometry + canonical model'. Update the renderer column accordingly. Run `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features` and fix any failures."

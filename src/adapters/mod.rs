@@ -7,9 +7,9 @@
 use crate::adapters::{
     architecture::render_architecture, block::render_block, c4::render_c4,
     eventmodeling::render_eventmodeling, flowchart::render_flowchart, info::render_info,
-    ishikawa::render_ishikawa, json::render_json, pie::render_pie,
+    ishikawa::render_ishikawa, json::render_json, mindmap::render_mindmap, pie::render_pie,
     quadrant_chart::render_quadrant_chart, radar::render_radar, requirement::render_requirement,
-    sankey::render_sankey, treemap::render_treemap, venn::render_venn,
+    sankey::render_sankey, treemap::render_treemap, treeview::render_treeview, venn::render_venn,
 };
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
@@ -28,12 +28,14 @@ pub mod flowchart;
 pub mod info;
 pub mod ishikawa;
 pub mod json;
+pub mod mindmap;
 pub mod pie;
 pub mod quadrant_chart;
 pub mod radar;
 pub mod requirement;
 pub mod sankey;
 pub mod treemap;
+pub mod treeview;
 pub mod venn;
 
 /// Convert `MermansiOptions` to the `merman-ascii` equivalent.
@@ -70,13 +72,13 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
             render_ascii("packet", m, opts, merman_ascii::render_packet)
         }
         RenderSemanticModel::TreeView(m) => {
-            render_ascii("treeView", m, opts, merman_ascii::render_tree_view)
+            render_structured_adapter("treeView", m, opts, || render_treeview(m, opts))
         }
         RenderSemanticModel::XyChart(m) => {
             render_ascii("xychart", m, opts, merman_ascii::render_xychart)
         }
         RenderSemanticModel::Mindmap(m) => {
-            render_ascii("mindmap", m, opts, merman_ascii::render_mindmap)
+            render_structured_adapter("mindmap", m, opts, || render_mindmap(m, opts))
         }
         RenderSemanticModel::Gantt(m) => render_ascii("gantt", m, opts, merman_ascii::render_gantt),
         RenderSemanticModel::GitGraph(m) => {
@@ -93,7 +95,9 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
         }
 
         // --- mermansi structured terminal adapters ---
-        RenderSemanticModel::Json(m) => render_json(m, opts),
+        RenderSemanticModel::Json(m) => {
+            render_structured_adapter("json", m, opts, || render_json(m, opts))
+        }
         RenderSemanticModel::Architecture(m) => {
             render_structured_adapter("architecture", m, opts, || render_architecture(m, opts))
         }

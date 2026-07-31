@@ -1,5 +1,11 @@
-//! Requirement diagram adapter.
+//! Requirement diagram terminal geometry.
+//!
+//! Renders every requirement and element as a closed box, every typed relationship as a
+//! connected directed route, and honors TB/BT/LR/RL direction.
 
+use crate::adapters::box_geometry::{
+    self, BoxDiagram, BoxDirection, BoxEdge, BoxLayout, BoxNode, directed_ranks,
+};
 use crate::adapters::nonempty_or;
 use crate::error::Result;
 use crate::options::MermansiOptions;
@@ -11,66 +17,90 @@ pub fn render_requirement(
     model: &RequirementDiagramRenderModel,
     opts: &MermansiOptions,
 ) -> Result<String> {
-    let mut out = String::new();
-
-    if !model.requirements.is_empty() {
-        out.push_str("Requirements:\n");
-        for req in &model.requirements {
-            out.push_str(&format_requirement(req));
-        }
-        out.push('\n');
+    let direction = BoxDirection::from_str(&model.direction);
+    let (from_side, to_side) = direction.edge_sides();
+    let mut nodes = Vec::new();
+    for (order, req) in model.requirements.iter().enumerate() {
+        nodes.push(requirement_node(req, order));
     }
-
-    if !model.elements.is_empty() {
-        out.push_str("Elements:\n");
-        for elem in &model.elements {
-            out.push_str(&format_element(elem));
-        }
-        out.push('\n');
+    let node_order = model.requirements.len();
+    for (order, elem) in model.elements.iter().enumerate() {
+        nodes.push(element_node(elem, node_order + order));
     }
+    let edges = model
+        .relationships
+        .iter()
+        .map(|rel| BoxEdge {
+            from: rel.src.clone(),
+            to: rel.dst.clone(),
+            label: rel.rel_type.clone(),
+            arrow_start: false,
+            arrow_end: true,
+            from_side: Some(from_side),
+            to_side: Some(to_side),
+        })
+        .collect::<Vec<_>>();
+    let ranks = directed_ranks(&nodes, &edges);
 
-    if !model.relationships.is_empty() {
-        out.push_str("Relationships:\n");
-        for rel in &model.relationships {
-            out.push_str(&format!(
-                "  {} -[{}]-> {}\n",
-                rel.src, rel.rel_type, rel.dst
-            ));
-        }
-    }
-
-    if out.trim().is_empty() {
-        out.push_str("(empty requirement diagram)\n");
-    }
-
-    let _ = opts;
-    Ok(out)
+    box_geometry::render(
+        &BoxDiagram {
+            family: "requirement",
+            title: Some("Requirement diagram".to_owned()),
+            nodes,
+            groups: Vec::new(),
+            spacers: Vec::new(),
+            edges,
+            columns: None,
+            layout: BoxLayout::Layered { direction, ranks },
+            show_edge_legend: true,
+        },
+        opts,
+    )
 }
 
-fn format_requirement(req: &RequirementRenderNode) -> String {
-    let mut out = format!(
-        "  [{}] {} ({})\n",
+fn requirement_node(req: &RequirementRenderNode, order: usize) -> BoxNode {
+    let mut lines = Vec::new();
+    lines.push(format!(
+        "[{}] {}",
         req.node_type,
-        nonempty_or(&req.name, "(unnamed)"),
-        req.requirement_id
-    );
+        nonempty_or(&req.name, "(unnamed)")
+    ));
+    if !req.requirement_id.is_empty() {
+        lines.push(format!("id: {}", req.requirement_id));
+    }
     if !req.text.is_empty() {
-        out.push_str(&format!("    Text: {}\n", req.text));
+        lines.push(format!("text: {}", req.text));
     }
     if !req.risk.is_empty() {
-        out.push_str(&format!("    Risk: {}\n", req.risk));
+        lines.push(format!("risk: {}", req.risk));
     }
     if !req.verify_method.is_empty() {
-        out.push_str(&format!("    Verify: {}\n", req.verify_method));
+        lines.push(format!("verify: {}", req.verify_method));
     }
-    out
+    BoxNode {
+        id: req.name.clone(),
+        lines,
+        parent: None,
+        span: 1,
+        order,
+    }
 }
 
-fn format_element(elem: &RequirementRenderElement) -> String {
-    format!(
-        "  [{}] {} ({})\n",
+fn element_node(elem: &RequirementRenderElement, order: usize) -> BoxNode {
+    let mut lines = Vec::new();
+    lines.push(format!(
+        "[{}] {}",
         elem.element_type,
-        nonempty_or(&elem.name, "(unnamed)"),
-        elem.doc_ref
-    )
+        nonempty_or(&elem.name, "(unnamed)")
+    ));
+    if !elem.doc_ref.is_empty() {
+        lines.push(format!("docRef: {}", elem.doc_ref));
+    }
+    BoxNode {
+        id: elem.name.clone(),
+        lines,
+        parent: None,
+        span: 1,
+        order,
+    }
 }

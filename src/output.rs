@@ -7,15 +7,6 @@ use crate::str_display_width;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-pub(crate) fn render_structured_model<T: Serialize>(
-    family: &str,
-    model: &T,
-    opts: &MermansiOptions,
-) -> Result<String> {
-    ensure_serialized_model_within_limit(model)?;
-    append_preflighted_structured_model(String::new(), family, model, opts)
-}
-
 pub(crate) fn render_structured_adapter<T, F>(
     family: &str,
     model: &T,

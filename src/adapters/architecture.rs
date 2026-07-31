@@ -2,7 +2,9 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use crate::adapters::box_geometry::{self, BoxDiagram, BoxEdge, BoxGroup, BoxNode, Side};
+use crate::adapters::box_geometry::{
+    self, BoxDiagram, BoxEdge, BoxGroup, BoxLayout, BoxNode, Side,
+};
 use crate::adapters::detail_separator;
 use crate::error::Result;
 use crate::options::{Charset, MermansiOptions};
@@ -73,6 +75,8 @@ pub fn render_architecture(
             spacers: Vec::new(),
             edges,
             columns: layout.columns.get("").copied(),
+            layout: BoxLayout::Packed,
+            show_edge_legend: true,
         },
         opts,
     )

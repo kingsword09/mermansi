@@ -565,6 +565,8 @@ fn assert_no_structured_fallback(preview: &str) {
         "Blocks:",
         "Boundaries:",
         "Shapes:",
+        "Requirements:",
+        "Elements:",
         "Relationships:",
     ] {
         assert!(
@@ -788,6 +790,171 @@ fn architecture_block_and_c4_ascii_mode_uses_only_ascii_geometry() {
         );
         assert!(output.contains('+') && output.contains('-') && output.contains('|'));
         assert_no_structured_fallback(&output);
+    }
+}
+
+#[test]
+fn requirement_geometry_honors_every_direction() {
+    for (direction, ordered_axis, arrow) in [
+        ("TB", 0, '▼'),
+        ("BT", 0, '▲'),
+        ("LR", 1, '▶'),
+        ("RL", 1, '◀'),
+    ] {
+        let source = format!(
+            "requirementDiagram\n  direction {direction}\n  requirement Source {{\n    id: SRC\n    text: Source requirement\n  }}\n  requirement Target {{\n    id: DST\n    text: Target requirement\n  }}\n  Source - traces -> Target"
+        );
+        let output = render_source(
+            &source,
+            &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+        )
+        .unwrap_or_else(|error| panic!("{direction} requirement geometry failed: {error}"));
+        let source_position = label_position(&output, "[Requirement] Source");
+        let target_position = label_position(&output, "[Requirement] Target");
+        let ordered = if matches!(direction, "TB" | "LR") {
+            source_position
+        } else {
+            target_position
+        };
+        let later = if matches!(direction, "TB" | "LR") {
+            target_position
+        } else {
+            source_position
+        };
+
+        assert!(
+            [ordered.0, ordered.1][ordered_axis] < [later.0, later.1][ordered_axis],
+            "{direction} did not order source and target on the requested axis:\n{output}"
+        );
+        assert_eq!(output.matches(arrow).count(), 1, "{direction}:\n{output}");
+        assert!(output.contains("Source --> Target  traces"), "{output}");
+        assert_closed_unicode_boxes(&output, 2);
+        assert_no_structured_fallback(&output);
+    }
+}
+
+#[test]
+fn mindmap_is_a_closed_left_to_right_tree_without_outline_fallback() {
+    let output = render_source(
+        include_str!("fixtures/mindmap.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    assert_closed_unicode_boxes(&output, 10);
+    assert_eq!(output.matches('▶').count(), 9, "{output}");
+    assert!(label_position(&output, "Project").1 < label_position(&output, "Planning").1);
+    assert!(label_position(&output, "Planning").1 < label_position(&output, "Requirements").1);
+    assert!(!output.contains("|--"), "{output}");
+    assert!(
+        !output.contains("-->"),
+        "synthetic edge legend leaked:\n{output}"
+    );
+    assert_no_structured_fallback(&output);
+}
+
+#[test]
+fn treeview_fixture_preserves_real_hierarchy_as_geometry() {
+    let output = render_source(
+        include_str!("fixtures/treeview.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    assert_closed_unicode_boxes(&output, 4);
+    assert_eq!(output.matches('▶').count(), 3, "{output}");
+    assert!(label_position(&output, "Root").1 < label_position(&output, "Child1").1);
+    assert!(label_position(&output, "Child1").1 < label_position(&output, "Grandchild").1);
+    assert!(label_position(&output, "Root").1 < label_position(&output, "Child2").1);
+    assert!(!output.contains("|--"), "{output}");
+    assert!(
+        !output.contains("tree-"),
+        "synthetic node id leaked:\n{output}"
+    );
+    assert_no_structured_fallback(&output);
+}
+
+#[test]
+fn json_object_array_and_scalars_form_a_connected_box_tree() {
+    let output = render_source(
+        include_str!("fixtures/json.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    assert_closed_unicode_boxes(&output, 8);
+    assert_eq!(output.matches('▶').count(), 7, "{output}");
+    assert!(label_position(&output, "{} (4 fields)").1 < label_position(&output, "skills:").1);
+    assert!(label_position(&output, "skills:").1 < label_position(&output, "[0]:").1);
+    for label in ["age: 30", "name: \"Alice\"", "[1]: \"Python\""] {
+        assert!(output.contains(label), "'{label}' missing:\n{output}");
+    }
+    assert!(
+        !output.contains("json-"),
+        "synthetic node id leaked:\n{output}"
+    );
+    assert!(
+        !output.contains("-->"),
+        "synthetic edge legend leaked:\n{output}"
+    );
+    assert_no_structured_fallback(&output);
+}
+
+#[test]
+fn new_box_tree_adapters_preserve_bilingual_labels_and_ascii_geometry() {
+    let bilingual = [
+        (
+            "requirement",
+            include_str!("fixtures/requirement.zh.mmd"),
+            "系统应对用户进行身份验证",
+        ),
+        (
+            "mindmap",
+            include_str!("fixtures/mindmap.zh.mmd"),
+            "集成测试",
+        ),
+        (
+            "treeView",
+            include_str!("fixtures/treeview.zh.mmd"),
+            "孙节点",
+        ),
+        ("json", include_str!("fixtures/json.zh.mmd"), "爱丽丝"),
+    ];
+    for (family, source, label) in bilingual {
+        let output = render_source(
+            source,
+            &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+        )
+        .unwrap_or_else(|error| panic!("{family} Chinese geometry failed: {error}"));
+        assert!(output.contains(label), "{family} lost '{label}':\n{output}");
+        assert!(
+            output.contains('┌') && output.contains('┘'),
+            "{family}:\n{output}"
+        );
+        assert_no_structured_fallback(&output);
+    }
+
+    let english = [
+        include_str!("fixtures/requirement.en.mmd"),
+        include_str!("fixtures/mindmap.en.mmd"),
+        include_str!("fixtures/treeview.en.mmd"),
+        include_str!("fixtures/json.en.mmd"),
+    ];
+    for source in english {
+        let output = render_source(
+            source,
+            &MermansiOptions::ascii().with_output_mode(OutputMode::Concise),
+        )
+        .unwrap();
+        assert!(
+            output.is_ascii(),
+            "ASCII adapter emitted Unicode:\n{output}"
+        );
+        assert!(output.contains('+') && output.contains('-') && output.contains('|'));
+        assert!(
+            !output.contains("|--"),
+            "outline fallback leaked:\n{output}"
+        );
     }
 }
 

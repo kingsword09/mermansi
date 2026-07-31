@@ -113,7 +113,7 @@ fn structured_output_width_is_bounded() {
     assert!(matches!(
         result,
         Err(MermansiError::RenderLimit {
-            context: "output columns",
+            context: "box geometry columns",
             ..
         })
     ));
@@ -126,7 +126,7 @@ fn structured_output_height_is_bounded() {
     assert!(matches!(
         result,
         Err(MermansiError::RenderLimit {
-            context: "output rows",
+            context: "box geometry rows",
             ..
         })
     ));
@@ -148,6 +148,118 @@ fn structured_output_bytes_are_bounded() {
         ),
         "expected semantic model byte limit, got {result:?}"
     );
+}
+
+#[test]
+fn json_tree_depth_is_bounded_before_geometry_allocation() {
+    let mut value = serde_json::Value::Null;
+    for _ in 0..66 {
+        value = serde_json::Value::Array(vec![value]);
+    }
+
+    let result = render_model(
+        &RenderSemanticModel::Json(value),
+        &MermansiOptions::unicode(),
+    );
+    assert!(matches!(
+        result,
+        Err(MermansiError::RenderLimit {
+            context: "json tree depth",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn json_tree_node_count_is_bounded_before_canvas_allocation() {
+    let value = serde_json::Value::Array(vec![serde_json::Value::Null; 10_000]);
+    let result = render_model(
+        &RenderSemanticModel::Json(value),
+        &MermansiOptions::unicode(),
+    );
+    assert!(matches!(
+        result,
+        Err(MermansiError::RenderLimit {
+            context: "json tree nodes",
+            requested: 10_001,
+            limit: 10_000,
+        })
+    ));
+}
+
+#[test]
+fn treeview_depth_is_bounded_before_geometry_allocation() {
+    use merman_core::diagrams::tree_view::{TreeViewDiagramRenderModel, TreeViewNodeRenderModel};
+
+    let mut child = TreeViewNodeRenderModel {
+        id: 66,
+        level: 66,
+        name: "leaf".to_owned(),
+        children: Vec::new(),
+    };
+    for level in (0..66).rev() {
+        child = TreeViewNodeRenderModel {
+            id: level,
+            level,
+            name: format!("level {level}"),
+            children: vec![child],
+        };
+    }
+    let model = TreeViewDiagramRenderModel {
+        acc_title: None,
+        acc_descr: None,
+        title: None,
+        root: TreeViewNodeRenderModel {
+            children: vec![child],
+            ..TreeViewNodeRenderModel::default()
+        },
+    };
+    let result = render_model(
+        &RenderSemanticModel::TreeView(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(matches!(
+        result,
+        Err(MermansiError::RenderLimit {
+            context: "treeView depth",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn treeview_node_count_is_bounded_before_canvas_allocation() {
+    use merman_core::diagrams::tree_view::{TreeViewDiagramRenderModel, TreeViewNodeRenderModel};
+
+    let children = (0..4_097)
+        .map(|id| TreeViewNodeRenderModel {
+            id,
+            level: 0,
+            name: format!("node {id}"),
+            children: Vec::new(),
+        })
+        .collect();
+    let model = TreeViewDiagramRenderModel {
+        acc_title: None,
+        acc_descr: None,
+        title: None,
+        root: TreeViewNodeRenderModel {
+            children,
+            ..TreeViewNodeRenderModel::default()
+        },
+    };
+    let result = render_model(
+        &RenderSemanticModel::TreeView(model),
+        &MermansiOptions::unicode(),
+    );
+    assert!(matches!(
+        result,
+        Err(MermansiError::RenderLimit {
+            context: "treeView nodes",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
 }
 
 #[test]

@@ -1,6 +1,6 @@
 //! Shared bounded geometry for node-and-relationship diagram families.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -15,6 +15,8 @@ const GROUP_PADDING_X: usize = 3;
 const GROUP_ROUTE_GAP_Y: usize = 2;
 const ITEM_GAP_X: usize = 4;
 const ITEM_GAP_Y: usize = 2;
+const LAYER_GAP_X: usize = 8;
+const LAYER_GAP_Y: usize = 4;
 const ROUTE_MARGIN: usize = 2;
 const MAX_OUTER_ROUTE_LANES: usize = 8;
 const MAX_DEPTH: usize = 64;
@@ -57,6 +59,45 @@ pub(crate) struct BoxEdge {
     pub(crate) to_side: Option<Side>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+pub(crate) enum BoxDirection {
+    #[default]
+    Tb,
+    Bt,
+    Lr,
+    Rl,
+}
+
+impl BoxDirection {
+    pub(crate) fn from_str(direction: &str) -> Self {
+        match direction.to_ascii_uppercase().as_str() {
+            "BT" => Self::Bt,
+            "LR" => Self::Lr,
+            "RL" => Self::Rl,
+            _ => Self::Tb,
+        }
+    }
+
+    pub(crate) const fn edge_sides(self) -> (Side, Side) {
+        match self {
+            Self::Tb => (Side::Bottom, Side::Top),
+            Self::Bt => (Side::Top, Side::Bottom),
+            Self::Lr => (Side::Right, Side::Left),
+            Self::Rl => (Side::Left, Side::Right),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) enum BoxLayout {
+    #[default]
+    Packed,
+    Layered {
+        direction: BoxDirection,
+        ranks: HashMap<String, usize>,
+    },
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct BoxDiagram {
     pub(crate) family: &'static str,
@@ -66,6 +107,64 @@ pub(crate) struct BoxDiagram {
     pub(crate) spacers: Vec<BoxSpacer>,
     pub(crate) edges: Vec<BoxEdge>,
     pub(crate) columns: Option<usize>,
+    pub(crate) layout: BoxLayout,
+    pub(crate) show_edge_legend: bool,
+}
+
+pub(crate) fn directed_ranks(nodes: &[BoxNode], edges: &[BoxEdge]) -> HashMap<String, usize> {
+    let indices = nodes
+        .iter()
+        .enumerate()
+        .map(|(index, node)| (node.id.as_str(), index))
+        .collect::<HashMap<_, _>>();
+    let mut adjacency = vec![Vec::<usize>::new(); nodes.len()];
+    let mut indegree = vec![0usize; nodes.len()];
+
+    for edge in edges {
+        let (Some(&source), Some(&target)) = (
+            indices.get(edge.from.as_str()),
+            indices.get(edge.to.as_str()),
+        ) else {
+            continue;
+        };
+        if source != target && !adjacency[source].contains(&target) {
+            adjacency[source].push(target);
+            indegree[target] += 1;
+        }
+    }
+
+    let mut ranks = vec![0usize; nodes.len()];
+    let mut queue = VecDeque::new();
+    for (index, degree) in indegree.iter().enumerate() {
+        if *degree == 0 {
+            queue.push_back(index);
+        }
+    }
+    while let Some(source) = queue.pop_front() {
+        for &target in &adjacency[source] {
+            ranks[target] = ranks[target].max(ranks[source].saturating_add(1));
+            indegree[target] -= 1;
+            if indegree[target] == 0 {
+                queue.push_back(target);
+            }
+        }
+    }
+
+    // A directed cycle cannot satisfy every edge direction geometrically. Keep its
+    // nodes visible on deterministic consecutive layers so each return edge can route.
+    let mut cycle_rank = ranks.iter().copied().max().unwrap_or(0);
+    for (index, degree) in indegree.iter().enumerate() {
+        if *degree > 0 {
+            ranks[index] = ranks[index].max(cycle_rank);
+            cycle_rank = cycle_rank.saturating_add(1);
+        }
+    }
+
+    nodes
+        .iter()
+        .zip(ranks)
+        .map(|(node, rank)| (node.id.clone(), rank))
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -191,8 +290,19 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
         return Ok(diagram.title.clone().unwrap_or_default());
     }
 
-    let (mut placed, diagram_width, diagram_height) =
-        pack_items(root, content_limit, diagram.columns);
+    let (mut placed, diagram_width, diagram_height) = match &diagram.layout {
+        BoxLayout::Packed => pack_items(root, content_limit, diagram.columns),
+        BoxLayout::Layered { direction, ranks } => {
+            pack_layered_items(root, ranks, *direction, diagram.family)?
+        }
+    };
+    if diagram_width > content_limit {
+        return Err(MermansiError::RenderLimit {
+            context: "box geometry columns",
+            requested: diagram_width.saturating_add(ROUTE_MARGIN * 2),
+            limit: opts.max_width,
+        });
+    }
     let title_lines = diagram
         .title
         .as_deref()
@@ -205,13 +315,17 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
         .max()
         .unwrap_or(0);
     let content_width = diagram_width.max(title_width).max(1);
-    let legend_width = diagram
-        .edges
-        .iter()
-        .map(|edge| str_display_width(&edge_legend_text(edge)))
-        .max()
-        .unwrap_or(0)
-        .min(opts.max_width.saturating_sub(2));
+    let legend_width = if diagram.show_edge_legend {
+        diagram
+            .edges
+            .iter()
+            .map(|edge| str_display_width(&edge_legend_text(edge)))
+            .max()
+            .unwrap_or(0)
+            .min(opts.max_width.saturating_sub(2))
+    } else {
+        0
+    };
     let width = content_width
         .saturating_add(ROUTE_MARGIN * 2)
         .max(legend_width.saturating_add(2))
@@ -220,9 +334,14 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
     let diagram_x = ROUTE_MARGIN + drawing_width.saturating_sub(diagram_width) / 2;
     let title_y = 1;
     let geometry_edges = coalesced_geometry_edges(&diagram.edges);
-    let route_lanes = geometry_edges.len().min(MAX_OUTER_ROUTE_LANES);
-    let top_route_lanes = route_lanes.div_ceil(2);
-    let bottom_route_lanes = route_lanes / 2;
+    let (top_route_lanes, bottom_route_lanes) = if geometry_edges.is_empty() {
+        (0, 0)
+    } else if matches!(&diagram.layout, BoxLayout::Layered { .. }) {
+        (1, 1)
+    } else {
+        let route_lanes = geometry_edges.len().min(MAX_OUTER_ROUTE_LANES);
+        (route_lanes.div_ceil(2), route_lanes / 2)
+    };
     let diagram_y =
         title_y + title_lines.len() + usize::from(!title_lines.is_empty()) + top_route_lanes;
     for item in &mut placed {
@@ -230,7 +349,11 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
         item.y += diagram_y;
     }
 
-    let legend = edge_legend(&diagram.edges, width.saturating_sub(2));
+    let legend = if diagram.show_edge_legend {
+        edge_legend(&diagram.edges, width.saturating_sub(2))
+    } else {
+        Vec::new()
+    };
     let legend_y =
         diagram_y + diagram_height + bottom_route_lanes + usize::from(!legend.is_empty());
     let height = legend_y + legend.len() + 1;
@@ -427,7 +550,7 @@ fn build_spacer(spacer: &BoxSpacer, max_width: usize) -> Item {
 fn wrapped_lines(lines: &[String], width: usize) -> Vec<String> {
     let mut wrapped = lines
         .iter()
-        .flat_map(|line| wrap_display(&normalized(line), width))
+        .flat_map(|line| wrap_words(&normalized(line), width))
         .collect::<Vec<_>>();
     if wrapped.is_empty() {
         wrapped.push(String::new());
@@ -496,6 +619,94 @@ fn pack_items(
         y += row_height + ITEM_GAP_Y;
     }
     (placed, total_width, y.saturating_sub(ITEM_GAP_Y))
+}
+
+fn pack_layered_items(
+    items: Vec<Item>,
+    ranks: &HashMap<String, usize>,
+    direction: BoxDirection,
+    family: &'static str,
+) -> Result<(Vec<PlacedItem>, usize, usize)> {
+    let mut by_rank = BTreeMap::<usize, Vec<Item>>::new();
+    for item in items {
+        let rank = ranks.get(&item.id).copied().ok_or_else(|| {
+            layout_error(family, format!("layer rank is missing for {}", item.id))
+        })?;
+        by_rank.entry(rank).or_default().push(item);
+    }
+    let mut layers = by_rank.into_values().collect::<Vec<_>>();
+    if matches!(direction, BoxDirection::Bt | BoxDirection::Rl) {
+        layers.reverse();
+    }
+    Ok(
+        if matches!(direction, BoxDirection::Tb | BoxDirection::Bt) {
+            pack_layer_rows(layers)
+        } else {
+            pack_layer_columns(layers)
+        },
+    )
+}
+
+fn pack_layer_rows(layers: Vec<Vec<Item>>) -> (Vec<PlacedItem>, usize, usize) {
+    let total_width = layers
+        .iter()
+        .map(|layer| {
+            layer.iter().map(|item| item.width).sum::<usize>()
+                + ITEM_GAP_X * layer.len().saturating_sub(1)
+        })
+        .max()
+        .unwrap_or(0);
+    let mut placed = Vec::new();
+    let mut y = 0usize;
+    for layer in layers {
+        let layer_width = layer.iter().map(|item| item.width).sum::<usize>()
+            + ITEM_GAP_X * layer.len().saturating_sub(1);
+        let layer_height = layer.iter().map(|item| item.height).max().unwrap_or(0);
+        let mut x = total_width.saturating_sub(layer_width) / 2;
+        for item in layer {
+            let item_width = item.width;
+            let item_height = item.height;
+            placed.push(PlacedItem {
+                x,
+                y: y + layer_height.saturating_sub(item_height) / 2,
+                item,
+            });
+            x += item_width + ITEM_GAP_X;
+        }
+        y += layer_height + LAYER_GAP_Y;
+    }
+    (placed, total_width, y.saturating_sub(LAYER_GAP_Y))
+}
+
+fn pack_layer_columns(layers: Vec<Vec<Item>>) -> (Vec<PlacedItem>, usize, usize) {
+    let total_height = layers
+        .iter()
+        .map(|layer| {
+            layer.iter().map(|item| item.height).sum::<usize>()
+                + ITEM_GAP_Y * layer.len().saturating_sub(1)
+        })
+        .max()
+        .unwrap_or(0);
+    let mut placed = Vec::new();
+    let mut x = 0usize;
+    for layer in layers {
+        let layer_width = layer.iter().map(|item| item.width).max().unwrap_or(0);
+        let layer_height = layer.iter().map(|item| item.height).sum::<usize>()
+            + ITEM_GAP_Y * layer.len().saturating_sub(1);
+        let mut y = total_height.saturating_sub(layer_height) / 2;
+        for item in layer {
+            let item_width = item.width;
+            let item_height = item.height;
+            placed.push(PlacedItem {
+                x: x + layer_width.saturating_sub(item_width) / 2,
+                y,
+                item,
+            });
+            y += item_height + ITEM_GAP_Y;
+        }
+        x += layer_width + LAYER_GAP_X;
+    }
+    (placed, x.saturating_sub(LAYER_GAP_X), total_height)
 }
 
 fn paint_item(

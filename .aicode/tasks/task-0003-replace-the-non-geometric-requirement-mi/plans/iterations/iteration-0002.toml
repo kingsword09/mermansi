@@ -1,0 +1,42 @@
+schema_version = 1
+task = "task-0003-replace-the-non-geometric-requirement-mi"
+iteration = 2
+loop_iteration = 1
+created_at = "unix:1785487581"
+objective = "Replace the non-geometric Requirement, Mindmap, TreeView, and JSON outputs with genuine deterministic terminal geometry. Extend the existing shared box geometry engine with the minimal reusable layered directional layout needed by these four families. Requirement must render every requirement and element as a closed box, every typed relationship as a connected directed route, and honor TB/BT/LR/RL. Mindmap and TreeView must render every semantic node as a closed box with visible parent-child routes and real hierarchy, not |-- outlines. JSON objects, arrays, properties, indices, and scalar values must render as a bounded connected box tree, not raw pretty-print alone. Preserve English and Chinese text, ASCII and Unicode, deterministic output, all width/height/cell/byte/depth/node bounds, canonical semantic models in Complete mode, and concise geometry without structured-text fallback. Add strong geometry/direction/hierarchy/bounds tests and update README plus SUPPORT_MATRIX honestly. Do not modify or fork merman-core, merman-ascii, or any parser."
+open_issue_ids = ["task-0003-replace-the-non-geometric-requirement-mi#0001"]
+
+[plan]
+objective = "Replace the non-geometric Requirement, Mindmap, TreeView, and JSON outputs with genuine deterministic terminal geometry. Extend the existing shared box geometry engine with the minimal reusable layered directional layout needed by these four families. Requirement must render every requirement and element as a closed box, every typed relationship as a connected directed route, and honor TB/BT/LR/RL. Mindmap and TreeView must render every semantic node as a closed box with visible parent-child routes and real hierarchy, not |-- outlines. JSON objects, arrays, properties, indices, and scalar values must render as a bounded connected box tree, not raw pretty-print alone. Preserve English and Chinese text, ASCII and Unicode, deterministic output, all width/height/cell/byte/depth/node bounds, canonical semantic models in Complete mode, and concise geometry without structured-text fallback. Add strong geometry/direction/hierarchy/bounds tests and update README plus SUPPORT_MATRIX honestly. Do not modify or fork merman-core, merman-ascii, or any parser."
+
+[[plan.steps]]
+id = "step-1"
+description = "Verify the existing layered box-geometry engine extension (BoxLayout::Layered, BoxDirection Tb/Bt/Lr/Rl, directed_ranks, pack_layered_items/pack_layer_rows/pack_layer_columns) in src/adapters/box_geometry.rs is minimal, correct, reusable, and does not regress the Architecture/Block/C4 families that still use BoxLayout::Packed."
+
+[[plan.steps]]
+id = "step-2"
+description = "Verify Requirement adapter (src/adapters/requirement.rs) renders every requirement and element as a closed box via box_geometry::render with directed_ranks and direction-aware edge sides, every typed relationship as a connected directed route with the edge legend, and honors TB/BT/LR/RL per model.direction."
+
+[[plan.steps]]
+id = "step-3"
+description = "Verify Mindmap adapter (src/adapters/mindmap.rs, new file) and TreeView adapter (src/adapters/treeview.rs, new file) render every semantic node as a closed box with visible parent-child routed edges and real LR hierarchy — no |-- outlines — using BoxLayout::Layered, and that dispatch in src/adapters/mod.rs routes these families to mermansi adapters instead of merman-ascii."
+
+[[plan.steps]]
+id = "step-4"
+description = "Verify JSON adapter (src/adapters/json.rs) renders objects, arrays, properties, indices, and scalar values as a bounded connected LR box tree via box_geometry::render, that depth (MAX_JSON_DEPTH=64) and node-count (MAX_JSON_NODES=10_000) limits are enforced before geometry allocation, and that the structured semantic model is still appended in Complete mode."
+
+[[plan.steps]]
+id = "step-5"
+description = "Verify all bounds are preserved: width/height/cell/byte limits in box_geometry render(), JSON and TreeView depth/node limits return typed MermansiError::RenderLimit, deterministic output across repeated calls, and canonical semantic models round-trip in Complete mode. Confirm the bounds tests in tests/bounds.rs (json_tree_depth, json_tree_nodes, treeview_depth, treeview_nodes) and the determinism tests pass."
+
+[[plan.steps]]
+id = "step-6"
+description = "Verify the geometry/direction/hierarchy tests in tests/semantic_integrity.rs pass: requirement_geometry_honors_every_direction, mindmap_is_a_closed_left_to_right_tree_without_outline_fallback, treeview_fixture_preserves_real_hierarchy_as_geometry, json_object_array_and_scalars_form_a_connected_box_tree, and new_box_tree_adapters_preserve_bilingual_labels_and_ascii_geometry. Ensure no structured-text fallback markers leak and no synthetic ids leak in concise previews."
+
+[[plan.steps]]
+id = "step-7"
+description = "Verify README.md and docs/SUPPORT_MATRIX.md honestly describe TreeView/Mindmap as layered box-tree geometry (mermansi adapter), JSON as layered box-tree geometry, and Requirement as directional box geometry, and that the fixture files (treeview.en/zh.mmd with real indentation-based hierarchy) match the parser contract."
+
+[[plan.steps]]
+id = "step-8"
+description = "Run the full acceptance command suite: cargo fmt --check, cargo clippy --all-targets --all-features -- -D warnings, and cargo test --all-targets --all-features. All three must pass with zero warnings and zero failures."

@@ -77,20 +77,20 @@ parser.
 | Class | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/class.en.mmd` | `fixtures/class.zh.mmd` | ✅ |
 | Er | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/er.en.mmd` | `fixtures/er.zh.mmd` | ✅ |
 | Packet | merman-ascii + mermansi | Full geometry + canonical model | `fixtures/packet.en.mmd` | `fixtures/packet.zh.mmd` | ✅ |
-| TreeView | merman-ascii + mermansi | Full geometry + canonical model | `fixtures/treeview.en.mmd` | `fixtures/treeview.zh.mmd` | ✅ |
+| TreeView | mermansi | Layered box-tree geometry + canonical model | `fixtures/treeview.en.mmd` | `fixtures/treeview.zh.mmd` | ✅ |
 | XyChart | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/xychart.en.mmd` | `fixtures/xychart.zh.mmd` | ✅ |
-| Mindmap | merman-ascii + mermansi | Summary + canonical model | `fixtures/mindmap.en.mmd` | `fixtures/mindmap.zh.mmd` | ✅ |
+| Mindmap | mermansi | Layered box-tree geometry + canonical model | `fixtures/mindmap.en.mmd` | `fixtures/mindmap.zh.mmd` | ✅ |
 | Gantt | merman-ascii + mermansi | Summary + canonical model | `fixtures/gantt.en.mmd` | `fixtures/gantt.zh.mmd` | ✅ |
 | GitGraph | merman-ascii + mermansi | Summary + canonical model | `fixtures/gitgraph.en.mmd` | `fixtures/gitgraph.zh.mmd` | ✅ |
 | Journey | merman-ascii + mermansi | Summary + canonical model | `fixtures/journey.en.mmd` | `fixtures/journey.zh.mmd` | ✅ |
 | Kanban | merman-ascii + mermansi | Summary + canonical model | `fixtures/kanban.en.mmd` | `fixtures/kanban.zh.mmd` | ✅ |
 | Timeline | merman-ascii + mermansi | Summary + canonical model | `fixtures/timeline.en.mmd` | `fixtures/timeline.zh.mmd` | ✅ |
 | ZenUML | merman-ascii + mermansi | Partial sequence geometry + canonical model | `fixtures/zenuml.en.mmd` | `fixtures/zenuml.zh.mmd` | ✅ |
-| Json | mermansi | Canonical structured text | `fixtures/json.en.mmd` | `fixtures/json.zh.mmd` | yes |
+| Json | mermansi | Layered box-tree geometry + canonical model | `fixtures/json.en.mmd` | `fixtures/json.zh.mmd` | yes |
 | Architecture | mermansi | Nested box geometry + canonical model | `fixtures/architecture.en.mmd` | `fixtures/architecture.zh.mmd` | ✅ |
 | C4 | mermansi | Nested box geometry + canonical model | `fixtures/c4.en.mmd` | `fixtures/c4.zh.mmd` | ✅ |
 | Pie | mermansi | Structured text | `fixtures/pie.en.mmd` | `fixtures/pie.zh.mmd` | ✅ |
-| Requirement | mermansi | Structured text | `fixtures/requirement.en.mmd` | `fixtures/requirement.zh.mmd` | ✅ |
+| Requirement | mermansi | Directional box geometry + canonical model | `fixtures/requirement.en.mmd` | `fixtures/requirement.zh.mmd` | ✅ |
 | Sankey | mermansi | Structured text | `fixtures/sankey.en.mmd` | `fixtures/sankey.zh.mmd` | ✅ |
 | Radar | mermansi | Structured text | `fixtures/radar.en.mmd` | `fixtures/radar.zh.mmd` | ✅ |
 | Info | mermansi | Structured text | `fixtures/info.en.mmd` | `fixtures/info.zh.mmd` | ✅ |
@@ -104,7 +104,8 @@ parser.
 ## Output guarantee
 
 Json fixtures contain raw JSON objects and exercise the same public `render_source` and CLI paths
-as Mermaid fixtures; raw JSON arrays are supported by the same bounded decoder.
+as Mermaid fixtures; raw JSON arrays are supported by the same bounded decoder and box-tree
+adapter.
 
 Every family produces deterministic nonempty output. Geometry rows use terminal-native boxes,
 edges, and routing. Every adapter appends a canonical JSON semantic model to its readable preview,

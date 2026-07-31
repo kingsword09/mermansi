@@ -99,7 +99,7 @@ let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
 let output = render_source(mermaid_text, &options).unwrap();
 ```
 
-Raw JSON objects and arrays use the same entry point and render as canonical structured text.
+Raw JSON objects and arrays use the same entry point and render as connected box-tree geometry.
 The exact `flowchart-v2` parser-id header is normalized to the public `flowchart` grammar header,
 then parsed by `merman-core` through its known-type API.
 
@@ -122,20 +122,20 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 | Class | Partial geometry + canonical model | merman-ascii + mermansi |
 | Er | Partial geometry + canonical model | merman-ascii + mermansi |
 | Packet | Full geometry + canonical model | merman-ascii + mermansi |
-| TreeView | Full geometry + canonical model | merman-ascii + mermansi |
+| TreeView | Layered box-tree geometry + canonical model | mermansi adapter |
 | XyChart | Partial geometry + canonical model | merman-ascii + mermansi |
-| Mindmap | Summary + canonical model | merman-ascii + mermansi |
+| Mindmap | Layered box-tree geometry + canonical model | mermansi adapter |
 | Gantt | Summary + canonical model | merman-ascii + mermansi |
 | GitGraph | Summary + canonical model | merman-ascii + mermansi |
 | Journey | Summary + canonical model | merman-ascii + mermansi |
 | Kanban | Summary + canonical model | merman-ascii + mermansi |
 | Timeline | Summary + canonical model | merman-ascii + mermansi |
 | ZenUML | Partial sequence geometry + canonical model | merman-ascii + mermansi |
-| Json | Canonical structured text | mermansi adapter |
+| Json | Layered box-tree geometry + canonical model | mermansi adapter |
 | Architecture | Nested box geometry + canonical model | mermansi adapter |
 | C4 | Nested box geometry + canonical model | mermansi adapter |
 | Pie | Structured text | mermansi adapter |
-| Requirement | Structured text | mermansi adapter |
+| Requirement | Directional box geometry + canonical model | mermansi adapter |
 | Sankey | Structured text | mermansi adapter |
 | Radar | Structured text | mermansi adapter |
 | Info | Structured text | mermansi adapter |
