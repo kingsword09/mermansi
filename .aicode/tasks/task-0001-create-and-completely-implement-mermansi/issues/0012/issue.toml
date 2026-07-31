@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0001-create-and-completely-implement-mermansi#0012"
 number = 12
 title = "Published crate includes internal .aicode workflow artifacts"
-status = "open"
+status = "resolved"
 severity = "P2"
 category = "release-packaging"
 fingerprint = "sha256:138c8e7d857f0c367446352cbfdf435f717a221a4041a5fcdf9ddb592ce4bda5"
 created_at = "unix:1785463548"
-updated_at = "unix:1785463548"
+updated_at = "unix:1785463798"
+resolved_at = "unix:1785463798"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "The production crate is unnecessarily inflated and exposes internal de
 [acceptance]
 description = "Exclude .aicode/ from the Cargo package without excluding required source, documentation, fixtures, licenses, or manifests. Verify cargo package --locked --allow-dirty --list contains no .aicode path and cargo package --locked --allow-dirty still succeeds."
 command = "cargo package --locked --allow-dirty --list"
+
+[resolution]
+review = "../../reviews/iteration-0048.json"
+description = "Verified .aicode is excluded from the published crate, required product files and fixtures remain present, package verification succeeds, and all host checks pass."
