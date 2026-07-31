@@ -534,26 +534,303 @@ fn pie_mixed_language_rows_align_by_display_column() {
 }
 
 #[test]
-fn sankey_mixed_language_rows_align_by_display_column() {
+fn sankey_mixed_language_flows_are_connected_geometry() {
     let source = "sankey-beta\nEnglish,Test,10\n中文,目标,20";
     for options in [MermansiOptions::unicode(), MermansiOptions::ascii()] {
-        let output = render_source(source, &options).unwrap();
-        let english = output
-            .lines()
-            .find(|line| line.contains("English") && line.contains("10.00"))
-            .unwrap();
-        let chinese = output
-            .lines()
-            .find(|line| line.contains("中文") && line.contains("20.00"))
-            .unwrap();
-        assert_eq!(
-            display_column_of(english, "Test"),
-            display_column_of(chinese, "目标")
+        let output = render_source(source, &options.with_output_mode(OutputMode::Concise)).unwrap();
+        assert!(output.contains("English --> Test  10"), "{output}");
+        assert!(output.contains("中文 --> 目标  20"), "{output}");
+        assert!(!output.contains("Nodes:"), "{output}");
+        assert!(!output.contains("Flows:"), "{output}");
+        match options.charset {
+            mermansi::Charset::Unicode => {
+                assert_closed_unicode_boxes(&output, 4);
+                assert!(output.matches('▶').count() >= 2, "{output}");
+            }
+            mermansi::Charset::Ascii => {
+                assert!(output.matches('+').count() >= 8, "{output}");
+                assert!(output.matches('>').count() >= 2, "{output}");
+                assert!(!output.contains('┌'), "{output}");
+            }
+            _ => panic!("test options must use a supported built-in charset"),
+        }
+    }
+}
+
+#[test]
+fn treemap_fixture_is_nested_closed_geometry() {
+    let english = render_source(
+        include_str!("fixtures/treemap.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_eq!(english.matches('┌').count(), 8, "{english}");
+    assert_eq!(english.matches('┘').count(), 8, "{english}");
+    for label in [
+        "System",
+        "Frontend",
+        "UI Components",
+        "Router",
+        "Backend",
+        "API",
+        "Database",
+    ] {
+        assert!(english.contains(label), "missing {label}:\n{english}");
+    }
+    let frontend = english
+        .lines()
+        .find(|line| line.contains("Frontend"))
+        .unwrap();
+    let component = english
+        .lines()
+        .find(|line| line.contains("UI Components"))
+        .unwrap();
+    assert!(
+        display_column_of(component, "UI Components") > display_column_of(frontend, "Frontend"),
+        "child rectangle is not nested inside its parent:\n{english}"
+    );
+    assert!(!english.contains("semantic model"), "{english}");
+
+    let chinese = render_source(
+        include_str!("fixtures/treemap.zh.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    for label in ["系统", "前端", "界面组件", "路由", "后端", "接口", "数据库"] {
+        assert!(chinese.contains(label), "missing {label}:\n{chinese}");
+    }
+}
+
+#[test]
+fn treemap_numeric_values_control_sibling_area() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::treemap::{TreemapDiagramRenderModel, TreemapNodeRenderModel};
+
+    let leaf = |name: &str, value: i64| TreemapNodeRenderModel {
+        name: name.to_owned(),
+        children: None,
+        value: Some(serde_json::json!(value)),
+        class_selector: None,
+        css_compiled_styles: None,
+    };
+    let model = TreemapDiagramRenderModel {
+        acc_title: None,
+        acc_descr: None,
+        title: Some("Weighted".to_owned()),
+        root: TreemapNodeRenderModel {
+            name: String::new(),
+            children: Some(vec![leaf("Large", 3), leaf("Small", 1)]),
+            value: None,
+            class_selector: None,
+            css_compiled_styles: None,
+        },
+    };
+    let output = render_model(
+        &RenderSemanticModel::Treemap(model),
+        &MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(80)
+            .with_max_height(20),
+    )
+    .unwrap();
+    assert!(output.contains("Large = 3"), "{output}");
+    assert!(output.contains("Small = 1"), "{output}");
+    let sibling_border = output
+        .lines()
+        .find(|line| line.matches('┌').count() == 2 && line.matches('┐').count() == 2)
+        .unwrap();
+    let corners = sibling_border
+        .char_indices()
+        .filter(|(_, ch)| matches!(ch, '┌' | '┐'))
+        .map(|(byte, _)| mermansi::str_display_width(&sibling_border[..byte]))
+        .collect::<Vec<_>>();
+    assert_eq!(corners.len(), 4, "{output}");
+    let large_width = corners[1] - corners[0] + 1;
+    let small_width = corners[3] - corners[2] + 1;
+    assert!(
+        large_width > small_width,
+        "the 3:1 child did not receive the larger rectangle:\n{output}"
+    );
+}
+
+#[test]
+fn ishikawa_fixture_has_one_effect_and_connected_upper_and_lower_bones() {
+    let output = render_source(
+        include_str!("fixtures/ishikawa.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_eq!(
+        output.matches("Effect: Poor Quality").count(),
+        1,
+        "{output}"
+    );
+    assert_eq!(output.matches('┌').count(), 1, "{output}");
+    assert_eq!(output.matches('┘').count(), 1, "{output}");
+    assert!(output.contains('╲') && output.contains('╱'), "{output}");
+    assert_eq!(output.matches('◆').count(), 5, "{output}");
+    for label in [
+        "Process",
+        "Variability",
+        "Inefficiency",
+        "People",
+        "Lack of Training",
+        "Fatigue",
+        "Equipment",
+        "Outdated Tools",
+        "Poor Maintenance",
+        "Materials",
+        "Defective Parts",
+        "Environment",
+        "Temperature",
+    ] {
+        assert!(output.contains(label), "missing {label}:\n{output}");
+    }
+    assert!(!output.contains("Causes:"), "{output}");
+    assert!(
+        output.lines().count() <= 24,
+        "fishbone is too tall:\n{output}"
+    );
+
+    let chinese = render_source(
+        include_str!("fixtures/ishikawa.zh.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    for label in [
+        "质量问题",
+        "流程",
+        "变异性",
+        "人员",
+        "缺乏培训",
+        "设备",
+        "维护不足",
+    ] {
+        assert!(chinese.contains(label), "missing {label}:\n{chinese}");
+    }
+}
+
+#[test]
+fn eventmodeling_fixture_connects_ordered_frames_and_data_entity_boxes() {
+    let output = render_source(
+        include_str!("fixtures/eventmodeling.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_eq!(output.matches('┌').count(), 3, "{output}");
+    assert_eq!(output.matches('┘').count(), 3, "{output}");
+    assert!(output.matches('▶').count() >= 2, "{output}");
+    let create = label_position(&output, "CreateOrder");
+    let validate = label_position(&output, "ValidateOrder");
+    assert_eq!(
+        create.0, validate.0,
+        "frames are not on one ordered lane:\n{output}"
+    );
+    assert!(create.1 < validate.1, "frame order was reversed:\n{output}");
+    for label in ["[data] Order", "orderId", "customerId", "amount"] {
+        assert!(output.contains(label), "missing {label}:\n{output}");
+    }
+    assert!(!output.contains("Frames:"), "{output}");
+    assert!(!output.contains("Data Entities:"), "{output}");
+
+    let chinese = render_source(
+        include_str!("fixtures/eventmodeling.zh.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    for label in ["订单编号", "客户编号", "金额"] {
+        assert!(chinese.contains(label), "missing {label}:\n{chinese}");
+    }
+}
+
+#[test]
+fn eventmodeling_preserves_explicit_sources_and_data_references() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::eventmodeling::{
+        EventModelingDataEntityRenderModel, EventModelingDiagramRenderModel,
+        EventModelingFrameRenderModel,
+    };
+
+    let frame = |name: &str, sources: &[&str], data_reference: Option<&str>| {
+        EventModelingFrameRenderModel {
+            name: name.to_owned(),
+            frame_kind: "timeframe".to_owned(),
+            model_entity_type: "event".to_owned(),
+            entity_identifier: name.to_ascii_lowercase(),
+            source_frames: sources.iter().map(|source| (*source).to_owned()).collect(),
+            data_inline_value: None,
+            data_reference: data_reference.map(str::to_owned),
+        }
+    };
+    let model = EventModelingDiagramRenderModel {
+        title: Some("Explicit Relations".to_owned()),
+        frames: vec![
+            frame("Capture", &[], None),
+            frame("Persist", &["Capture"], Some("Payload")),
+            frame("Publish", &[], None),
+        ],
+        data_entities: vec![EventModelingDataEntityRenderModel {
+            name: "Payload".to_owned(),
+            data_block_value: "{\nidentifier\n}".to_owned(),
+        }],
+        ..Default::default()
+    };
+    let output = render_model(
+        &RenderSemanticModel::EventModeling(model),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    for label in [
+        "Capture",
+        "Persist",
+        "Publish",
+        "ref: Payload",
+        "[data] Payload",
+        "identifier",
+    ] {
+        assert!(output.contains(label), "missing {label}:\n{output}");
+    }
+    assert_eq!(output.matches('▶').count(), 3, "{output}");
+}
+
+#[test]
+fn info_is_a_compact_closed_card_for_both_boolean_states() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::info::InfoDiagramRenderModel;
+
+    for state in [false, true] {
+        let output = render_model(
+            &RenderSemanticModel::Info(InfoDiagramRenderModel { show_info: state }),
+            &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+        )
+        .unwrap();
+        assert_eq!(output.matches('┌').count(), 1, "{output}");
+        assert_eq!(output.matches('┘').count(), 1, "{output}");
+        assert!(output.contains(&format!("showInfo: {state}")), "{output}");
+        assert!(output.lines().count() <= 5, "{output}");
+    }
+}
+
+#[test]
+fn five_native_geometry_adapters_are_ascii_and_deterministic() {
+    let sources = [
+        include_str!("fixtures/sankey.en.mmd"),
+        include_str!("fixtures/treemap.en.mmd"),
+        include_str!("fixtures/ishikawa.en.mmd"),
+        include_str!("fixtures/eventmodeling.en.mmd"),
+        include_str!("fixtures/info.en.mmd"),
+    ];
+    let options = MermansiOptions::ascii().with_output_mode(OutputMode::Concise);
+    for source in sources {
+        let first = render_source(source, &options).unwrap();
+        let second = render_source(source, &options).unwrap();
+        assert_eq!(first, second);
+        assert!(
+            first.is_ascii(),
+            "ASCII mode leaked Unicode geometry:\n{first}"
         );
-        assert_eq!(
-            display_column_of(english, "10.00"),
-            display_column_of(chinese, "20.00")
-        );
+        assert!(first.contains('+'), "missing closed ASCII shape:\n{first}");
     }
 }
 

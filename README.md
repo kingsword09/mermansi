@@ -7,7 +7,7 @@ diagrams.
 CLIs, logs, markdown previews, and documentation. It uses [`merman-core`](https://crates.io/crates/merman-core)
 0.8.0-alpha.3 as the single strict Mermaid parser and semantic source, reuses
 [`merman-ascii`](https://crates.io/crates/merman-ascii) 0.8.0-alpha.3 for families where that
-crate satisfies the contract, and implements structured terminal adapters for every remaining
+crate satisfies the contract, and implements native terminal adapters for every remaining
 family.
 
 ## Features
@@ -27,6 +27,9 @@ family.
 - **Terminal chart geometry** — Pie, Radar, QuadrantChart, and Venn render genuine
   deterministic canvas geometry (closed circles, radial spokes, Cartesian plotting areas,
   overlapping set outlines) rather than structured-text-only output.
+- **Native flow and hierarchy geometry** — Sankey, Treemap, Ishikawa, Event Modeling, and Info
+  render connected flow routes, proportional nested rectangles, fishbones, frame/data graphs,
+  and compact information cards instead of tables or indentation outlines.
 - **No Mermaid parser bundled** — uses `merman-core` as the single source of truth.
 
 ## Install
@@ -139,14 +142,14 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 | C4 | Nested box geometry + canonical model | mermansi adapter |
 | Pie | Circular sector geometry + legend | mermansi adapter |
 | Requirement | Directional box geometry + canonical model | mermansi adapter |
-| Sankey | Structured text | mermansi adapter |
+| Sankey | Weighted connected flow geometry + canonical model | mermansi adapter |
 | Radar | Radial spoke/graticule geometry + legend | mermansi adapter |
-| Info | Structured text | mermansi adapter |
-| Treemap | Structured text | mermansi adapter |
+| Info | Closed information-card geometry + canonical model | mermansi adapter |
+| Treemap | Proportional nested-rectangle geometry + canonical model | mermansi adapter |
 | Block | Nested box geometry + canonical model | mermansi adapter |
 | QuadrantChart | Cartesian quadrant geometry + legend | mermansi adapter |
-| Ishikawa | Structured text | mermansi adapter |
-| EventModeling | Structured text | mermansi adapter |
+| Ishikawa | Connected fishbone geometry + canonical model | mermansi adapter |
+| EventModeling | Connected frame/data-box geometry + canonical model | mermansi adapter |
 | Venn | Overlapping set-circle geometry + legend | mermansi adapter |
 
 See `docs/SUPPORT_MATRIX.md` for the full machine-checkable support matrix.

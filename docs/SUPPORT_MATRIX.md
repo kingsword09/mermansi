@@ -91,14 +91,14 @@ parser.
 | C4 | mermansi | Nested box geometry + canonical model | `fixtures/c4.en.mmd` | `fixtures/c4.zh.mmd` | ✅ |
 | Pie | mermansi | Circular sector geometry + legend | `fixtures/pie.en.mmd` | `fixtures/pie.zh.mmd` | ✅ |
 | Requirement | mermansi | Directional box geometry + canonical model | `fixtures/requirement.en.mmd` | `fixtures/requirement.zh.mmd` | ✅ |
-| Sankey | mermansi | Structured text | `fixtures/sankey.en.mmd` | `fixtures/sankey.zh.mmd` | ✅ |
+| Sankey | mermansi | Weighted connected flow geometry + canonical model | `fixtures/sankey.en.mmd` | `fixtures/sankey.zh.mmd` | ✅ |
 | Radar | mermansi | Radial spoke/graticule geometry + legend | `fixtures/radar.en.mmd` | `fixtures/radar.zh.mmd` | ✅ |
-| Info | mermansi | Structured text | `fixtures/info.en.mmd` | `fixtures/info.zh.mmd` | ✅ |
-| Treemap | mermansi | Structured text | `fixtures/treemap.en.mmd` | `fixtures/treemap.zh.mmd` | ✅ |
+| Info | mermansi | Closed information-card geometry + canonical model | `fixtures/info.en.mmd` | `fixtures/info.zh.mmd` | ✅ |
+| Treemap | mermansi | Proportional nested-rectangle geometry + canonical model | `fixtures/treemap.en.mmd` | `fixtures/treemap.zh.mmd` | ✅ |
 | Block | mermansi | Nested box geometry + canonical model | `fixtures/block.en.mmd` | `fixtures/block.zh.mmd` | ✅ |
 | QuadrantChart | mermansi | Cartesian quadrant geometry + legend | `fixtures/quadrant.en.mmd` | `fixtures/quadrant.zh.mmd` | ✅ |
-| Ishikawa | mermansi | Structured text | `fixtures/ishikawa.en.mmd` | `fixtures/ishikawa.zh.mmd` | ✅ |
-| EventModeling | mermansi | Structured text | `fixtures/eventmodeling.en.mmd` | `fixtures/eventmodeling.zh.mmd` | ✅ |
+| Ishikawa | mermansi | Connected fishbone geometry + canonical model | `fixtures/ishikawa.en.mmd` | `fixtures/ishikawa.zh.mmd` | ✅ |
+| EventModeling | mermansi | Connected frame/data-box geometry + canonical model | `fixtures/eventmodeling.en.mmd` | `fixtures/eventmodeling.zh.mmd` | ✅ |
 | Venn | mermansi | Overlapping set-circle geometry + legend | `fixtures/venn.en.mmd` | `fixtures/venn.zh.mmd` | ✅ |
 
 ## Output guarantee
@@ -117,4 +117,7 @@ labels, and arrow markers use semantic ANSI roles on every grapheme owner; strip
 is byte-identical to plain geometry. Pie, Radar, QuadrantChart, and Venn now render genuine
 terminal chart geometry — closed circles, radial spokes, Cartesian plotting areas, and
 overlapping set outlines — using shared bounded chart primitives (`chart_primitives`).
-Preview tables align columns by terminal display width rather than Unicode scalar count.
+Sankey, Treemap, Ishikawa, EventModeling, and Info use bounded terminal-native flow, nested-area,
+fishbone, frame/data, and card geometry. EventModeling preserves explicit source-frame references;
+when the semantic model contains ordered frames without an explicit source edge, adjacent frames
+remain connected in their parsed order.

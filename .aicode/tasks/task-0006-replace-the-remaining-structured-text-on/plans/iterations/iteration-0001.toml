@@ -1,0 +1,46 @@
+schema_version = 1
+task = "task-0006-replace-the-remaining-structured-text-on"
+iteration = 1
+loop_iteration = 1
+created_at = "unix:1785502986"
+objective = "Replace the remaining structured-text-only local adapters for Sankey, Treemap, Ishikawa, EventModeling, and Info with genuine deterministic terminal geometry as the next work unit toward all 29 Mermaid families. Base the work on actual Concise-mode inspection: Sankey currently prints Nodes/Flows tables; Treemap is only indentation; Ishikawa is only a Causes outline and duplicates Effect; EventModeling is only Frames/Data Entities text and loses the visible CreateOrder-to-ValidateOrder relationship; Info only prints info:. Sankey must render every node as a visible bounded shape/bar and every directed weighted link as a connected source-to-target route whose weight is visibly represented without dropping values or isolated nodes. Treemap must render closed nested rectangles that preserve hierarchy and use numeric values proportionally where present. Ishikawa must render a recognizable fishbone with a connected horizontal spine into an effect shape, angled main-cause bones, and connected nested causes while preserving every label exactly once. EventModeling must render ordered closed frame shapes, all source-frame relationships, frame kind/entity/inline/reference data, and connected data-entity shapes. Info has minimal semantics but must render a compact closed information card showing the parsed showInfo state instead of a bare label. Preserve Complete-mode canonical models and ensure Concise mode contains geometry rather than table/list/indentation fallbacks; support Unicode and ASCII, English and Chinese display widths, ANSI-independent geometry, deterministic output, control sanitization, and typed width/height/cell/byte/depth/entity limits before allocation. Add tests strong enough to prove closure, connection, hierarchy, direction, weight/proportion, semantic preservation, bilingual rendering, narrow dimensions, ASCII, determinism, and bounds; do not accept tests that merely check nonempty output or one glyph. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Do not modify or fork merman-core, merman-ascii, Selkie, or any parser. Apply KISS, YAGNI, DRY, and SOLID; reuse existing Canvas/box/chart primitives only when behavior is genuinely shared."
+open_issue_ids = ["task-0006-replace-the-remaining-structured-text-on#0001"]
+
+[plan]
+objective = "Replace the remaining structured-text-only local adapters for Sankey, Treemap, Ishikawa, EventModeling, and Info with genuine deterministic terminal geometry as the next work unit toward all 29 Mermaid families. Base the work on actual Concise-mode inspection: Sankey currently prints Nodes/Flows tables; Treemap is only indentation; Ishikawa is only a Causes outline and duplicates Effect; EventModeling is only Frames/Data Entities text and loses the visible CreateOrder-to-ValidateOrder relationship; Info only prints info:. Sankey must render every node as a visible bounded shape/bar and every directed weighted link as a connected source-to-target route whose weight is visibly represented without dropping values or isolated nodes. Treemap must render closed nested rectangles that preserve hierarchy and use numeric values proportionally where present. Ishikawa must render a recognizable fishbone with a connected horizontal spine into an effect shape, angled main-cause bones, and connected nested causes while preserving every label exactly once. EventModeling must render ordered closed frame shapes, all source-frame relationships, frame kind/entity/inline/reference data, and connected data-entity shapes. Info has minimal semantics but must render a compact closed information card showing the parsed showInfo state instead of a bare label. Preserve Complete-mode canonical models and ensure Concise mode contains geometry rather than table/list/indentation fallbacks; support Unicode and ASCII, English and Chinese display widths, ANSI-independent geometry, deterministic output, control sanitization, and typed width/height/cell/byte/depth/entity limits before allocation. Add tests strong enough to prove closure, connection, hierarchy, direction, weight/proportion, semantic preservation, bilingual rendering, narrow dimensions, ASCII, determinism, and bounds; do not accept tests that merely check nonempty output or one glyph. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Do not modify or fork merman-core, merman-ascii, Selkie, or any parser. Apply KISS, YAGNI, DRY, and SOLID; reuse existing Canvas/box/chart primitives only when behavior is genuinely shared."
+
+[[plan.steps]]
+id = "step-1"
+description = "Implement the Info adapter: render a compact closed bordered information card (using Canvas draw_box) showing the parsed showInfo state (e.g. 'Mermaid Info' header + 'showInfo: enabled/disabled' line inside the box) instead of the bare 'info:' label. Keep it minimal but geometric — a closed rectangle. Support Unicode box-drawing and ASCII characters."
+
+[[plan.steps]]
+id = "step-2"
+description = "Implement the Sankey adapter: compute node layers via topological ordering (source nodes on left column, targets on right, with columns by rank). Render each node as a closed bounded bar/box proportional to total flow using Canvas draw_box. Render every directed weighted link as a connected source-to-target route using Bresenham lines (chart_primitives::draw_line), with the numeric weight value rendered as a label on the route or as bar-width proportion. Include isolated nodes as visible boxes. Preserve all node IDs, link endpoints, and values."
+
+[[plan.steps]]
+id = "step-3"
+description = "Implement the Treemap adapter: use a squarified-treemap algorithm to lay out the root node and its children into closed nested rectangles proportional to numeric values (use uniform distribution when values are absent). Each rectangle is a closed box drawn via Canvas draw_box, nested inside its parent with padding. Render each node name inside its rectangle. Preserve full hierarchy depth and all values. Support very deep trees with a depth/entity limit before allocation."
+
+[[plan.steps]]
+id = "step-4"
+description = "Implement the Ishikawa adapter: render a recognizable fishbone — a horizontal spine line ending at the effect (rendered as a closed box on the right). Main-cause bones branch off the spine at angles (use diagonal Bresenham lines from the spine to cause labels). Nested sub-causes extend as connected lines from their parent cause. Preserve every label (effect + all causes/subcauses) exactly once. No duplication of the effect."
+
+[[plan.steps]]
+id = "step-5"
+description = "Implement the EventModeling adapter: render ordered frames as closed box shapes left-to-right (ordered by their appearance, with source-frame relationships as connected arrows between boxes). Each frame box shows its name, frame kind (tf/rf), entity type, and entity identifier. Render inline values and data references inside or adjacent to frames. Render connected data-entity boxes (closed shapes) and link them to referencing frames. Preserve the CreateOrder -> ValidateOrder relationship as a visible arrow."
+
+[[plan.steps]]
+id = "step-6"
+description = "Wire all five adapters through render_structured_adapter so Complete mode still appends the canonical semantic model and Concise mode returns only the geometric preview. Ensure each adapter uses sanitize_label_text for all user-supplied text, respects Charset for glyph selection, and enforces typed entity/depth/width/height/cell limits before Canvas allocation (reuse chart_primitives::checked_chart_dimensions and ensure_entity_limit)."
+
+[[plan.steps]]
+id = "step-7"
+description = "Add comprehensive tests to tests/semantic_integrity.rs and tests/bounds.rs: for each of the 5 families, test (a) label preservation (English + Chinese), (b) box closure (count of corners/borders), (c) connection (arrows or lines between source and target), (d) hierarchy preservation (parent/child nesting), (e) weight/proportion representation (Sankey values, Treemap areas), (f) direction/order (EventModeling frame order), (g) ASCII charset rendering, (h) determinism (same input → byte-identical output), (i) narrow dimensions / bounds error, (j) semantic model still present in Complete mode. Tests must check structural properties, not just nonemptiness."
+
+[[plan.steps]]
+id = "step-8"
+description = "Update docs: AGENTS.md adapter-dispatch table to reflect the 5 families moving from 'structured text' to genuine geometry; docs/SUPPORT_MATRIX.md to update Support level for Sankey, Treemap, Ishikawa, EventModeling, and Info from 'Structured text' to their respective geometry descriptions; README.md to update any family status mentions."
+
+[[plan.steps]]
+id = "step-9"
+description = "Run the full acceptance command (cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features) and fix any failures. Ensure zero warnings and all tests pass."

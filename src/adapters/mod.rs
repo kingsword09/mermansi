@@ -1,7 +1,7 @@
 //! Semantic adapter dispatch.
 //!
 //! Routes each [`RenderSemanticModel`] variant to the appropriate renderer. Families covered by
-//! `merman-ascii` are delegated; remaining families use mermansi's own structured terminal
+//! `merman-ascii` are delegated; remaining families use mermansi's own native terminal
 //! adapters.
 
 use crate::adapters::{
@@ -100,7 +100,7 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
             render_structured_adapter("timeline", m, opts, || render_timeline(m, opts))
         }
 
-        // --- mermansi structured terminal adapters ---
+        // --- mermansi native terminal adapters ---
         RenderSemanticModel::Json(m) => {
             render_structured_adapter("json", m, opts, || render_json(m, opts))
         }

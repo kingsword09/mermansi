@@ -353,6 +353,158 @@ fn native_kanban_timeline_and_journey_node_counts_are_bounded() {
 }
 
 #[test]
+fn sankey_treemap_ishikawa_eventmodeling_and_info_are_preflight_bounded() {
+    use merman_core::diagrams::eventmodeling::{
+        EventModelingDataEntityRenderModel, EventModelingDiagramRenderModel,
+    };
+    use merman_core::diagrams::info::InfoDiagramRenderModel;
+    use merman_core::diagrams::ishikawa::{IshikawaDiagramRenderModel, IshikawaNodeRenderModel};
+    use merman_core::diagrams::sankey::{
+        SankeyDiagramRenderModel, SankeyRenderGraph, SankeyRenderNode,
+    };
+    use merman_core::diagrams::treemap::{TreemapDiagramRenderModel, TreemapNodeRenderModel};
+
+    let sankey = SankeyDiagramRenderModel {
+        graph: SankeyRenderGraph {
+            nodes: (0..4_097)
+                .map(|index| SankeyRenderNode {
+                    id: format!("node-{index}"),
+                })
+                .collect(),
+            links: Vec::new(),
+        },
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Sankey(sankey),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "sankey nodes",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+
+    let mut treemap_node = TreemapNodeRenderModel {
+        name: "leaf".to_owned(),
+        children: None,
+        value: None,
+        class_selector: None,
+        css_compiled_styles: None,
+    };
+    for depth in 0..65 {
+        treemap_node = TreemapNodeRenderModel {
+            name: format!("depth-{depth}"),
+            children: Some(vec![treemap_node]),
+            value: None,
+            class_selector: None,
+            css_compiled_styles: None,
+        };
+    }
+    let treemap = TreemapDiagramRenderModel {
+        acc_title: None,
+        acc_descr: None,
+        title: None,
+        root: treemap_node,
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Treemap(treemap),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "treemap depth",
+            requested: 65,
+            limit: 64,
+        })
+    ));
+
+    let mut cause = IshikawaNodeRenderModel {
+        text: "leaf".to_owned(),
+        children: Vec::new(),
+    };
+    for depth in 0..65 {
+        cause = IshikawaNodeRenderModel {
+            text: format!("depth-{depth}"),
+            children: vec![cause],
+        };
+    }
+    let ishikawa = IshikawaDiagramRenderModel {
+        acc_title: None,
+        acc_descr: None,
+        title: None,
+        root: Some(cause),
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Ishikawa(ishikawa),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "ishikawa depth",
+            requested: 65,
+            limit: 64,
+        })
+    ));
+
+    let eventmodeling = EventModelingDiagramRenderModel {
+        data_entities: (0..4_097)
+            .map(|index| EventModelingDataEntityRenderModel {
+                name: format!("data-{index}"),
+                data_block_value: "{}".to_owned(),
+            })
+            .collect(),
+        ..EventModelingDiagramRenderModel::default()
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::EventModeling(eventmodeling),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "eventmodeling nodes",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+
+    let info = RenderSemanticModel::Info(InfoDiagramRenderModel { show_info: true });
+    assert!(matches!(
+        render_model(&info, &MermansiOptions::unicode().with_max_width(10)),
+        Err(MermansiError::RenderLimit {
+            context: "info columns",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn five_native_geometry_adapters_reject_impossible_narrow_layouts() {
+    let sources = [
+        include_str!("fixtures/sankey.en.mmd"),
+        include_str!("fixtures/treemap.en.mmd"),
+        include_str!("fixtures/ishikawa.en.mmd"),
+        include_str!("fixtures/eventmodeling.en.mmd"),
+        include_str!("fixtures/info.en.mmd"),
+    ];
+    let options = MermansiOptions::unicode()
+        .with_output_mode(OutputMode::Concise)
+        .with_max_width(10)
+        .with_max_height(10);
+    for source in sources {
+        let result = render_source(source, &options);
+        assert!(
+            matches!(
+                result,
+                Err(MermansiError::RenderLimit { .. }) | Err(MermansiError::GeometryLayout { .. })
+            ),
+            "narrow layout unexpectedly rendered: {result:?}"
+        );
+    }
+}
+
+#[test]
 fn delegated_model_is_bounded_before_ascii_rendering() {
     let engine = merman_core::Engine::new();
     let parsed = engine
