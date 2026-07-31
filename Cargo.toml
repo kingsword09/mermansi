@@ -18,11 +18,11 @@ name = "mermansi"
 path = "src/bin/mermansi.rs"
 
 [dependencies]
-merman-core = { version = "0.8.0-alpha.3", default-features = false, features = [
+merman-core = { version = "=0.8.0-alpha.3", default-features = false, features = [
     "full",
     "host",
 ] }
-merman-ascii = { version = "0.8.0-alpha.3", default-features = false, features = [
+merman-ascii = { version = "=0.8.0-alpha.3", default-features = false, features = [
     "core-full",
     "core-host",
 ] }
