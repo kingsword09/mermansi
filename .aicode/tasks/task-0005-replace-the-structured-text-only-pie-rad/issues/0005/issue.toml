@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0005-replace-the-structured-text-only-pie-rad#0005"
 number = 5
 title = "Pie output is oversized and silently discards requested data semantics"
-status = "open"
+status = "resolved"
 severity = "P2"
 category = "semantic-preservation"
 fingerprint = "sha256:bebb667dfa1f4f7ec304c0041bc48902dfaf5025b1eb0f2faea3cd05485a7af9"
 created_at = "unix:1785497935"
-updated_at = "unix:1785497935"
+updated_at = "unix:1785499833"
+resolved_at = "unix:1785499833"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "The chart dominates normal terminal output and does not preserve every
 [acceptance]
 description = "Choose a compact radius from section count, label widths, and requested bounds; preserve invalid rows explicitly without using them as sector weights; honor show_data consistently; keep a closed proportional chart; and add snapshot-like structural assertions for compact row count, legend completeness, showData true/false, invalid values, ASCII, Unicode, and CJK."
 command = "cargo test --test semantic_integrity pie_is_compact_and_honors_show_data_and_invalid_rows -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0009.json"
+description = "Acceptance met by compact data-aware geometry, showData-aware legends, explicit invalid rows, overflow-safe shares, visual inspection, exact structural tests, and clean full verification."

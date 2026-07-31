@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "task": "task-0005-replace-the-structured-text-only-pie-rad",
+  "iteration": 9,
+  "loop_iteration": 1,
+  "created_at": "unix:1785499833",
+  "objective": "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared.",
+  "plan": {
+    "objective": "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Split Pie sections into plottable finite nonnegative values and explicitly preserved excluded rows; normalize proportional weights without overflow and keep zero-total labels visible."
+      },
+      {
+        "id": "step-2",
+        "description": "Choose a compact data-aware canvas, crop unused margins, and replace full ◆ spoke fills with light radial leaders plus boundary endpoint markers while retaining a closed outline and proportional sectors."
+      },
+      {
+        "id": "step-3",
+        "description": "Render Label/Share by default, add the Value column only for showData, and always explain excluded invalid values without silently losing labels."
+      },
+      {
+        "id": "step-4",
+        "description": "Add the exact compact/showData/invalid structural test, update older value-column tests to request showData, cover ASCII/Unicode/CJK/zero-total, visually inspect fixtures, and run full verification."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Rebuilt Pie preview sizing from section count, sanitized label width, and caller bounds; cropped the chart; replaced heavy diamond spokes with light leaders and boundary endpoints; used overflow-safe scaled normalization; honored showData; kept zero-total labels; and surfaced NaN/infinite/negative sections as explicit excluded rows. Extracted the crop helper already shared with Venn.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "The exact compact/showData/invalid/ASCII/CJK test passed. cargo fmt --check, clippy with -D warnings, and all-target/all-feature tests passed; 207 tests passed with zero failures. Manual English and Chinese fixture inspection measured about 19 preview rows instead of about 50 and confirmed aligned legends and light readable boundaries.",
+    "commands": []
+  },
+  "verdict": "pass",
+  "summary": "Current Codex diff and rendered-output review found no actionable defects for Issue #0005. Every section label remains visible, only finite nonnegative values influence proportional geometry, normalization cannot overflow, showData changes only the raw-value column, excluded values are explained verbatim, zero totals preserve rows, and compact Unicode/ASCII/CJK output remains closed, deterministic, sanitized, and bounded. The shared crop helper removes duplicate logic (DRY) without expanding public behavior beyond the active need.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 5,
+      "description": "Acceptance met by compact data-aware geometry, showData-aware legends, explicit invalid rows, overflow-safe shares, visual inspection, exact structural tests, and clean full verification."
+    }
+  ]
+}

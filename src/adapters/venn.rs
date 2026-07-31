@@ -129,7 +129,7 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
         opts.charset,
     )?);
 
-    out.push_str(&render_cropped_canvas(&canvas));
+    out.push_str(&chart_primitives::render_cropped_canvas(&canvas));
     if !out.ends_with('\n') {
         out.push('\n');
     }
@@ -615,31 +615,6 @@ fn cell_is_clear(canvas: &Canvas, x: usize, y: usize) -> bool {
     canvas.get_cell(x, y).is_some_and(str::is_empty) && canvas.continuation_owner(x, y).is_none()
 }
 
-fn render_cropped_canvas(canvas: &Canvas) -> String {
-    let rendered = canvas.render();
-    let lines = rendered.lines().collect::<Vec<_>>();
-    let Some(first) = lines.iter().position(|line| !line.trim().is_empty()) else {
-        return String::new();
-    };
-    let last = lines
-        .iter()
-        .rposition(|line| !line.trim().is_empty())
-        .unwrap_or(first);
-    let common_indent = lines[first..=last]
-        .iter()
-        .filter(|line| !line.trim().is_empty())
-        .map(|line| line.bytes().take_while(|byte| *byte == b' ').count())
-        .min()
-        .unwrap_or(0);
-
-    let mut cropped = String::new();
-    for line in &lines[first..=last] {
-        cropped.push_str(line.get(common_indent..).unwrap_or(line));
-        cropped.push('\n');
-    }
-    cropped
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -671,6 +646,6 @@ mod tests {
         let mut canvas = Canvas::new(20, 8).expect("canvas");
         canvas.set_text(5, 3, "A").expect("label");
         canvas.set_text(7, 4, "B").expect("label");
-        assert_eq!(render_cropped_canvas(&canvas), "A\n  B\n");
+        assert_eq!(chart_primitives::render_cropped_canvas(&canvas), "A\n  B\n");
     }
 }

@@ -514,7 +514,7 @@ fn display_column_of(line: &str, needle: &str) -> usize {
 
 #[test]
 fn pie_mixed_language_rows_align_by_display_column() {
-    let source = "pie\n  \"English\" : 10\n  \"中文\" : 20";
+    let source = "pie showData\n  \"English\" : 10\n  \"中文\" : 20";
     for options in [MermansiOptions::unicode(), MermansiOptions::ascii()] {
         let output = render_source(source, &options).unwrap();
         let english = output
@@ -1393,8 +1393,9 @@ fn pie_value_column_aligns_with_sanitized_and_clean_labels() {
     // The "Value" column (numbers like "50.00") must appear at the same display column
     // regardless of whether the label was originally clean or contained control
     // sequences — proving sanitization happens before width calculation.
-    let dirty_source = "pie title T\n  \"\u{1b}[31mDog\u{1b}[0m\" : 50\n  \"Cat\" : 25".to_string();
-    let clean_source = "pie title T\n  \"Dog\" : 50\n  \"Cat\" : 25".to_string();
+    let dirty_source =
+        "pie showData title T\n  \"\u{1b}[31mDog\u{1b}[0m\" : 50\n  \"Cat\" : 25".to_string();
+    let clean_source = "pie showData title T\n  \"Dog\" : 50\n  \"Cat\" : 25".to_string();
     let dirty = render_source(&dirty_source, &MermansiOptions::unicode()).unwrap();
     let clean = render_source(&clean_source, &MermansiOptions::unicode()).unwrap();
 
@@ -1613,7 +1614,7 @@ fn pie_has_proportional_sector_fill() {
 
 #[test]
 fn pie_preserves_all_labels_values_and_percentages() {
-    let source = "pie title Test\n  \"Alpha\" : 60\n  \"Beta\" : 40";
+    let source = "pie showData title Test\n  \"Alpha\" : 60\n  \"Beta\" : 40";
     let output = render_source(source, &MermansiOptions::unicode()).unwrap();
     let preview = family_preview(&output, "pie");
     assert!(preview.contains("Alpha"), "Alpha label missing:\n{preview}");
@@ -1628,6 +1629,148 @@ fn pie_preserves_all_labels_values_and_percentages() {
         preview.contains("40.0%"),
         "Beta percentage missing:\n{preview}"
     );
+}
+
+#[test]
+fn pie_is_compact_and_honors_show_data_and_invalid_rows() {
+    use merman_core::diagrams::pie::{PieDiagramRenderModel, PieRenderSection};
+
+    let sections = vec![
+        PieRenderSection {
+            label: "Dogs".to_owned(),
+            value: 386.0,
+        },
+        PieRenderSection {
+            label: "Cats".to_owned(),
+            value: 85.0,
+        },
+        PieRenderSection {
+            label: "Fish".to_owned(),
+            value: 12.0,
+        },
+        PieRenderSection {
+            label: "Birds".to_owned(),
+            value: 7.0,
+        },
+    ];
+    let options = MermansiOptions::unicode()
+        .with_output_mode(OutputMode::Concise)
+        .with_max_width(80)
+        .with_max_height(40);
+    let concise = render_model(
+        &RenderSemanticModel::Pie(PieDiagramRenderModel {
+            show_data: false,
+            title: Some("Pet Ownership".to_owned()),
+            acc_title: None,
+            acc_descr: None,
+            sections: sections.clone(),
+        }),
+        &options,
+    )
+    .expect("compact pie without showData");
+    assert!(
+        concise.lines().count() <= 22,
+        "Pie is not compact:\n{concise}"
+    );
+    assert!(
+        concise.contains("Share"),
+        "share column missing:\n{concise}"
+    );
+    assert!(
+        !concise.contains("Value") && !concise.contains("386.00"),
+        "showData=false must omit raw values:\n{concise}"
+    );
+    for label in ["Dogs", "Cats", "Fish", "Birds"] {
+        assert!(concise.contains(label), "missing {label}:\n{concise}");
+    }
+    assert!(concise.contains('○') && concise.contains('◆') && concise.contains('✛'));
+
+    let with_data = render_model(
+        &RenderSemanticModel::Pie(PieDiagramRenderModel {
+            show_data: true,
+            title: Some("Pet Ownership".to_owned()),
+            acc_title: None,
+            acc_descr: None,
+            sections,
+        }),
+        &options,
+    )
+    .expect("compact pie with showData");
+    assert!(with_data.contains("Value") && with_data.contains("386.00"));
+    assert!(
+        with_data.lines().count() <= 22,
+        "Pie is not compact:\n{with_data}"
+    );
+
+    let invalid = RenderSemanticModel::Pie(PieDiagramRenderModel {
+        show_data: true,
+        title: Some("Invalid values".to_owned()),
+        acc_title: None,
+        acc_descr: None,
+        sections: vec![
+            PieRenderSection {
+                label: "NotANumber".to_owned(),
+                value: f64::NAN,
+            },
+            PieRenderSection {
+                label: "Infinite".to_owned(),
+                value: f64::INFINITY,
+            },
+            PieRenderSection {
+                label: "Negative".to_owned(),
+                value: -5.0,
+            },
+            PieRenderSection {
+                label: "Valid".to_owned(),
+                value: 10.0,
+            },
+        ],
+    });
+    let invalid_output = render_model(&invalid, &options).expect("invalid rows are preserved");
+    assert!(invalid_output.contains("Excluded (not plotted):"));
+    for expected in [
+        "NotANumber = NaN",
+        "Infinite = inf",
+        "Negative = -5.00",
+        "Valid",
+    ] {
+        assert!(
+            invalid_output.contains(expected),
+            "missing excluded or valid row {expected:?}:\n{invalid_output}"
+        );
+    }
+
+    let ascii = render_model(
+        &invalid,
+        &MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(80)
+            .with_max_height(40),
+    )
+    .expect("ASCII invalid-row pie");
+    assert!(ascii.is_ascii(), "ASCII Pie emitted Unicode:\n{ascii}");
+
+    let cjk = render_model(
+        &RenderSemanticModel::Pie(PieDiagramRenderModel {
+            show_data: false,
+            title: Some("宠物拥有量".to_owned()),
+            acc_title: None,
+            acc_descr: None,
+            sections: vec![
+                PieRenderSection {
+                    label: "狗".to_owned(),
+                    value: 3.0,
+                },
+                PieRenderSection {
+                    label: "猫".to_owned(),
+                    value: 2.0,
+                },
+            ],
+        }),
+        &options,
+    )
+    .expect("CJK Pie");
+    assert!(cjk.contains("宠物拥有量") && cjk.contains("狗") && cjk.contains("猫"));
 }
 
 #[test]

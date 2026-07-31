@@ -1,12 +1,11 @@
-//! Pie chart adapter — genuine circular/radial terminal geometry.
+//! Pie chart adapter — compact circular/radial terminal geometry.
 //!
-//! Draws a closed circle outline with proportional sector fill derived from every finite
-//! nonnegative section value, plus radial sector boundary spokes. A compact legend preserves
-//! every label, value, percentage, title, and showData semantics.
+//! Finite nonnegative values determine proportional sectors. Invalid values never affect sector
+//! weights, but remain visible as explicitly excluded rows instead of disappearing.
 
 use crate::adapters::chart_primitives::{
-    self, MAX_CHART_ENTITIES, checked_chart_dimensions, draw_circle_outline, draw_radial_line,
-    ensure_entity_limit, fill_pie_sector,
+    self, checked_chart_dimensions, draw_circle_outline, draw_radial_line, ensure_entity_limit,
+    fill_pie_sector,
 };
 use crate::adapters::{align_left_display, align_right_display, format_title};
 use crate::ansi::sanitize_label_text;
@@ -14,154 +13,263 @@ use crate::canvas::Canvas;
 use crate::error::Result;
 use crate::options::{Charset, MermansiOptions};
 use crate::str_display_width;
-use merman_core::diagrams::pie::PieDiagramRenderModel;
+use merman_core::diagrams::pie::{PieDiagramRenderModel, PieRenderSection};
+
+#[derive(Debug)]
+struct LegendRow {
+    marker: &'static str,
+    label: String,
+    value: String,
+    share: String,
+}
 
 pub fn render_pie(model: &PieDiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
     let mut out = String::new();
     out.push_str(&format_title(&model.title));
-
     ensure_entity_limit("pie sections", model.sections.len())?;
 
-    let valid_sections: Vec<_> = model
+    if model.sections.is_empty() {
+        out.push_str("(empty pie chart)\n");
+        return Ok(out);
+    }
+
+    let plottable = model
         .sections
         .iter()
-        .filter(|s| s.value.is_finite() && s.value >= 0.0)
-        .collect();
-
-    if valid_sections.is_empty() {
-        out.push_str("(empty pie chart)\n");
-        let _ = opts;
-        return Ok(out);
-    }
-
-    let total: f64 = valid_sections.iter().map(|s| s.value).sum();
-    if total <= 0.0 {
-        out.push_str("(pie chart has zero total)\n");
-        let _ = opts;
-        return Ok(out);
-    }
-
-    // Compute chart dimensions within bounds.
-    let (chart_w, chart_h) = checked_chart_dimensions(opts, (20, 10), (80, 40))?;
-
-    let radius = (chart_h / 2).saturating_sub(1).max(3) as i64;
-    let cx = (chart_w / 2) as i64;
-    let cy = (chart_h / 2) as i64;
-
-    let canvas_w = chart_w;
-    let canvas_h = chart_h;
-    let mut canvas = Canvas::new(canvas_w, canvas_h)?;
-
-    // Fill each sector proportionally.
-    let mut cumulative_angle = -std::f64::consts::FRAC_PI_2; // start at top (12 o'clock)
-    for (i, section) in valid_sections.iter().enumerate() {
-        let fraction = section.value / total;
-        let sweep = fraction * std::f64::consts::TAU;
-        let start = cumulative_angle;
-        let end = cumulative_angle + sweep;
-
-        let fill = chart_primitives::fill_char(i, opts.charset);
-        fill_pie_sector(&mut canvas, cx, cy, radius, start, end, fill)?;
-
-        cumulative_angle = end;
-    }
-
-    // Draw radial boundary spokes between sectors.
-    let spoke_char = match opts.charset {
-        Charset::Unicode => "│",
-        Charset::Ascii => "|",
+        .filter(|section| section.value.is_finite() && section.value >= 0.0)
+        .collect::<Vec<_>>();
+    let excluded = model
+        .sections
+        .iter()
+        .filter(|section| !section.value.is_finite() || section.value < 0.0)
+        .collect::<Vec<_>>();
+    let maximum_value = plottable
+        .iter()
+        .map(|section| section.value)
+        .fold(0.0_f64, f64::max);
+    let scaled_total = if maximum_value > 0.0 {
+        plottable
+            .iter()
+            .map(|section| section.value / maximum_value)
+            .sum::<f64>()
+    } else {
+        0.0
     };
-    let _ = spoke_char; // boundaries drawn via outline overlay
-    cumulative_angle = -std::f64::consts::FRAC_PI_2;
-    for section in &valid_sections {
-        let fraction = section.value / total;
-        let sweep = fraction * std::f64::consts::TAU;
-        // Draw boundary at the start of each sector
-        let boundary_angle = cumulative_angle;
-        let boundary_char = match opts.charset {
-            Charset::Unicode => "◆",
-            Charset::Ascii => "+",
-        };
-        draw_radial_line(&mut canvas, cx, cy, radius, boundary_angle, boundary_char)?;
-        cumulative_angle += sweep;
+
+    if scaled_total > 0.0 {
+        render_chart(&mut out, &plottable, maximum_value, scaled_total, opts)?;
+    } else if plottable.is_empty() {
+        out.push_str("(pie chart has no plottable values)\n\n");
+    } else {
+        out.push_str("(pie chart has zero total; no sectors plotted)\n\n");
     }
 
-    // Draw closed circle outline on top.
+    let rows = plottable
+        .iter()
+        .enumerate()
+        .map(|(index, section)| {
+            let share = section_share(section, maximum_value, scaled_total);
+            LegendRow {
+                marker: chart_primitives::fill_char(index, opts.charset),
+                label: sanitize_label_text(&section.label),
+                value: format_value(section.value),
+                share: format!("{:.1}%", share * 100.0),
+            }
+        })
+        .collect::<Vec<_>>();
+    if !rows.is_empty() {
+        render_legend(&mut out, &rows, model.show_data);
+    }
+
+    if !excluded.is_empty() {
+        let marker = match opts.charset {
+            Charset::Unicode => "×",
+            Charset::Ascii => "!",
+        };
+        out.push_str("\nExcluded (not plotted):\n");
+        for section in excluded {
+            let label = sanitize_label_text(&section.label);
+            out.push_str(&format!(
+                "  {marker} {label} = {} ({})\n",
+                format_value(section.value),
+                excluded_reason(section.value)
+            ));
+        }
+    }
+
+    Ok(out)
+}
+
+fn render_chart(
+    out: &mut String,
+    sections: &[&PieRenderSection],
+    maximum_value: f64,
+    scaled_total: f64,
+    opts: &MermansiOptions,
+) -> Result<()> {
+    let longest_label = sections
+        .iter()
+        .map(|section| str_display_width(&sanitize_label_text(&section.label)))
+        .max()
+        .unwrap_or(0);
+    let preferred_width = (20 + sections.len().min(12))
+        .max(longest_label.saturating_add(8))
+        .min(36);
+    let preferred_height = preferred_width.div_ceil(2);
+    let (chart_width, chart_height) =
+        checked_chart_dimensions(opts, (20, 10), (preferred_width, preferred_height))?;
+    let radius = (chart_height / 2).saturating_sub(1).max(3) as i64;
+    let center_x = (chart_width / 2) as i64;
+    let center_y = (chart_height / 2) as i64;
+    let mut canvas = Canvas::new(chart_width, chart_height)?;
+
+    let mut angle = -std::f64::consts::FRAC_PI_2;
+    let mut boundary_angles = Vec::with_capacity(sections.len());
+    for (index, section) in sections.iter().enumerate() {
+        let fraction = section_share(section, maximum_value, scaled_total);
+        let end = angle + fraction * std::f64::consts::TAU;
+        fill_pie_sector(
+            &mut canvas,
+            center_x,
+            center_y,
+            radius,
+            angle,
+            end,
+            chart_primitives::fill_char(index, opts.charset),
+        )?;
+        boundary_angles.push(angle);
+        angle = end;
+    }
+
+    let leader = match opts.charset {
+        Charset::Unicode => "·",
+        Charset::Ascii => ".",
+    };
+    for boundary in &boundary_angles {
+        draw_radial_line(&mut canvas, center_x, center_y, radius, *boundary, leader)?;
+    }
+
     let outline = match opts.charset {
         Charset::Unicode => "○",
         Charset::Ascii => "o",
     };
-    draw_circle_outline(&mut canvas, cx, cy, radius, outline)?;
-
-    // Place center marker.
-    let center_char = match opts.charset {
+    draw_circle_outline(&mut canvas, center_x, center_y, radius, outline)?;
+    let boundary_marker = match opts.charset {
+        Charset::Unicode => "◆",
+        Charset::Ascii => "+",
+    };
+    for boundary in boundary_angles {
+        let endpoint_x = center_x + (radius as f64 * boundary.cos()).round() as i64;
+        let endpoint_y = center_y + (radius as f64 * boundary.sin()).round() as i64;
+        if endpoint_x >= 0
+            && endpoint_y >= 0
+            && (endpoint_x as usize) < canvas.width()
+            && (endpoint_y as usize) < canvas.height()
+        {
+            canvas.set_text(endpoint_x as usize, endpoint_y as usize, boundary_marker)?;
+        }
+    }
+    let center = match opts.charset {
         Charset::Unicode => "✛",
         Charset::Ascii => "+",
     };
-    canvas.set_text(cx as usize, cy as usize, center_char)?;
+    canvas.set_text(center_x as usize, center_y as usize, center)?;
 
-    let chart_text = canvas.render();
-    out.push_str(&chart_text);
+    out.push_str(&chart_primitives::render_cropped_canvas(&canvas));
     if !out.ends_with('\n') {
         out.push('\n');
     }
     out.push('\n');
+    Ok(())
+}
 
-    // Compact legend preserving every label, value, percentage.
-    let rows: Vec<_> = valid_sections
-        .iter()
-        .enumerate()
-        .map(|(i, section)| {
-            let pct = (section.value / total) * 100.0;
-            let fill = chart_primitives::fill_char(i, opts.charset);
-            let label = sanitize_label_text(&section.label);
-            let value_str = format!("{:.2}", section.value);
-            let pct_str = format!("{pct:.1}%");
-            (fill, label, value_str, pct_str)
-        })
-        .collect();
-
-    let legend_label_w = rows
-        .iter()
-        .map(|(_, l, _, _)| str_display_width(l))
-        .max()
-        .unwrap_or(0)
-        .max(5);
-    let legend_val_w = rows
-        .iter()
-        .map(|(_, _, v, _)| str_display_width(v))
-        .max()
-        .unwrap_or(0)
-        .max(5);
-    let legend_pct_w = rows
-        .iter()
-        .map(|(_, _, _, p)| str_display_width(p))
-        .max()
-        .unwrap_or(0)
-        .max(4);
-
-    // showData semantics: always show value and percentage columns.
-    out.push_str(&format!(
-        "  {} {} {}\n",
-        align_left_display("Label", legend_label_w),
-        align_right_display("Value", legend_val_w),
-        align_right_display("Share", legend_pct_w),
-    ));
-    out.push_str(&format!(
-        "  {}\n",
-        "-".repeat(legend_label_w + legend_val_w + legend_pct_w + 2)
-    ));
-    for (fill, label, value, pct) in &rows {
-        out.push_str(&format!(
-            "  {} {} {} {}\n",
-            fill,
-            align_left_display(label, legend_label_w),
-            align_right_display(value, legend_val_w),
-            align_right_display(pct, legend_pct_w),
-        ));
+fn section_share(section: &PieRenderSection, maximum_value: f64, scaled_total: f64) -> f64 {
+    if maximum_value <= 0.0 || scaled_total <= 0.0 {
+        0.0
+    } else {
+        (section.value / maximum_value) / scaled_total
     }
+}
 
-    let _ = MAX_CHART_ENTITIES;
-    let _ = model.show_data; // always show data in legend
-    Ok(out)
+fn render_legend(out: &mut String, rows: &[LegendRow], show_data: bool) {
+    let label_width = rows
+        .iter()
+        .map(|row| str_display_width(&row.label))
+        .max()
+        .unwrap_or(0)
+        .max(str_display_width("Label"));
+    let share_width = rows
+        .iter()
+        .map(|row| str_display_width(&row.share))
+        .max()
+        .unwrap_or(0)
+        .max(str_display_width("Share"));
+
+    if show_data {
+        let value_width = rows
+            .iter()
+            .map(|row| str_display_width(&row.value))
+            .max()
+            .unwrap_or(0)
+            .max(str_display_width("Value"));
+        out.push_str(&format!(
+            "    {} {} {}\n",
+            align_left_display("Label", label_width),
+            align_right_display("Value", value_width),
+            align_right_display("Share", share_width),
+        ));
+        out.push_str(&format!(
+            "  {}\n",
+            "-".repeat(label_width + value_width + share_width + 4)
+        ));
+        for row in rows {
+            out.push_str(&format!(
+                "  {} {} {} {}\n",
+                row.marker,
+                align_left_display(&row.label, label_width),
+                align_right_display(&row.value, value_width),
+                align_right_display(&row.share, share_width),
+            ));
+        }
+    } else {
+        out.push_str(&format!(
+            "    {} {}\n",
+            align_left_display("Label", label_width),
+            align_right_display("Share", share_width),
+        ));
+        out.push_str(&format!(
+            "  {}\n",
+            "-".repeat(label_width + share_width + 3)
+        ));
+        for row in rows {
+            out.push_str(&format!(
+                "  {} {} {}\n",
+                row.marker,
+                align_left_display(&row.label, label_width),
+                align_right_display(&row.share, share_width),
+            ));
+        }
+    }
+}
+
+fn format_value(value: f64) -> String {
+    if value.is_nan() {
+        "NaN".to_owned()
+    } else if value == f64::INFINITY {
+        "inf".to_owned()
+    } else if value == f64::NEG_INFINITY {
+        "-inf".to_owned()
+    } else {
+        format!("{value:.2}")
+    }
+}
+
+fn excluded_reason(value: f64) -> &'static str {
+    if value.is_nan() {
+        "not a number"
+    } else if value.is_infinite() {
+        "not finite"
+    } else {
+        "negative"
+    }
 }

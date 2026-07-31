@@ -64,6 +64,32 @@ pub fn checked_chart_dimensions(
     Ok((width, height))
 }
 
+/// Render a chart canvas without unused outer rows or a shared left margin.
+pub fn render_cropped_canvas(canvas: &Canvas) -> String {
+    let rendered = canvas.render();
+    let lines = rendered.lines().collect::<Vec<_>>();
+    let Some(first) = lines.iter().position(|line| !line.trim().is_empty()) else {
+        return String::new();
+    };
+    let last = lines
+        .iter()
+        .rposition(|line| !line.trim().is_empty())
+        .unwrap_or(first);
+    let common_indent = lines[first..=last]
+        .iter()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.bytes().take_while(|byte| *byte == b' ').count())
+        .min()
+        .unwrap_or(0);
+
+    let mut cropped = String::new();
+    for line in &lines[first..=last] {
+        cropped.push_str(line.get(common_indent..).unwrap_or(line));
+        cropped.push('\n');
+    }
+    cropped
+}
+
 /// Ensure an entity count does not exceed the chart entity limit.
 pub fn ensure_entity_limit(context: &'static str, requested: usize) -> Result<()> {
     if requested > MAX_CHART_ENTITIES {
