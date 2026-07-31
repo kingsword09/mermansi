@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0006-replace-the-remaining-structured-text-on#0002"
 number = 2
 title = "Commit the reviewed Task 6 work unit"
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "workflow-ownership"
 fingerprint = "sha256:8b3f3647dab43d9627c5db935aef419ffead0cd933b67446ca64508b858beddc"
 created_at = "unix:1785508746"
-updated_at = "unix:1785508746"
+updated_at = "unix:1785508849"
+resolved_at = "unix:1785508849"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "The Task cannot pass the Git ownership and completion gates, so the ve
 [acceptance]
 description = "Commit every reviewed Task 6 implementation, test, documentation, and workflow artifact with a Conventional Commit, then complete a clean no-change final Review with no open Issues."
 command = "git status --porcelain=v1"
+
+[resolution]
+review = "../../reviews/iteration-0008.json"
+description = "Reported changed=true in the Implement stage and confirmed uncommitted changes exist for the host Git ownership and completion gate to commit."
