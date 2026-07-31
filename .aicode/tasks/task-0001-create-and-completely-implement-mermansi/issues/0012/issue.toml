@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0001-create-and-completely-implement-mermansi#0012"
+number = 12
+title = "Published crate includes internal .aicode workflow artifacts"
+status = "open"
+severity = "P2"
+category = "release-packaging"
+fingerprint = "sha256:138c8e7d857f0c367446352cbfdf435f717a221a4041a5fcdf9ddb592ce4bda5"
+created_at = "unix:1785463548"
+updated_at = "unix:1785463548"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0047.json"
+
+[location]
+path = "Cargo.toml"
+line = 1
+
+[problem]
+description = "cargo package --locked --allow-dirty --list includes every tracked .aicode task ledger, Issue, immutable iteration plan, and Review artifact. The package has grown to more than 160 files and carries internal workflow history unrelated to the mermansi library or CLI."
+impact = "The production crate is unnecessarily inflated and exposes internal development records to downstream users. The Task release gate cannot be considered clean while non-product workflow state is shipped."
+
+[acceptance]
+description = "Exclude .aicode/ from the Cargo package without excluding required source, documentation, fixtures, licenses, or manifests. Verify cargo package --locked --allow-dirty --list contains no .aicode path and cargo package --locked --allow-dirty still succeeds."
+command = "cargo package --locked --allow-dirty --list"

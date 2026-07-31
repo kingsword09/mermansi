@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0001-create-and-completely-implement-mermansi#0011"
 number = 11
 title = "merman-core and merman-ascii specified as caret ranges instead of exact pins"
-status = "open"
+status = "resolved"
 severity = "P2"
 category = "dependency-reproducibility"
 fingerprint = "sha256:e15ce215aa30e30babbad6924319f8f76afb1feb25740f92dff260bc92926b12"
 created_at = "unix:1785338735"
-updated_at = "unix:1785338735"
+updated_at = "unix:1785463304"
+resolved_at = "unix:1785463304"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Rule 8 (determinism) and reproducibility are at risk because a future 
 [acceptance]
 description = "Pin merman-core and merman-ascii to exact versions (=0.8.0-alpha.3) in Cargo.toml and update Cargo.lock accordingly so builds are fully reproducible."
 command = "cargo metadata --format-version 1 | grep merman"
+
+[resolution]
+review = "../../reviews/iteration-0046.json"
+description = "Verified exact merman-core and merman-ascii requirements, unchanged locked 0.8.0-alpha.3 packages, reproducible metadata, and passing host verification."
