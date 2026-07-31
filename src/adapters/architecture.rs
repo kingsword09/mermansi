@@ -62,21 +62,22 @@ pub fn render_architecture(
 
 fn format_edge(edge: &ArchitectureRenderEdge) -> String {
     let label = edge.title.as_deref().unwrap_or("");
-    let lhs_dir = dir_to_str(edge.lhs_dir);
-    let rhs_dir = dir_to_str(edge.rhs_dir);
+    let connector = match (
+        edge.lhs_into.unwrap_or_default(),
+        edge.rhs_into.unwrap_or_default(),
+    ) {
+        (true, true) => "<-->",
+        (true, false) => "<--",
+        (false, true) => "-->",
+        (false, false) => "--",
+    };
+    let label = if label.is_empty() {
+        String::new()
+    } else {
+        format!(" [{label}]")
+    };
     format!(
-        "  {} {}-- {} --{} {}\n",
-        edge.lhs_id, lhs_dir, label, rhs_dir, edge.rhs_id
+        "  {}:{} {connector} {}:{}{label}\n",
+        edge.lhs_id, edge.lhs_dir, edge.rhs_dir, edge.rhs_id
     )
-}
-
-fn dir_to_str(dir: char) -> &'static str {
-    match dir {
-        '<' => "<",
-        '>' => ">",
-        '-' => "-",
-        'x' => "x",
-        'o' => "o",
-        _ => "?",
-    }
 }

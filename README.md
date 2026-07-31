@@ -16,6 +16,8 @@ family.
   fixture families (including the ZenUML-to-Sequence transform) are checked at runtime.
 - **One public source-to-text API** — `render_source(source, &options)` accepts Mermaid or a raw
   JSON object/array.
+- **Complete or concise output** — keep the canonical semantic model for lossless inspection, or
+  request only the readable preview with a structured fallback.
 - **ASCII and Unicode output** — switchable charset with display-column-aware layout.
 - **Optional ANSI color roles** — geometry-independent color that never breaks alignment.
 - **Bounded allocations** — typed errors when source, canvas, or output limits are exceeded.
@@ -85,6 +87,16 @@ flowchart TD
 
 let output = render_source(mermaid_text, &MermansiOptions::unicode()).unwrap();
 println!("{output}");
+```
+
+Presentation surfaces can omit the duplicate canonical model while retaining a structured
+fallback for families without a readable preview:
+
+```rust
+use mermansi::{MermansiOptions, OutputMode, render_source};
+
+let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+let output = render_source(mermaid_text, &options).unwrap();
 ```
 
 Raw JSON objects and arrays use the same entry point and render as canonical structured text.

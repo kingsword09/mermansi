@@ -2,7 +2,7 @@
 
 use crate::ansi::{AnsiEncoder, AnsiRole, strip_ansi};
 use crate::error::{MermansiError, Result};
-use crate::options::{MAX_CANVAS_CELLS, MAX_OUTPUT_BYTES, MermansiOptions};
+use crate::options::{MAX_CANVAS_CELLS, MAX_OUTPUT_BYTES, MermansiOptions, OutputMode};
 use crate::str_display_width;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -26,6 +26,14 @@ where
     T: Serialize,
     F: FnOnce() -> Result<String>,
 {
+    if opts.output_mode == OutputMode::Concise {
+        let preview = render_preview()?;
+        if !preview.trim().is_empty() {
+            return Ok(preview);
+        }
+        ensure_serialized_model_within_limit(model)?;
+        return append_preflighted_structured_model(String::new(), family, model, opts);
+    }
     ensure_serialized_model_within_limit(model)?;
     append_preflighted_structured_model(render_preview()?, family, model, opts)
 }
@@ -242,5 +250,33 @@ mod tests {
             })
         ));
         assert!(!preview_called.get());
+    }
+
+    #[test]
+    fn concise_output_skips_an_unused_oversized_semantic_model() {
+        let model = serde_json::json!({"label": "x".repeat(MAX_OUTPUT_BYTES)});
+        let result = render_structured_adapter(
+            "json",
+            &model,
+            &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+            || Ok("readable preview\n".to_owned()),
+        );
+
+        assert_eq!(result.unwrap(), "readable preview\n");
+    }
+
+    #[test]
+    fn concise_output_uses_the_semantic_model_when_no_preview_exists() {
+        let model = serde_json::json!({"label": "kept"});
+        let result = render_structured_adapter(
+            "json",
+            &model,
+            &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+            || Ok(String::new()),
+        )
+        .unwrap();
+
+        assert!(result.contains("[json semantic model]"));
+        assert!(result.contains("kept"));
     }
 }

@@ -1,7 +1,8 @@
 //! Render options for `mermansi`.
 //!
-//! [`MermansiOptions`] controls charset, color mode, and output dimensions. It is validated
-//! before use, and invalid values produce [`MermansiError::InvalidOption`](crate::error::MermansiError::InvalidOption).
+//! [`MermansiOptions`] controls charset, color mode, output detail, and dimensions. It is
+//! validated before use, and invalid values produce
+//! [`MermansiError::InvalidOption`](crate::error::MermansiError::InvalidOption).
 
 use crate::error::{MermansiError, Result};
 
@@ -22,6 +23,17 @@ pub enum ColorMode {
     TrueColor,
 }
 
+/// Controls whether rendered previews include the canonical semantic model.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OutputMode {
+    /// Append the canonical semantic model after the readable terminal preview.
+    #[default]
+    Complete,
+    /// Return only the readable preview, falling back to the semantic model when needed.
+    Concise,
+}
+
 /// Maximum output width in terminal display columns.
 pub const DEFAULT_MAX_WIDTH: usize = 200;
 /// Maximum output height (rows).
@@ -37,6 +49,7 @@ pub const MAX_OUTPUT_BYTES: usize = 4 * 1024 * 1024;
 pub struct MermansiOptions {
     pub charset: Charset,
     pub color_mode: ColorMode,
+    pub output_mode: OutputMode,
     pub max_width: usize,
     pub max_height: usize,
 }
@@ -46,6 +59,7 @@ impl Default for MermansiOptions {
         Self {
             charset: Charset::Unicode,
             color_mode: ColorMode::Plain,
+            output_mode: OutputMode::Complete,
             max_width: DEFAULT_MAX_WIDTH,
             max_height: DEFAULT_MAX_HEIGHT,
         }
@@ -66,6 +80,11 @@ impl MermansiOptions {
 
     pub fn with_color(mut self, color_mode: ColorMode) -> Self {
         self.color_mode = color_mode;
+        self
+    }
+
+    pub fn with_output_mode(mut self, output_mode: OutputMode) -> Self {
+        self.output_mode = output_mode;
         self
     }
 

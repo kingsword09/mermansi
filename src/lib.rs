@@ -32,7 +32,7 @@ mod output;
 pub use ansi::{AnsiEncoder, AnsiRole};
 pub use canvas::{Canvas, char_display_width, label_display_width, str_display_width};
 pub use error::{MermansiError, Result};
-pub use options::{Charset, ColorMode, MermansiOptions};
+pub use options::{Charset, ColorMode, MermansiOptions, OutputMode};
 
 use merman_core::diagram::RenderSemanticModel;
 

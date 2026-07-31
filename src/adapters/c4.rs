@@ -13,10 +13,12 @@ pub fn render_c4(model: &C4DiagramRenderModel, opts: &MermansiOptions) -> Result
     let mut out = String::new();
     out.push_str(&format_title(&model.title));
 
-    if !model.boundaries.is_empty() {
+    if model.boundaries.iter().any(|boundary| !is_global(boundary)) {
         out.push_str("Boundaries:\n");
-        for b in &model.boundaries {
-            out.push_str(&format_boundary(b, 1));
+        for boundary in &model.boundaries {
+            if !is_global(boundary) {
+                out.push_str(&format_boundary(boundary, 1));
+            }
         }
         out.push('\n');
     }
@@ -52,7 +54,7 @@ fn format_boundary(b: &C4BoundaryRenderModel, depth: usize) -> String {
             .map(|t| c4_text_or(t, b.parent_boundary.as_str()))
             .unwrap_or_else(|| b.parent_boundary.clone());
     let label = b.label.as_str();
-    let parent = if b.parent_boundary.is_empty() {
+    let parent = if b.parent_boundary.is_empty() || b.parent_boundary == "global" {
         "-"
     } else {
         &b.parent_boundary
@@ -73,7 +75,7 @@ fn format_boundary(b: &C4BoundaryRenderModel, depth: usize) -> String {
 fn format_shape(s: &C4ShapeRenderModel) -> String {
     let label = nonempty_or(s.label.as_str(), &s.alias);
     let shape_type = c4_text_or(&s.type_c4_shape, "shape");
-    let parent = if s.parent_boundary.is_empty() {
+    let parent = if s.parent_boundary.is_empty() || s.parent_boundary == "global" {
         "-"
     } else {
         &s.parent_boundary
@@ -94,6 +96,10 @@ fn format_shape(s: &C4ShapeRenderModel) -> String {
     out
 }
 
+fn is_global(boundary: &C4BoundaryRenderModel) -> bool {
+    boundary.alias == "global" && boundary.parent_boundary.is_empty()
+}
+
 fn format_rel(r: &C4RelRenderModel) -> String {
     let label = r.label.as_str();
     let label = nonempty_or(label, "(unlabeled)");
@@ -103,17 +109,21 @@ fn format_rel(r: &C4RelRenderModel) -> String {
         .map(|t| t.as_str().to_string())
         .filter(|t| !t.is_empty())
         .unwrap_or_default();
-    if techn.is_empty() {
-        format!(
-            "  {} -[{}]-> {}\n    {}\n",
-            r.from_alias, r.rel_type, r.to_alias, label
-        )
-    } else {
-        format!(
-            "  {} -[{}]-> {}\n    {} [{}]\n",
-            r.from_alias, r.rel_type, r.to_alias, label, techn
-        )
-    }
+    let description = r
+        .descr
+        .as_ref()
+        .map(C4Text::as_str)
+        .filter(|description| !description.is_empty());
+    let details = match (techn.is_empty(), description) {
+        (true, None) => label,
+        (false, None) => format!("{label} [{techn}]"),
+        (true, Some(description)) => format!("{label} — {description}"),
+        (false, Some(description)) => format!("{label} [{techn}] — {description}"),
+    };
+    format!(
+        "  {} -[{}]-> {}\n    {details}\n",
+        r.from_alias, r.rel_type, r.to_alias
+    )
 }
 
 fn c4_text_or(text: &C4Text, fallback: &str) -> String {

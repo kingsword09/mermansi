@@ -5,7 +5,7 @@
 //! self-relations, cycles, disconnected components, nested groups, and parallel/dense
 //! relations.
 
-use mermansi::{ColorMode, MermansiOptions, render_source};
+use mermansi::{ColorMode, MermansiOptions, OutputMode, render_source};
 
 fn flowchart_preview(output: &str) -> &str {
     output
@@ -612,6 +612,42 @@ fn block_nested_three_levels_no_duplicate_nodes() {
         !preview.contains("(root)"),
         "synthetic root node should not appear in the preview:\n{preview}"
     );
+}
+
+#[test]
+fn concise_block_preview_omits_generated_spacers() {
+    let source = "block-beta\n  A[\"One\"]\n  space:2\n  B[\"Two\"]\n  A --> B";
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let output = render_source(source, &options).unwrap();
+
+    assert!(output.contains("One (A)"), "{output}");
+    assert!(output.contains("Two (B)"), "{output}");
+    assert!(output.contains("A ----> B"), "{output}");
+    assert!(!output.contains("[space]"), "{output}");
+    assert!(!output.contains("id-"), "{output}");
+}
+
+#[test]
+fn concise_c4_preview_omits_the_synthetic_global_boundary() {
+    let source = "C4Context\n  Person(customer, \"Customer\")\n  System(system, \"Bank\")\n  Rel(customer, system, \"Uses\")";
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let output = render_source(source, &options).unwrap();
+
+    assert!(output.contains("Customer (customer)"), "{output}");
+    assert!(output.contains("Bank (system)"), "{output}");
+    assert!(output.contains("customer -[rel]-> system"), "{output}");
+    assert!(!output.contains("global"), "{output}");
+}
+
+#[test]
+fn concise_architecture_preview_preserves_ports_and_direction() {
+    let source = "architecture-beta\n  service web(server)[Web]\n  junction hub\n  service api(server)[API]\n  web:R --> L:hub\n  hub:B -- T:api";
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let output = render_source(source, &options).unwrap();
+
+    assert!(output.contains("web:R --> L:hub"), "{output}");
+    assert!(output.contains("hub:B -- T:api"), "{output}");
+    assert!(!output.contains('?'), "{output}");
 }
 
 // ---------------------------------------------------------------------------

@@ -19,7 +19,9 @@ pub fn render_block(model: &BlockDiagramRenderModel, opts: &MermansiOptions) -> 
     {
         out.push_str("Blocks:\n");
         for child in &root.children {
-            out.push_str(&format_block(child, 1));
+            if !is_spacer(child) {
+                out.push_str(&format_block(child, 1));
+            }
         }
     }
 
@@ -56,7 +58,13 @@ fn format_block(block: &BlockNodeRenderModel, depth: usize) -> String {
     };
     let mut out = format!("{indent}[{type_str}] {label} ({})\n", block.id);
     for child in &block.children {
-        out.push_str(&format_block(child, depth + 1));
+        if !is_spacer(child) {
+            out.push_str(&format_block(child, depth + 1));
+        }
     }
     out
+}
+
+fn is_spacer(block: &BlockNodeRenderModel) -> bool {
+    block.block_type.eq_ignore_ascii_case("space")
 }
