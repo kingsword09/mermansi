@@ -505,6 +505,38 @@ fn five_native_geometry_adapters_reject_impossible_narrow_layouts() {
 }
 
 #[test]
+fn ishikawa_compression_respects_width_and_minimum_slot_bounds() {
+    let source = include_str!("fixtures/ishikawa.en.mmd");
+    let rendered = render_source(
+        source,
+        &MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(120),
+    )
+    .unwrap();
+    assert!(
+        rendered
+            .lines()
+            .all(|line| mermansi::str_display_width(line) <= 120),
+        "compressed Ishikawa exceeded its width bound:\n{rendered}"
+    );
+
+    assert!(matches!(
+        render_source(
+            source,
+            &MermansiOptions::unicode()
+                .with_output_mode(OutputMode::Concise)
+                .with_max_width(97),
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "ishikawa columns",
+            requested: 98,
+            limit: 97,
+        })
+    ));
+}
+
+#[test]
 fn final_native_adapters_enforce_entity_limits_before_geometry() {
     use merman_core::diagrams::gantt::{GanttDiagramRenderModel, GanttRenderTask};
     use merman_core::diagrams::git_graph::{

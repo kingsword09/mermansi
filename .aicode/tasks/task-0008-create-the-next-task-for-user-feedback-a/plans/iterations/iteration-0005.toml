@@ -1,0 +1,30 @@
+schema_version = 1
+task = "task-0008-create-the-next-task-for-user-feedback-a"
+iteration = 5
+loop_iteration = 1
+created_at = "unix:1785541249"
+objective = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+open_issue_ids = [
+    "task-0008-create-the-next-task-for-user-feedback-a#0001",
+    "task-0008-create-the-next-task-for-user-feedback-a#0002",
+    "task-0008-create-the-next-task-for-user-feedback-a#0003",
+]
+
+[plan]
+objective = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+
+[[plan.steps]]
+id = "step-1"
+description = "Examine src/adapters/ishikawa.rs and test fixtures to analyze current geometry allocation, column width calculation, branch rendering, and slot layout."
+
+[[plan.steps]]
+id = "step-2"
+description = "Implement bounded compressed slot layout and connected callouts in the Ishikawa adapter to fit within 120-column terminal width while preserving all labels, relationships, and structural integrity for both English and Chinese inputs."
+
+[[plan.steps]]
+id = "step-3"
+description = "Add and update tests for Ishikawa adapter covering width 120, ASCII and Unicode outputs, determinism, label preservation, and bounds checks."
+
+[[plan.steps]]
+id = "step-4"
+description = "Run cargo fmt, cargo clippy, and cargo test suite to verify code formatting, lint cleanliness, and complete test suite compliance."

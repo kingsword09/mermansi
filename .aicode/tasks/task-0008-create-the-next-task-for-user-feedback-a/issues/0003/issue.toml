@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0008-create-the-next-task-for-user-feedback-a#0003"
+number = 3
+title = "Ishikawa compressed slot layout and connected callouts for width 120 are not implemented"
+status = "open"
+severity = "P1"
+category = "task-execution"
+fingerprint = "sha256:8b0ad57e3f883a81d23668ca71cc1981755b745bb48132d2100cf7dcb0d94a94"
+created_at = "unix:1785516811"
+updated_at = "unix:1785516811"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0002.json"
+
+[location]
+path = "src/adapters/ishikawa.rs"
+line = 1
+
+[problem]
+description = "The Ishikawa adapter was not updated to render genuine geometry at width 120 in English and Chinese using bounded compressed slot layout and connected callouts."
+impact = "Ishikawa diagrams continue to require 143 columns and fall back to source at width 120."
+
+[acceptance]
+description = "Modify src/adapters/ishikawa.rs to support width 120 for English and Chinese fixtures without source fallback or dropping labels, and add focused width, ASCII/Unicode, deterministic, and bounds tests."
+command = "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"

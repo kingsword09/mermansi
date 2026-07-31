@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0008-create-the-next-task-for-user-feedback-a#0001"
+number = 1
+title = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+status = "open"
+severity = "P1"
+category = "task-execution"
+fingerprint = "sha256:feed461e6f347dd57cec0d29237379f8c62e2a707b6991d9795126d71e58301d"
+created_at = "unix:1785516748"
+updated_at = "unix:1785516748"
+
+[source]
+kind = "task"
+task = "task-0008-create-the-next-task-for-user-feedback-a"
+
+[location]
+path = ".aicode/tasks/task-0008-create-the-next-task-for-user-feedback-a/task.toml"
+line = 1
+
+[problem]
+description = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+impact = "The requested Task has not yet passed implementation, verification, and review."
+
+[acceptance]
+description = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+command = "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"

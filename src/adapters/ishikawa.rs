@@ -16,6 +16,9 @@ const MAX_ISHIKAWA_NODES: usize = 4_096;
 const MAX_ISHIKAWA_DEPTH: usize = 64;
 const MIN_SLOT_WIDTH: usize = 16;
 const MAX_SLOT_WIDTH: usize = 24;
+const MIN_EFFECT_WIDTH: usize = 14;
+const MAX_EFFECT_WIDTH: usize = 34;
+const EFFECT_GAP_WIDTH: usize = 4;
 
 #[derive(Clone)]
 struct Descendant {
@@ -47,15 +50,37 @@ pub fn render_ishikawa(
         .map(longest_cause_label)
         .max()
         .unwrap_or(0);
-    let slot_width = longest_cause
+    let preferred_slot_width = longest_cause
         .saturating_add(7)
         .clamp(MIN_SLOT_WIDTH, MAX_SLOT_WIDTH);
     let effect = sanitize_label_text(&root.text);
-    let effect_width = str_display_width(&effect).saturating_add(4).clamp(14, 34);
+    let preferred_effect_width = str_display_width(&effect)
+        .saturating_add(4)
+        .clamp(MIN_EFFECT_WIDTH, MAX_EFFECT_WIDTH);
     let branch_count = main_causes.len().max(1);
+    let minimum_slots_width =
+        branch_count
+            .checked_mul(MIN_SLOT_WIDTH)
+            .ok_or(MermansiError::RenderLimit {
+                context: "ishikawa columns",
+                requested: usize::MAX,
+                limit: opts.max_width,
+            })?;
+    let effect_budget = opts
+        .max_width
+        .saturating_sub(minimum_slots_width)
+        .saturating_sub(EFFECT_GAP_WIDTH);
+    let effect_width = preferred_effect_width.min(effect_budget.max(MIN_EFFECT_WIDTH));
+    let fixed_width = effect_width.saturating_add(EFFECT_GAP_WIDTH);
+    let slot_width = compressed_slot_width(
+        preferred_slot_width,
+        branch_count,
+        fixed_width,
+        opts.max_width,
+    );
     let width = branch_count
         .checked_mul(slot_width)
-        .and_then(|value| value.checked_add(effect_width + 4))
+        .and_then(|value| value.checked_add(fixed_width))
         .ok_or(MermansiError::RenderLimit {
             context: "ishikawa columns",
             requested: usize::MAX,
@@ -263,6 +288,19 @@ fn longest_cause_label(node: &IshikawaNodeRenderModel) -> usize {
         str_display_width(&sanitize_label_text(&node.text)),
         usize::max,
     )
+}
+
+fn compressed_slot_width(
+    preferred: usize,
+    branch_count: usize,
+    fixed_width: usize,
+    max_width: usize,
+) -> usize {
+    let available_per_branch = max_width
+        .saturating_sub(fixed_width)
+        .checked_div(branch_count)
+        .unwrap_or(0);
+    preferred.min(available_per_branch.max(MIN_SLOT_WIDTH))
 }
 
 fn interpolate_x(start_x: usize, start_y: usize, end_x: usize, end_y: usize, y: usize) -> usize {

@@ -1,0 +1,26 @@
+schema_version = 1
+task = "task-0008-create-the-next-task-for-user-feedback-a"
+iteration = 4
+loop_iteration = 1
+created_at = "unix:1785540712"
+objective = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+open_issue_ids = [
+    "task-0008-create-the-next-task-for-user-feedback-a#0001",
+    "task-0008-create-the-next-task-for-user-feedback-a#0002",
+    "task-0008-create-the-next-task-for-user-feedback-a#0003",
+]
+
+[plan]
+objective = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+
+[[plan.steps]]
+id = "step-1"
+description = "Inspect Ishikawa rendering constraints, constant definitions, and tests to verify exact slot layout behavior at width 120."
+
+[[plan.steps]]
+id = "step-2"
+description = "Update src/adapters/ishikawa.rs to implement bounded compressed slot layout calculation and connected callouts when horizontal room is constrained."
+
+[[plan.steps]]
+id = "step-3"
+description = "Run cargo fmt, cargo clippy, and cargo test to verify width, ASCII/Unicode, deterministic, and bounds behavior."

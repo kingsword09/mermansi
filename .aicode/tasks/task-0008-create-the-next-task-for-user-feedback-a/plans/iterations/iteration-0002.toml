@@ -1,0 +1,29 @@
+schema_version = 1
+task = "task-0008-create-the-next-task-for-user-feedback-a"
+iteration = 2
+loop_iteration = 2
+created_at = "unix:1785516782"
+objective = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+open_issue_ids = [
+    "task-0008-create-the-next-task-for-user-feedback-a#0001",
+    "task-0008-create-the-next-task-for-user-feedback-a#0002",
+]
+
+[plan]
+objective = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+
+[[plan.steps]]
+id = "step-1"
+description = "Inspect `src/adapters/ishikawa.rs` and related test files (`tests/semantic_integrity.rs`, `tests/bounds.rs`, `tests/support_matrix.rs`) to evaluate the current geometry calculation, column allocation, and minimum width bounds."
+
+[[plan.steps]]
+id = "step-2"
+description = "Refactor `src/adapters/ishikawa.rs` to implement compressed slot layout and connected callout routing so that English and Chinese Ishikawa fixtures comfortably fit within 120 display columns."
+
+[[plan.steps]]
+id = "step-3"
+description = "Add focused width, ASCII/Unicode, deterministic, and bounds tests in `tests/semantic_integrity.rs` and `tests/bounds.rs` verifying Ishikawa adapter output at 120 columns."
+
+[[plan.steps]]
+id = "step-4"
+description = "Run `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test --all-targets --all-features` to verify implementation correctness."

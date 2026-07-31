@@ -711,6 +711,81 @@ fn ishikawa_fixture_has_one_effect_and_connected_upper_and_lower_bones() {
 }
 
 #[test]
+fn ishikawa_fixtures_render_bounded_geometry_at_100_and_120_columns() {
+    let fixtures = [
+        (
+            "English",
+            include_str!("fixtures/ishikawa.en.mmd"),
+            &["Effect: Poor Quality", "Process", "Poor Maintenance"][..],
+        ),
+        (
+            "Chinese",
+            include_str!("fixtures/ishikawa.zh.mmd"),
+            &["质量问题", "流程", "维护不足"][..],
+        ),
+    ];
+    let options = [
+        MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(100),
+        MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(100),
+        MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(120),
+        MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(120),
+    ];
+
+    for (language, source, labels) in fixtures {
+        for options in &options {
+            let first = render_source(source, options)
+                .unwrap_or_else(|error| panic!("{language} Ishikawa failed: {error}"));
+            let second = render_source(source, options).unwrap();
+
+            assert_eq!(first, second, "{language} Ishikawa was not deterministic");
+            assert!(
+                first
+                    .lines()
+                    .all(|line| mermansi::str_display_width(line) <= options.max_width),
+                "{language} Ishikawa exceeded {} columns:\n{first}",
+                options.max_width
+            );
+            assert!(
+                (first.contains('╲') && first.contains('╱'))
+                    || (first.contains('\\') && first.contains('/')),
+                "{language} Ishikawa lost its upper/lower bones:\n{first}"
+            );
+            for label in labels {
+                assert!(first.contains(label), "missing {label}:\n{first}");
+            }
+        }
+    }
+
+    let compressed = render_source(
+        include_str!("fixtures/ishikawa.en.mmd"),
+        &MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(120),
+    )
+    .unwrap();
+    let geometry = compressed.split("\nLabels:\n").next().unwrap();
+    assert!(
+        geometry
+            .lines()
+            .any(|line| line.contains("[1]") && line.contains('─')),
+        "compressed label marker is not connected to a bone:\n{compressed}"
+    );
+    assert_eq!(
+        compressed.matches("[1]").count(),
+        2,
+        "callout marker must appear once in geometry and once in the legend:\n{compressed}"
+    );
+}
+
+#[test]
 fn eventmodeling_fixture_connects_ordered_frames_and_data_entity_boxes() {
     let output = render_source(
         include_str!("fixtures/eventmodeling.en.mmd"),
