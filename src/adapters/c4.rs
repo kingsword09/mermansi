@@ -1,136 +1,202 @@
-//! C4 diagram adapter.
-//!
-//! Renders C4 boundaries, shapes, and relationships as structured terminal text.
+//! C4 diagram terminal geometry.
 
-use crate::adapters::{format_title, nonempty_or};
+use crate::adapters::box_geometry::{self, BoxDiagram, BoxEdge, BoxGroup, BoxNode};
+use crate::adapters::detail_separator;
 use crate::error::Result;
-use crate::options::MermansiOptions;
+use crate::options::{Charset, MermansiOptions};
 use merman_core::diagrams::c4::{
     C4BoundaryRenderModel, C4DiagramRenderModel, C4RelRenderModel, C4ShapeRenderModel, C4Text,
 };
 
 pub fn render_c4(model: &C4DiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
-    let mut out = String::new();
-    out.push_str(&format_title(&model.title));
-
-    if model.boundaries.iter().any(|boundary| !is_global(boundary)) {
-        out.push_str("Boundaries:\n");
-        for boundary in &model.boundaries {
-            if !is_global(boundary) {
-                out.push_str(&format_boundary(boundary, 1));
-            }
-        }
-        out.push('\n');
+    let groups = model
+        .boundaries
+        .iter()
+        .filter(|boundary| !is_global(boundary))
+        .enumerate()
+        .map(|(order, boundary)| boundary_group(boundary, model, order, opts.charset))
+        .collect::<Vec<_>>();
+    let node_order = groups.len();
+    let nodes = model
+        .shapes
+        .iter()
+        .enumerate()
+        .map(|(order, shape)| shape_node(shape, node_order + order, opts.charset))
+        .collect();
+    let mut title = if model.c4_type.is_empty() {
+        "C4".to_owned()
+    } else {
+        model.c4_type.clone()
+    };
+    if let Some(diagram_title) = model
+        .title
+        .as_deref()
+        .map(normalized)
+        .filter(|title| !title.is_empty())
+    {
+        title.push_str(detail_separator(opts.charset));
+        title.push_str(&diagram_title);
     }
 
-    if !model.shapes.is_empty() {
-        out.push_str("Shapes:\n");
-        for s in &model.shapes {
-            out.push_str(&format_shape(s));
-        }
-        out.push('\n');
-    }
-
-    if !model.rels.is_empty() {
-        out.push_str("Relationships:\n");
-        for r in &model.rels {
-            out.push_str(&format_rel(r));
-        }
-    }
-
-    if out.trim().is_empty() {
-        out.push_str("(empty C4 diagram)\n");
-    }
-
-    let _ = opts;
-    Ok(out)
+    box_geometry::render(
+        &BoxDiagram {
+            family: "c4",
+            title: Some(title),
+            nodes,
+            groups,
+            spacers: Vec::new(),
+            edges: model
+                .rels
+                .iter()
+                .map(|relation| relation_edge(relation, opts.charset))
+                .collect(),
+            columns: positive(model.layout.c4_boundary_in_row)
+                .or_else(|| positive(model.layout.c4_shape_in_row)),
+        },
+        opts,
+    )
 }
 
-fn format_boundary(b: &C4BoundaryRenderModel, depth: usize) -> String {
-    let indent = "  ".repeat(depth);
-    let alias = &b.alias;
-    let type_label =
-        b.ty.as_ref()
-            .map(|t| c4_text_or(t, b.parent_boundary.as_str()))
-            .unwrap_or_else(|| b.parent_boundary.clone());
-    let label = b.label.as_str();
-    let parent = if b.parent_boundary.is_empty() || b.parent_boundary == "global" {
-        "-"
-    } else {
-        &b.parent_boundary
-    };
-    let mut out = format!(
-        "{indent}[{type_label}] {alias}: {} (parent: {parent})\n",
-        nonempty_or(label, alias)
-    );
-    if let Some(descr) = &b.descr {
-        let d = descr.as_str();
-        if !d.is_empty() {
-            out.push_str(&format!("{indent}  description: {d}\n"));
-        }
+fn boundary_group(
+    boundary: &C4BoundaryRenderModel,
+    model: &C4DiagramRenderModel,
+    order: usize,
+    charset: Charset,
+) -> BoxGroup {
+    let mut lines = vec![display_identity(
+        &boundary.alias,
+        boundary.label.as_str(),
+        charset,
+    )];
+    let kind = boundary
+        .node_type
+        .as_deref()
+        .or_else(|| boundary.ty.as_ref().map(C4Text::as_str))
+        .map(normalized)
+        .filter(|kind| !kind.is_empty());
+    if let Some(kind) = kind {
+        lines.push(format!("[{kind}]"));
     }
-    out
+    if let Some(description) = boundary
+        .descr
+        .as_ref()
+        .map(C4Text::as_str)
+        .map(normalized)
+        .filter(|description| !description.is_empty())
+    {
+        lines.push(description);
+    }
+    BoxGroup {
+        id: boundary.alias.clone(),
+        lines,
+        parent: visible_parent(&boundary.parent_boundary),
+        columns: positive(model.layout.c4_shape_in_row),
+        span: 1,
+        order,
+    }
 }
 
-fn format_shape(s: &C4ShapeRenderModel) -> String {
-    let label = nonempty_or(s.label.as_str(), &s.alias);
-    let shape_type = c4_text_or(&s.type_c4_shape, "shape");
-    let parent = if s.parent_boundary.is_empty() || s.parent_boundary == "global" {
-        "-"
-    } else {
-        &s.parent_boundary
-    };
-    let mut out = format!("  [{shape_type}] {label} ({}) parent: {parent}\n", s.alias);
-    if let Some(techn) = &s.techn {
-        let t = techn.as_str();
-        if !t.is_empty() {
-            out.push_str(&format!("    techn: {t}\n"));
-        }
+fn shape_node(shape: &C4ShapeRenderModel, order: usize, charset: Charset) -> BoxNode {
+    let mut lines = vec![display_identity(
+        &shape.alias,
+        shape.label.as_str(),
+        charset,
+    )];
+    let kind = normalized(shape.type_c4_shape.as_str());
+    if !kind.is_empty() {
+        lines.push(format!("[{kind}]"));
     }
-    if let Some(descr) = &s.descr {
-        let d = descr.as_str();
-        if !d.is_empty() {
-            out.push_str(&format!("    description: {d}\n"));
-        }
+    if let Some(technology) = shape
+        .techn
+        .as_ref()
+        .map(C4Text::as_str)
+        .map(normalized)
+        .filter(|technology| !technology.is_empty())
+    {
+        lines.push(format!(
+            "technology{}{technology}",
+            detail_separator(charset)
+        ));
     }
-    out
+    if let Some(description) = shape
+        .descr
+        .as_ref()
+        .map(C4Text::as_str)
+        .map(normalized)
+        .filter(|description| !description.is_empty())
+    {
+        lines.push(description);
+    }
+    BoxNode {
+        id: shape.alias.clone(),
+        lines,
+        parent: visible_parent(&shape.parent_boundary),
+        span: 1,
+        order,
+    }
+}
+
+fn relation_edge(relation: &C4RelRenderModel, charset: Charset) -> BoxEdge {
+    let mut details = normalized(relation.label.as_str());
+    if let Some(technology) = relation
+        .techn
+        .as_ref()
+        .map(C4Text::as_str)
+        .map(normalized)
+        .filter(|technology| !technology.is_empty())
+    {
+        if !details.is_empty() {
+            details.push_str(detail_separator(charset));
+        }
+        details.push_str(&technology);
+    }
+    if let Some(description) = relation
+        .descr
+        .as_ref()
+        .map(C4Text::as_str)
+        .map(normalized)
+        .filter(|description| !description.is_empty())
+    {
+        if !details.is_empty() {
+            details.push_str(detail_separator(charset));
+        }
+        details.push_str(&description);
+    }
+    let bidirectional = relation.rel_type.to_ascii_lowercase().contains("birel");
+    BoxEdge {
+        from: relation.from_alias.clone(),
+        to: relation.to_alias.clone(),
+        label: details,
+        arrow_start: bidirectional,
+        arrow_end: true,
+        from_side: None,
+        to_side: None,
+    }
 }
 
 fn is_global(boundary: &C4BoundaryRenderModel) -> bool {
     boundary.alias == "global" && boundary.parent_boundary.is_empty()
 }
 
-fn format_rel(r: &C4RelRenderModel) -> String {
-    let label = r.label.as_str();
-    let label = nonempty_or(label, "(unlabeled)");
-    let techn = r
-        .techn
-        .as_ref()
-        .map(|t| t.as_str().to_string())
-        .filter(|t| !t.is_empty())
-        .unwrap_or_default();
-    let description = r
-        .descr
-        .as_ref()
-        .map(C4Text::as_str)
-        .filter(|description| !description.is_empty());
-    let details = match (techn.is_empty(), description) {
-        (true, None) => label,
-        (false, None) => format!("{label} [{techn}]"),
-        (true, Some(description)) => format!("{label} — {description}"),
-        (false, Some(description)) => format!("{label} [{techn}] — {description}"),
-    };
-    format!(
-        "  {} -[{}]-> {}\n    {details}\n",
-        r.from_alias, r.rel_type, r.to_alias
-    )
+fn visible_parent(parent: &str) -> Option<String> {
+    (!parent.is_empty() && parent != "global").then(|| parent.to_owned())
 }
 
-fn c4_text_or(text: &C4Text, fallback: &str) -> String {
-    let s = text.as_str();
-    if s.is_empty() {
-        fallback.to_string()
+fn display_identity(id: &str, label: &str, charset: Charset) -> String {
+    let label = normalized(label);
+    if label.is_empty() || label == id {
+        id.to_owned()
     } else {
-        s.to_string()
+        format!("{id}{}{label}", detail_separator(charset))
     }
+}
+
+fn positive(value: i64) -> Option<usize> {
+    (value > 0)
+        .then_some(value)
+        .and_then(|value| usize::try_from(value).ok())
+}
+
+fn normalized(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
 }

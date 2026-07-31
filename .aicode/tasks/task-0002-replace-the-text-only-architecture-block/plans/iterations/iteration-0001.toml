@@ -1,0 +1,38 @@
+schema_version = 1
+task = "task-0002-replace-the-text-only-architecture-block"
+iteration = 1
+loop_iteration = 1
+created_at = "unix:1785481095"
+objective = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
+open_issue_ids = ["task-0002-replace-the-text-only-architecture-block#0001"]
+
+[plan]
+objective = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
+
+[[plan.steps]]
+id = "step-1"
+description = "Verify the shared box_geometry module (src/adapters/box_geometry.rs): closed box drawing via Canvas::draw_box, nested group packing with padding and route gaps, BFS-based orthogonal edge routing from one shape boundary to another, Side/endpoint abstraction for port directions, bounded width/height/cell/output enforcement, deterministic output, and ASCII/Unicode charset support. Confirm all const limits (MAX_DEPTH, MAX_INNER_WIDTH, route lanes, etc.) are bounded and return typed MermansiError."
+
+[[plan.steps]]
+id = "step-2"
+description = "Verify the Architecture adapter (src/adapters/architecture.rs) converts groups→BoxGroup, service/junction nodes→BoxNode (preserving icon, icon_text, title, id), and edges→BoxEdge with Side::from_port for L/R/T/B direction semantics; verify horizontal_port_scores and vertical_precedence layout produce correct spatial ordering; verify no structured-text fallback markers ('Nodes:', 'Groups:', 'Edges:') appear in geometry output."
+
+[[plan.steps]]
+id = "step-3"
+description = "Verify the Block adapter (src/adapters/block.rs) traverses only root.children (no duplicate synthetic nodes, no 'root' leak), maps composite blocks→BoxGroup with columns, leaf blocks→BoxNode, space blocks→BoxSpacer, and edges→BoxEdge with arrow_type_start/end direction; verify depth bound (64) returns GeometryLayout error."
+
+[[plan.steps]]
+id = "step-4"
+description = "Verify the C4 adapter (src/adapters/c4.rs) filters the synthetic 'global' boundary, maps non-global boundaries→BoxGroup, shapes→BoxNode (preserving alias, label, type_c4_shape, technology, description), and relations→BoxEdge with bidirectional detection; verify no 'global' leak and no 'Boundaries:', 'Shapes:', 'Relationships:' fallback markers."
+
+[[plan.steps]]
+id = "step-5"
+description = "Verify the strong geometry tests in tests/semantic_integrity.rs: block_nested_three_levels_no_duplicate_nodes (exactly-once entities, nested box containment, 3 closed boxes, no 'root'), concise_block_preview_omits_generated_spacers (no [space], no id-), concise_c4_preview_omits_the_synthetic_global_boundary (no 'global'), c4_boundary_contains_closed_shapes_and_connected_relationship (technology/description labels, ▶ arrow, closed boxes), concise_architecture_preview_preserves_ports_and_direction (L→R horizontal, B→T vertical, ◀/▼ arrows, port legend), architecture_block_and_c4_fixtures_render_bilingual_geometry (EN+ZH closed boxes, width bound), architecture_block_and_c4_ascii_mode_uses_only_ascii_geometry (ASCII-only, +,-,|), and assert_no_structured_fallback/assert_closed_unicode_boxes helpers."
+
+[[plan.steps]]
+id = "step-6"
+description = "Verify the support matrix honesty: docs/SUPPORT_MATRIX.md and README.md list Architecture, Block, and C4 as 'Nested box geometry + canonical model' (not 'Structured text'), and that the support_matrix.rs conformance test (every_fixture_renders_nonempty_in_unicode_and_ascii, assert_structured_model_round_trips) passes for all EN/ZH fixtures of these three families."
+
+[[plan.steps]]
+id = "step-7"
+description = "Run the full acceptance command (cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features) and confirm zero warnings and all tests pass; confirm no parser files (merman-core/merman-ascii) are modified and no upstream crate is forked."

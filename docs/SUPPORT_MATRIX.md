@@ -87,15 +87,15 @@ parser.
 | Timeline | merman-ascii + mermansi | Summary + canonical model | `fixtures/timeline.en.mmd` | `fixtures/timeline.zh.mmd` | ✅ |
 | ZenUML | merman-ascii + mermansi | Partial sequence geometry + canonical model | `fixtures/zenuml.en.mmd` | `fixtures/zenuml.zh.mmd` | ✅ |
 | Json | mermansi | Canonical structured text | `fixtures/json.en.mmd` | `fixtures/json.zh.mmd` | yes |
-| Architecture | mermansi | Structured text | `fixtures/architecture.en.mmd` | `fixtures/architecture.zh.mmd` | ✅ |
-| C4 | mermansi | Structured text | `fixtures/c4.en.mmd` | `fixtures/c4.zh.mmd` | ✅ |
+| Architecture | mermansi | Nested box geometry + canonical model | `fixtures/architecture.en.mmd` | `fixtures/architecture.zh.mmd` | ✅ |
+| C4 | mermansi | Nested box geometry + canonical model | `fixtures/c4.en.mmd` | `fixtures/c4.zh.mmd` | ✅ |
 | Pie | mermansi | Structured text | `fixtures/pie.en.mmd` | `fixtures/pie.zh.mmd` | ✅ |
 | Requirement | mermansi | Structured text | `fixtures/requirement.en.mmd` | `fixtures/requirement.zh.mmd` | ✅ |
 | Sankey | mermansi | Structured text | `fixtures/sankey.en.mmd` | `fixtures/sankey.zh.mmd` | ✅ |
 | Radar | mermansi | Structured text | `fixtures/radar.en.mmd` | `fixtures/radar.zh.mmd` | ✅ |
 | Info | mermansi | Structured text | `fixtures/info.en.mmd` | `fixtures/info.zh.mmd` | ✅ |
 | Treemap | mermansi | Structured text | `fixtures/treemap.en.mmd` | `fixtures/treemap.zh.mmd` | ✅ |
-| Block | mermansi | Structured text | `fixtures/block.en.mmd` | `fixtures/block.zh.mmd` | ✅ |
+| Block | mermansi | Nested box geometry + canonical model | `fixtures/block.en.mmd` | `fixtures/block.zh.mmd` | ✅ |
 | QuadrantChart | mermansi | Structured text | `fixtures/quadrant.en.mmd` | `fixtures/quadrant.zh.mmd` | ✅ |
 | Ishikawa | mermansi | Structured text | `fixtures/ishikawa.en.mmd` | `fixtures/ishikawa.zh.mmd` | ✅ |
 | EventModeling | mermansi | Structured text | `fixtures/eventmodeling.en.mmd` | `fixtures/eventmodeling.zh.mmd` | ✅ |

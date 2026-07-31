@@ -7,12 +7,17 @@
 
 use mermansi::{ColorMode, MermansiOptions, OutputMode, render_source};
 
-fn flowchart_preview(output: &str) -> &str {
+fn family_preview<'a>(output: &'a str, family: &str) -> &'a str {
+    let marker = format!("[{family} semantic model]");
     output
-        .split("[flowchart semantic model]")
+        .split(&marker)
         .next()
         .unwrap_or(output)
         .trim_matches('\n')
+}
+
+fn flowchart_preview(output: &str) -> &str {
+    family_preview(output, "flowchart")
 }
 
 // ---------------------------------------------------------------------------
@@ -552,65 +557,79 @@ fn sankey_mixed_language_rows_align_by_display_column() {
 // Block diagram — hierarchy without duplicate nodes
 // ---------------------------------------------------------------------------
 
-/// Extract only the readable preview portion of `render_source` output — i.e.
-/// everything before the `[<family> semantic model]` delimiter — so that node
-/// occurrence counts are not affected by the appended canonical JSON.
-fn preview_only(output: &str) -> &str {
-    output
-        .split("[block semantic model]")
-        .next()
-        .unwrap_or(output)
+fn assert_no_structured_fallback(preview: &str) {
+    for marker in [
+        "Nodes:",
+        "Groups:",
+        "Edges:",
+        "Blocks:",
+        "Boundaries:",
+        "Shapes:",
+        "Relationships:",
+    ] {
+        assert!(
+            !preview.lines().any(|line| line.trim() == marker),
+            "structured-text fallback marker '{marker}' found:\n{preview}"
+        );
+    }
+}
+
+fn assert_closed_unicode_boxes(preview: &str, expected: usize) {
+    let corners = ['┌', '┐', '└', '┘'].map(|corner| preview.matches(corner).count());
+    for (corner, count) in ['┌', '┐', '└', '┘'].into_iter().zip(corners) {
+        assert!(
+            count >= expected,
+            "expected at least {expected} '{corner}' box corners, found {count}:\n{preview}"
+        );
+    }
+    let top_pairs = preview
+        .lines()
+        .map(|line| line.matches('┌').count().min(line.matches('┐').count()))
+        .sum::<usize>();
+    let bottom_pairs = preview
+        .lines()
+        .map(|line| line.matches('└').count().min(line.matches('┘').count()))
+        .sum::<usize>();
+    assert!(
+        top_pairs >= expected && bottom_pairs >= expected,
+        "expected at least {expected} paired top and bottom box borders, found {top_pairs}/{bottom_pairs}:\n{preview}"
+    );
 }
 
 #[test]
 fn block_nested_three_levels_no_duplicate_nodes() {
-    // Three-level nested hierarchy: Level1 > Level2 > Leaf.
     let source = "block-beta\n  block:L1[\"Level 1\"]\n    block:L2[\"Level 2\"]\n      Leaf[\"Leaf\"]\n    end\n  end\n";
-    let output = render_source(source, &MermansiOptions::unicode()).unwrap();
-    let preview = preview_only(&output);
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let preview = render_source(source, &options).unwrap();
 
-    // Each semantic node id must appear exactly once in the preview. The id is
-    // rendered parenthesized as `(id)`, which is unique to a single node line.
-    for node_id in ["L1", "L2", "Leaf"] {
-        let needle = format!("({node_id})");
+    for needle in ["L1 · Level 1", "L2 · Level 2", "Leaf"] {
         let count = preview.matches(&needle).count();
         assert_eq!(
             count, 1,
-            "block node '{node_id}' should appear exactly once in the preview, found {count}:\n{preview}"
+            "block entity '{needle}' should appear exactly once, found {count}:\n{preview}"
         );
     }
-
-    // Hierarchy indentation must be preserved: L2 is a child of L1, Leaf a child of L2.
-    let l1_line = preview
+    let left_edges = preview
         .lines()
-        .find(|line| line.contains("Level 1"))
-        .unwrap_or_else(|| panic!("Level 1 missing:\n{preview}"));
-    let l2_line = preview
-        .lines()
-        .find(|line| line.contains("Level 2"))
-        .unwrap_or_else(|| panic!("Level 2 missing:\n{preview}"));
-    let leaf_line = preview
-        .lines()
-        .find(|line| line.contains("Leaf"))
-        .unwrap_or_else(|| panic!("Leaf missing:\n{preview}"));
-
-    fn leading_spaces(line: &str) -> usize {
-        line.chars().take_while(|c| *c == ' ').count()
-    }
-
-    assert!(
-        leading_spaces(l2_line) > leading_spaces(l1_line),
-        "Level 2 should be indented deeper than Level 1:\n{preview}"
+        .filter_map(|line| {
+            line.find('┌')
+                .map(|byte| mermansi::str_display_width(&line[..byte]))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        left_edges.len(),
+        3,
+        "expected three nested boxes:\n{preview}"
     );
     assert!(
-        leading_spaces(leaf_line) > leading_spaces(l2_line),
-        "Leaf should be indented deeper than Level 2:\n{preview}"
+        left_edges.windows(2).all(|pair| pair[0] < pair[1]),
+        "each nested block must begin inside its parent:\n{preview}"
     );
-
-    // The synthetic "root" node must not be emitted in the preview.
+    assert_closed_unicode_boxes(&preview, 3);
+    assert_no_structured_fallback(&preview);
     assert!(
-        !preview.contains("(root)"),
-        "synthetic root node should not appear in the preview:\n{preview}"
+        !preview.contains("root"),
+        "synthetic root leaked:\n{preview}"
     );
 }
 
@@ -620,9 +639,11 @@ fn concise_block_preview_omits_generated_spacers() {
     let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
     let output = render_source(source, &options).unwrap();
 
-    assert!(output.contains("One (A)"), "{output}");
-    assert!(output.contains("Two (B)"), "{output}");
-    assert!(output.contains("A ----> B"), "{output}");
+    assert!(output.contains("A · One"), "{output}");
+    assert!(output.contains("B · Two"), "{output}");
+    assert!(output.contains("A --> B"), "{output}");
+    assert_closed_unicode_boxes(&output, 2);
+    assert_no_structured_fallback(&output);
     assert!(!output.contains("[space]"), "{output}");
     assert!(!output.contains("id-"), "{output}");
 }
@@ -633,21 +654,141 @@ fn concise_c4_preview_omits_the_synthetic_global_boundary() {
     let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
     let output = render_source(source, &options).unwrap();
 
-    assert!(output.contains("Customer (customer)"), "{output}");
-    assert!(output.contains("Bank (system)"), "{output}");
-    assert!(output.contains("customer -[rel]-> system"), "{output}");
+    assert!(output.contains("customer · Customer"), "{output}");
+    assert!(output.contains("system · Bank"), "{output}");
+    assert!(output.contains("customer --> system  Uses"), "{output}");
+    assert_closed_unicode_boxes(&output, 2);
+    assert_no_structured_fallback(&output);
     assert!(!output.contains("global"), "{output}");
 }
 
 #[test]
-fn concise_architecture_preview_preserves_ports_and_direction() {
-    let source = "architecture-beta\n  service web(server)[Web]\n  junction hub\n  service api(server)[API]\n  web:R --> L:hub\n  hub:B -- T:api";
+fn c4_boundary_contains_closed_shapes_and_connected_relationship() {
+    let source = "C4Container\nContainer_Boundary(cb, \"Backend\") {\n  Container(api, \"API\", \"Rust\", \"Service\")\n  ContainerDb(db, \"Database\", \"Postgres\", \"Store\")\n  Rel(api, db, \"Reads\")\n}";
     let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
     let output = render_source(source, &options).unwrap();
 
-    assert!(output.contains("web:R --> L:hub"), "{output}");
-    assert!(output.contains("hub:B -- T:api"), "{output}");
+    for label in [
+        "cb · Backend",
+        "api · API",
+        "db · Database",
+        "technology · Rust",
+        "technology · Postgres",
+    ] {
+        assert!(output.contains(label), "'{label}' missing:\n{output}");
+    }
+    assert!(output.contains('▶'), "C4 relation arrow missing:\n{output}");
+    assert!(output.contains("api --> db  Reads"), "{output}");
+    assert_closed_unicode_boxes(&output, 3);
+    assert_no_structured_fallback(&output);
+}
+
+#[test]
+fn concise_architecture_preview_preserves_ports_and_direction() {
+    let source = "architecture-beta\n  service web(server)[Web]\n  junction hub\n  service api(server)[API]\n  web:L --> R:hub\n  hub:B --> T:api";
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let output = render_source(source, &options).unwrap();
+
+    assert!(output.contains("web --> hub  ports L -> R"), "{output}");
+    assert!(output.contains("hub --> api  ports B -> T"), "{output}");
+    let hub = label_position(&output, "hub");
+    let web = label_position(&output, "web · Web");
+    let api = label_position(&output, "api · API");
+    assert!(
+        hub.1 < web.1,
+        "L -> R ports must place hub left of web:\n{output}"
+    );
+    assert!(
+        hub.0 < api.0,
+        "B -> T ports must place api below hub:\n{output}"
+    );
+    assert!(
+        output.contains('◀'),
+        "horizontal target arrow missing:\n{output}"
+    );
+    assert!(
+        output.contains('▼'),
+        "vertical target arrow missing:\n{output}"
+    );
+    assert_closed_unicode_boxes(&output, 3);
+    assert_no_structured_fallback(&output);
     assert!(!output.contains('?'), "{output}");
+}
+
+#[test]
+fn architecture_vertical_port_legend_keeps_tokens_intact() {
+    let source = "architecture-beta\n  service lower(server)[Lower]\n  service upper(server)[Upper]\n  lower:T --> B:upper";
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let output = render_source(source, &options).unwrap();
+
+    assert!(
+        output
+            .lines()
+            .any(|line| line.trim() == "lower --> upper  ports T -> B"),
+        "vertical port legend should use available width without splitting tokens:\n{output}"
+    );
+    assert!(
+        label_position(&output, "upper · Upper").0 < label_position(&output, "lower · Lower").0,
+        "a target's bottom port must be above a source's top port:\n{output}"
+    );
+    assert!(output.contains('▲'), "target arrow missing:\n{output}");
+}
+
+#[test]
+fn architecture_block_and_c4_fixtures_render_bilingual_geometry() {
+    let cases = [
+        (
+            "architecture",
+            include_str!("fixtures/architecture.en.mmd"),
+            4,
+        ),
+        (
+            "architecture",
+            include_str!("fixtures/architecture.zh.mmd"),
+            4,
+        ),
+        ("block", include_str!("fixtures/block.en.mmd"), 3),
+        ("block", include_str!("fixtures/block.zh.mmd"), 3),
+        ("c4", include_str!("fixtures/c4.en.mmd"), 3),
+        ("c4", include_str!("fixtures/c4.zh.mmd"), 3),
+    ];
+    let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    for (family, source, boxes) in cases {
+        let output = render_source(source, &options)
+            .unwrap_or_else(|error| panic!("{family} fixture failed: {error}"));
+        assert_closed_unicode_boxes(&output, boxes);
+        assert_no_structured_fallback(&output);
+        assert!(
+            output.contains('─') && output.contains('│'),
+            "{family}:\n{output}"
+        );
+        assert!(
+            output
+                .lines()
+                .all(|line| mermansi::str_display_width(line) <= options.max_width),
+            "{family} exceeded configured display width:\n{output}"
+        );
+    }
+}
+
+#[test]
+fn architecture_block_and_c4_ascii_mode_uses_only_ascii_geometry() {
+    let cases = [
+        ("architecture", include_str!("fixtures/architecture.en.mmd")),
+        ("block", include_str!("fixtures/block.en.mmd")),
+        ("c4", include_str!("fixtures/c4.en.mmd")),
+    ];
+    let options = MermansiOptions::ascii().with_output_mode(OutputMode::Concise);
+    for (family, source) in cases {
+        let output = render_source(source, &options)
+            .unwrap_or_else(|error| panic!("{family} ASCII fixture failed: {error}"));
+        assert!(
+            output.is_ascii(),
+            "{family} emitted Unicode decoration:\n{output}"
+        );
+        assert!(output.contains('+') && output.contains('-') && output.contains('|'));
+        assert_no_structured_fallback(&output);
+    }
 }
 
 // ---------------------------------------------------------------------------

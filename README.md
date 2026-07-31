@@ -132,15 +132,15 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 | Timeline | Summary + canonical model | merman-ascii + mermansi |
 | ZenUML | Partial sequence geometry + canonical model | merman-ascii + mermansi |
 | Json | Canonical structured text | mermansi adapter |
-| Architecture | Structured text | mermansi adapter |
-| C4 | Structured text | mermansi adapter |
+| Architecture | Nested box geometry + canonical model | mermansi adapter |
+| C4 | Nested box geometry + canonical model | mermansi adapter |
 | Pie | Structured text | mermansi adapter |
 | Requirement | Structured text | mermansi adapter |
 | Sankey | Structured text | mermansi adapter |
 | Radar | Structured text | mermansi adapter |
 | Info | Structured text | mermansi adapter |
 | Treemap | Structured text | mermansi adapter |
-| Block | Structured text | mermansi adapter |
+| Block | Nested box geometry + canonical model | mermansi adapter |
 | QuadrantChart | Structured text | mermansi adapter |
 | Ishikawa | Structured text | mermansi adapter |
 | EventModeling | Structured text | mermansi adapter |

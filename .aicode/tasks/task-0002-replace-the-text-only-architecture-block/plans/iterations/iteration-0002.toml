@@ -1,0 +1,46 @@
+schema_version = 1
+task = "task-0002-replace-the-text-only-architecture-block"
+iteration = 2
+loop_iteration = 1
+created_at = "unix:1785482268"
+objective = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
+open_issue_ids = ["task-0002-replace-the-text-only-architecture-block#0001"]
+
+[plan]
+objective = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
+
+[[plan.steps]]
+id = "step-1"
+description = "Audit the current uncommitted work unit state: read src/adapters/box_geometry.rs in full (packing, painting, routing, legend, bounds), plus src/adapters/architecture.rs, src/adapters/block.rs, src/adapters/c4.rs, src/adapters/mod.rs dispatch for these three variants, src/error.rs GeometryLayout, src/output.rs bounds application, and src/canvas.rs draw_box/draw_horizontal_line/draw_vertical_line contracts. Record which acceptance criteria are already satisfied and which remain, so the remainder of the plan only fills real gaps."
+
+[[plan.steps]]
+id = "step-2"
+description = "Verify and complete the shared box geometry engine: every node/group is a closed box drawn with display-column-aware widths (str_display_width, grapheme-safe wrapping, CJK/emoji/combining marks), nested groups fully contain their children with no overlap, every edge is routed from a visible border cell of the source shape to a visible border cell of the target shape with correct arrowheads for arrow_start/arrow_end, and no shape or relationship is silently dropped. Fix any case where an edge degenerates to a legend-only entry without a drawn route, or where a group is emitted without a fully closed border."
+
+[[plan.steps]]
+id = "step-3"
+description = "Finish Architecture geometry semantics: honor L/R/T/B port sides for both endpoints when choosing border attachment points and route direction, keep group membership (in_group) as real nesting rather than duplicated synthetic nodes, preserve service/junction kind, icon/icon_text detail, and titles for English and Chinese, and keep edge labels plus port annotations attached to the drawn route. Ensure junctions render as visible shapes participating in routing."
+
+[[plan.steps]]
+id = "step-4"
+description = "Finish Block geometry semantics: preserve the root columns value and per-composite columns for grid packing, honor width_in_columns spans, render space blocks as invisible spacers that occupy grid cells without emitting boxes or legend entries, keep arbitrary nesting depth bounded by a typed error at 64 levels, preserve block_type detail and bilingual labels, and route every parsed edge (including edges that cross composite boundaries) between visible block borders."
+
+[[plan.steps]]
+id = "step-5"
+description = "Finish C4 geometry semantics: drop only the synthetic global boundary while keeping every declared boundary as a nested closed group, place shapes inside their parent_boundary, preserve alias, label, C4 shape type, technology, and description lines in both English and Chinese, and route Rel/BiRel/Rel_U/Rel_D/Rel_L/Rel_R relationships between shape borders with correct arrow ends and label/technology/description text retained."
+
+[[plan.steps]]
+id = "step-6"
+description = "Strengthen geometry tests in tests/semantic_integrity.rs for all three families: assert absence of structured-text fallback markers (`Nodes:`, `Groups:`, `Edges:`, `Shapes:`, `Relationships:`, `Blocks:`), assert closed box borders in Unicode and pure-ASCII-only glyphs in ASCII mode, assert nested containment by comparing child box coordinates against parent border coordinates, assert each relationship's route starts and ends adjacent to the correct shape borders, assert architecture port sides map to the expected border, assert no duplicate synthetic nodes for grouped entities, and assert English and Chinese labels/descriptions appear verbatim with correct display-column alignment."
+
+[[plan.steps]]
+id = "step-7"
+description = "Extend tests/bounds.rs for Architecture, Block, and C4: byte-identical output on repeated renders (determinism), typed RenderLimit/GeometryLayout errors instead of panics or truncation when max_width, max_height, max cells, or output size are too small, no output exceeding configured width/height, and a bounded-error case for excessive block nesting. Also confirm tests/support_matrix.rs and tests/cli.rs still cover these families in both charsets."
+
+[[plan.steps]]
+id = "step-8"
+description = "Update docs/SUPPORT_MATRIX.md and README.md honestly for exactly these three families, describing the delivered capability as nested terminal box geometry with routed relationships (and naming any remaining limitation, e.g. absence of browser-exact geometry), leaving all other families' rows unchanged."
+
+[[plan.steps]]
+id = "step-9"
+description = "Run the acceptance command `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features`, fix any failures introduced by steps 2-8, remove any temporary files, and report the changed files with `changed: true` since this Issue owns uncommitted repository changes. Do not run Git commands, stage, commit, or mark the Task complete."

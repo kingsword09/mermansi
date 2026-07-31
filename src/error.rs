@@ -45,6 +45,13 @@ pub enum MermansiError {
     #[error("canvas overflow: requested {requested} cells, max {max}")]
     CanvasOverflow { requested: usize, max: usize },
 
+    /// A parsed semantic model could not be arranged as terminal geometry.
+    #[error("terminal geometry layout failed for {family}: {message}")]
+    GeometryLayout {
+        family: &'static str,
+        message: String,
+    },
+
     /// A zero-width grapheme could not be attached to a preceding canvas grapheme.
     #[error("invalid canvas grapheme placement: {message}")]
     CanvasGrapheme { message: &'static str },

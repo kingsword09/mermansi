@@ -1,0 +1,17 @@
+schema_version = 1
+task = "task-0002-replace-the-text-only-architecture-block"
+title = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
+status = "in_progress"
+created_at = "unix:1785471514"
+updated_at = "unix:1785471514"
+
+[[phases]]
+id = "S0"
+title = "Implement, verify, and review the Task objective"
+status = "in_progress"
+acceptance = [
+    "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates.",
+    "Verification passes: cargo fmt --check",
+    "Verification passes: cargo clippy --all-targets --all-features -- -D warnings",
+    "Verification passes: cargo test --all-targets --all-features",
+]

@@ -21,6 +21,7 @@ use serde::Serialize;
 
 pub mod architecture;
 pub mod block;
+mod box_geometry;
 pub mod c4;
 pub mod eventmodeling;
 pub mod flowchart;
@@ -163,6 +164,13 @@ pub(crate) fn align_left_display(text: &str, width: usize) -> String {
 pub(crate) fn align_right_display(text: &str, width: usize) -> String {
     let padding = width.saturating_sub(str_display_width(text));
     format!("{}{text}", " ".repeat(padding))
+}
+
+pub(crate) const fn detail_separator(charset: Charset) -> &'static str {
+    match charset {
+        Charset::Unicode => " · ",
+        Charset::Ascii => " - ",
+    }
 }
 
 /// Format a title block.
