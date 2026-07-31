@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0005-replace-the-structured-text-only-pie-rad#0006"
 number = 6
 title = "Radar geometry is excessively dense and loses configured semantics"
-status = "open"
+status = "resolved"
 severity = "P2"
 category = "layout-and-semantics"
 fingerprint = "sha256:aab81b549fd4e0e7aa7bda46bb6f991457216bdbd3326f32426a0548960ebd84"
 created_at = "unix:1785497935"
-updated_at = "unix:1785497935"
+updated_at = "unix:1785500446"
+resolved_at = "unix:1785500446"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Users cannot reliably distinguish the data curve from the grid, large 
 [acceptance]
 description = "Render a compact, legible radar with explicit layer precedence and distinguishable curve strokes/markers; either honor all supported ticks within checked geometry or return a typed limit error; bound total curve entries before allocation; preserve labels/legend options; and add connectivity/readability tests that inspect coordinates and crossings rather than only glyph presence."
 command = "cargo test --test semantic_integrity radar_is_compact_readable_and_preserves_configured_ticks -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0010.json"
+description = "Acceptance met by compact layered geometry, explicit tick/entry limits, force-drawn connected curves, preserved options/labels, coordinate-aware tests, visual inspection, and clean full verification."

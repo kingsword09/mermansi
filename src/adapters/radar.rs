@@ -1,20 +1,20 @@
-//! Radar chart adapter — genuine radial terminal geometry.
+//! Radar chart adapter — compact layered radial terminal geometry.
 //!
-//! Draws a shared center, N radial axis spokes, graticule rings or polygons, and connected
-//! plotted curve vertices normalized from configured min/max. Preserves every axis label,
-//! curve label/value, ticks, graticule choice, showLegend, and title.
+//! Graticule, spokes, curves, markers, and labels are drawn as explicit layers so data curves
+//! remain visible at crossings. Configured ticks and total curve entries are bounded before
+//! geometry allocation.
 
-use crate::adapters::chart_primitives::{
-    self, MAX_CHART_ENTITIES, checked_chart_dimensions, ensure_entity_limit,
-};
-use crate::adapters::format_title;
+use crate::adapters::chart_primitives::{self, checked_chart_dimensions, ensure_entity_limit};
+use crate::adapters::{detail_separator, format_title};
 use crate::ansi::sanitize_label_text;
 use crate::canvas::Canvas;
-use crate::error::Result;
+use crate::error::{MermansiError, Result};
 use crate::options::{Charset, MermansiOptions};
 use crate::str_display_width;
 use merman_core::diagrams::radar::RadarDiagramRenderModel;
 use serde_json::Value;
+
+const MAX_RADAR_TICKS: usize = 18;
 
 pub fn render_radar(model: &RadarDiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
     let mut out = String::new();
@@ -22,187 +22,245 @@ pub fn render_radar(model: &RadarDiagramRenderModel, opts: &MermansiOptions) -> 
 
     ensure_entity_limit("radar axes", model.axes.len())?;
     ensure_entity_limit("radar curves", model.curves.len())?;
+    let entry_count = model.curves.iter().try_fold(0usize, |total, curve| {
+        total
+            .checked_add(curve.entries.len())
+            .ok_or(MermansiError::RenderLimit {
+                context: "radar curve entries",
+                requested: usize::MAX,
+                limit: chart_primitives::MAX_CHART_ENTITIES,
+            })
+    })?;
+    ensure_entity_limit("radar curve entries", entry_count)?;
 
     if model.axes.is_empty() {
         out.push_str("(empty radar chart)\n");
-        let _ = opts;
         return Ok(out);
     }
 
-    let n_axes = model.axes.len();
-    let (chart_w, chart_h) = checked_chart_dimensions(opts, (20, 10), (80, 50))?;
+    let ticks = parse_ticks(&model.options.ticks)?;
+    let preferred_height = ticks.saturating_add(3).saturating_mul(2).clamp(14, 40);
+    let longest_axis = model
+        .axes
+        .iter()
+        .map(axis_label)
+        .map(|label| str_display_width(&label))
+        .max()
+        .unwrap_or(0);
+    let preferred_width = (preferred_height * 2)
+        .max(longest_axis.saturating_mul(2).saturating_add(8))
+        .min(80);
+    let (chart_width, chart_height) =
+        checked_chart_dimensions(opts, (20, 10), (preferred_width, preferred_height))?;
+    let radius = (chart_height / 2).saturating_sub(2).max(3) as f64;
+    let tick_capacity = radius.floor() as usize;
+    if ticks > tick_capacity {
+        return Err(MermansiError::RenderLimit {
+            context: "radar ticks",
+            requested: ticks,
+            limit: tick_capacity,
+        });
+    }
 
-    let radius = (chart_h / 2).saturating_sub(2).max(3) as f64;
-    let cx = (chart_w / 2) as f64;
-    let cy = (chart_h / 2) as f64;
+    let center_x = (chart_width / 2) as f64;
+    let center_y = (chart_height / 2) as f64;
+    let axis_angles = compute_axis_angles(model.axes.len());
+    let mut canvas = Canvas::new(chart_width, chart_height)?;
 
-    let mut canvas = Canvas::new(chart_w, chart_h)?;
-
-    // Graticule: concentric rings (circle) or polygons.
-    let ticks = parse_ticks(&model.options.ticks).clamp(1, 10);
-    let graticule_char = match opts.charset {
+    let graticule = match opts.charset {
         Charset::Unicode => "·",
         Charset::Ascii => ".",
     };
     for tick in 1..=ticks {
-        let r = radius * (tick as f64 / ticks as f64);
+        let ring_radius = radius * (tick as f64 / ticks as f64);
         if model.options.graticule == "polygon" {
-            draw_graticule_polygon(&mut canvas, cx, cy, r, n_axes, graticule_char)?;
-        } else {
-            chart_primitives::draw_circle_outline(
+            draw_graticule_polygon(
                 &mut canvas,
-                cx as i64,
-                cy as i64,
-                r as i64,
-                graticule_char,
+                center_x,
+                center_y,
+                ring_radius,
+                &axis_angles,
+                graticule,
+            )?;
+        } else {
+            draw_sparse_ring(
+                &mut canvas,
+                center_x,
+                center_y,
+                ring_radius,
+                model.axes.len(),
+                graticule,
             )?;
         }
     }
 
-    // Axis spokes.
-    let spoke_char = match opts.charset {
-        Charset::Unicode => "│",
-        Charset::Ascii => "|",
+    let spoke = match opts.charset {
+        Charset::Unicode => "┊",
+        Charset::Ascii => ":",
     };
-    let axis_angles = compute_axis_angles(n_axes);
-    for &angle in &axis_angles {
-        let ex = cx + radius * angle.cos();
-        let ey = cy + radius * angle.sin();
-        chart_primitives::draw_line(
+    for angle in &axis_angles {
+        let endpoint_x = center_x + radius * angle.cos();
+        let endpoint_y = center_y + radius * angle.sin();
+        chart_primitives::draw_line_over(
             &mut canvas,
-            cx as i64,
-            cy as i64,
-            ex.round() as i64,
-            ey.round() as i64,
-            spoke_char,
+            center_x.round() as i64,
+            center_y.round() as i64,
+            endpoint_x.round() as i64,
+            endpoint_y.round() as i64,
+            spoke,
         )?;
     }
 
-    // Draw curves as connected polygons.
-    let (data_min, data_max) = compute_data_range(model);
-    let min_val = parse_optional_number(&model.options.min).unwrap_or(data_min);
-    let max_val = model
-        .options
-        .max
-        .as_ref()
-        .and_then(parse_optional_number)
-        .unwrap_or(data_max);
-    let range = (max_val - min_val).max(1e-9);
-
-    for (curve_idx, curve) in model.curves.iter().enumerate() {
-        let marker = chart_primitives::marker_char(curve_idx, opts.charset);
-        let line_char = match opts.charset {
-            Charset::Unicode => "─",
-            Charset::Ascii => "-",
-        };
-
-        let vertices: Vec<(f64, f64)> = curve
+    let (minimum, maximum) = resolve_data_range(model)?;
+    let range = maximum - minimum;
+    for (curve_index, curve) in model.curves.iter().enumerate() {
+        let marker = chart_primitives::marker_char(curve_index, opts.charset);
+        let line = curve_line_char(curve_index, opts.charset);
+        let vertices = curve
             .entries
             .iter()
             .enumerate()
-            .filter_map(|(i, entry)| {
-                let axis_idx = i % n_axes;
-                let angle = *axis_angles.get(axis_idx)?;
-                let raw = json_to_f64(entry)?;
-                let normalized = ((raw - min_val) / range).clamp(0.0, 1.0);
-                let r = radius * normalized;
-                Some((cx + r * angle.cos(), cy + r * angle.sin()))
+            .filter_map(|(entry_index, entry)| {
+                let value = json_to_f64(entry).filter(|value| value.is_finite())?;
+                let angle = axis_angles[entry_index % axis_angles.len()];
+                let normalized = ((value - minimum) / range).clamp(0.0, 1.0);
+                let vertex_radius = radius * normalized;
+                Some((
+                    center_x + vertex_radius * angle.cos(),
+                    center_y + vertex_radius * angle.sin(),
+                ))
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        if vertices.len() >= 2 {
-            for window in vertices.windows(2) {
-                chart_primitives::draw_line(
-                    &mut canvas,
-                    window[0].0.round() as i64,
-                    window[0].1.round() as i64,
-                    window[1].0.round() as i64,
-                    window[1].1.round() as i64,
-                    line_char,
-                )?;
-            }
-            // Close the polygon if 3+ vertices.
-            if vertices.len() >= 3 {
-                let first = vertices[0];
-                let last = *vertices.last().unwrap();
-                chart_primitives::draw_line(
-                    &mut canvas,
-                    last.0.round() as i64,
-                    last.1.round() as i64,
-                    first.0.round() as i64,
-                    first.1.round() as i64,
-                    line_char,
-                )?;
-            }
-            for &(vx, vy) in &vertices {
-                plot_marker(&mut canvas, vx, vy, marker)?;
-            }
+        for window in vertices.windows(2) {
+            chart_primitives::draw_line_over(
+                &mut canvas,
+                window[0].0.round() as i64,
+                window[0].1.round() as i64,
+                window[1].0.round() as i64,
+                window[1].1.round() as i64,
+                line,
+            )?;
+        }
+        if vertices.len() >= 3 {
+            let first = vertices[0];
+            let last = vertices[vertices.len() - 1];
+            chart_primitives::draw_line_over(
+                &mut canvas,
+                last.0.round() as i64,
+                last.1.round() as i64,
+                first.0.round() as i64,
+                first.1.round() as i64,
+                line,
+            )?;
+        }
+        for (x, y) in vertices {
+            plot_marker(&mut canvas, x, y, marker)?;
         }
     }
 
-    // Place center marker.
-    let center_char = match opts.charset {
+    let center = match opts.charset {
         Charset::Unicode => "✛",
         Charset::Ascii => "+",
     };
-    canvas.set_text(cx as usize, cy as usize, center_char)?;
-
-    // Place axis labels at spoke ends.
-    for (i, axis) in model.axes.iter().enumerate() {
-        if let Some(&angle) = axis_angles.get(i) {
-            let label_r = radius + 1.5;
-            let lx = cx + label_r * angle.cos();
-            let ly = cy + label_r * angle.sin();
-            place_label(&mut canvas, lx, ly, &sanitize_label_text(&axis.label))?;
-        }
+    canvas.set_text(center_x as usize, center_y as usize, center)?;
+    for (axis, angle) in model.axes.iter().zip(&axis_angles) {
+        let label_radius = radius + 1.5;
+        place_axis_label(
+            &mut canvas,
+            center_x + label_radius * angle.cos(),
+            center_y + label_radius * angle.sin(),
+            *angle,
+            &axis_label(axis),
+        )?;
     }
 
-    let chart_text = canvas.render();
-    out.push_str(&chart_text);
+    out.push_str(&chart_primitives::render_cropped_canvas(&canvas));
     if !out.ends_with('\n') {
         out.push('\n');
     }
-    out.push('\n');
+    let separator = detail_separator(opts.charset);
+    out.push_str(&format!(
+        "\nScale: {}..{}{separator}ticks={ticks}{separator}{}\n",
+        format_number(minimum),
+        format_number(maximum),
+        model.options.graticule
+    ));
+    let axes = model.axes.iter().map(axis_label).collect::<Vec<_>>();
+    out.push_str(&format!("Axes: {}\n", axes.join(separator)));
 
-    // Legend with curve labels and values.
     if model.options.show_legend && !model.curves.is_empty() {
         out.push_str("Legend:\n");
-        for (i, curve) in model.curves.iter().enumerate() {
-            let marker = chart_primitives::marker_char(i, opts.charset);
+        for (index, curve) in model.curves.iter().enumerate() {
+            let marker = chart_primitives::marker_char(index, opts.charset);
             let label = sanitize_label_text(&curve.label);
-            let values: Vec<String> = curve.entries.iter().map(format_json_value).collect();
+            let values = curve
+                .entries
+                .iter()
+                .map(format_json_value)
+                .collect::<Vec<_>>();
             out.push_str(&format!("  {marker} {label}: {}\n", values.join(", ")));
         }
     }
 
-    let _ = MAX_CHART_ENTITIES;
     Ok(out)
 }
 
-fn compute_axis_angles(n: usize) -> Vec<f64> {
-    (0..n)
-        .map(|i| -std::f64::consts::FRAC_PI_2 + (i as f64 / n as f64) * std::f64::consts::TAU)
+fn axis_label(axis: &merman_core::diagrams::radar::RadarRenderAxis) -> String {
+    let label = sanitize_label_text(&axis.label);
+    if label.trim().is_empty() {
+        sanitize_label_text(&axis.name)
+    } else {
+        label
+    }
+}
+
+fn compute_axis_angles(count: usize) -> Vec<f64> {
+    (0..count)
+        .map(|index| {
+            -std::f64::consts::FRAC_PI_2 + (index as f64 / count as f64) * std::f64::consts::TAU
+        })
         .collect()
+}
+
+fn draw_sparse_ring(
+    canvas: &mut Canvas,
+    center_x: f64,
+    center_y: f64,
+    radius: f64,
+    axis_count: usize,
+    glyph: &str,
+) -> Result<()> {
+    let samples = axis_count.saturating_mul(4).clamp(12, 48);
+    for sample in 0..samples {
+        let angle = sample as f64 / samples as f64 * std::f64::consts::TAU;
+        plot_grid_point(
+            canvas,
+            (center_x + radius * angle.cos()).round() as i64,
+            (center_y + radius * angle.sin()).round() as i64,
+            glyph,
+        )?;
+    }
+    Ok(())
 }
 
 fn draw_graticule_polygon(
     canvas: &mut Canvas,
-    cx: f64,
-    cy: f64,
+    center_x: f64,
+    center_y: f64,
     radius: f64,
-    n_axes: usize,
+    angles: &[f64],
     glyph: &str,
 ) -> Result<()> {
-    let angles = compute_axis_angles(n_axes);
-    let vertices: Vec<(i64, i64)> = angles
+    let vertices = angles
         .iter()
-        .map(|&a| {
+        .map(|angle| {
             (
-                (cx + radius * a.cos()).round() as i64,
-                (cy + radius * a.sin()).round() as i64,
+                (center_x + radius * angle.cos()).round() as i64,
+                (center_y + radius * angle.sin()).round() as i64,
             )
         })
-        .collect();
+        .collect::<Vec<_>>();
     for window in vertices.windows(2) {
         chart_primitives::draw_line(
             canvas,
@@ -214,92 +272,174 @@ fn draw_graticule_polygon(
         )?;
     }
     if vertices.len() >= 3 {
-        let first = vertices[0];
-        let last = *vertices.last().unwrap();
-        chart_primitives::draw_line(canvas, last.0, last.1, first.0, first.1, glyph)?;
+        chart_primitives::draw_line(
+            canvas,
+            vertices[vertices.len() - 1].0,
+            vertices[vertices.len() - 1].1,
+            vertices[0].0,
+            vertices[0].1,
+            glyph,
+        )?;
+    }
+    Ok(())
+}
+
+fn plot_grid_point(canvas: &mut Canvas, x: i64, y: i64, glyph: &str) -> Result<()> {
+    if x >= 0 && y >= 0 {
+        let (x, y) = (x as usize, y as usize);
+        if x < canvas.width()
+            && y < canvas.height()
+            && canvas.get_cell(x, y).is_some_and(str::is_empty)
+            && canvas.continuation_owner(x, y).is_none()
+        {
+            canvas.set_text(x, y, glyph)?;
+        }
     }
     Ok(())
 }
 
 fn plot_marker(canvas: &mut Canvas, x: f64, y: f64, glyph: &str) -> Result<()> {
-    let ix = x.round() as i64;
-    let iy = y.round() as i64;
-    if ix >= 0 && iy >= 0 {
-        let (ux, uy) = (ix as usize, iy as usize);
-        if ux < canvas.width() && uy < canvas.height() {
-            canvas.set_text(ux, uy, glyph)?;
-        }
+    let x = x.round() as i64;
+    let y = y.round() as i64;
+    if x >= 0 && y >= 0 && (x as usize) < canvas.width() && (y as usize) < canvas.height() {
+        canvas.set_text(x as usize, y as usize, glyph)?;
     }
     Ok(())
 }
 
-fn place_label(canvas: &mut Canvas, x: f64, y: f64, text: &str) -> Result<()> {
-    let ix = x.round() as i64;
-    let iy = y.round() as i64;
-    if ix < 0 || iy < 0 {
+fn place_axis_label(canvas: &mut Canvas, x: f64, y: f64, angle: f64, text: &str) -> Result<()> {
+    if text.is_empty() {
         return Ok(());
     }
-    let mut ux = ix as usize;
-    let uy = iy as usize;
-    let label_w = str_display_width(text);
-    if ux + label_w > canvas.width() {
-        ux = canvas.width().saturating_sub(label_w);
+    let text = truncate_to_width(text, canvas.width());
+    let width = str_display_width(&text);
+    let mut x = x.round() as i64;
+    if angle.cos() < -0.25 {
+        x -= width as i64;
+    } else if angle.cos().abs() <= 0.25 {
+        x -= width as i64 / 2;
     }
-    if uy < canvas.height() && ux < canvas.width() {
-        canvas.set_text(ux, uy, text)?;
+    let y = (y.round() as i64).clamp(0, canvas.height().saturating_sub(1) as i64);
+    let x = x.clamp(0, canvas.width().saturating_sub(width) as i64) as usize;
+    canvas.set_text(x, y as usize, &text)
+}
+
+fn truncate_to_width(text: &str, width: usize) -> String {
+    let mut output = String::new();
+    let mut used = 0usize;
+    for character in text.chars() {
+        let character_width = unicode_width::UnicodeWidthChar::width(character).unwrap_or(0);
+        if used.saturating_add(character_width) > width {
+            break;
+        }
+        output.push(character);
+        used += character_width;
     }
-    Ok(())
+    output
+}
+
+fn resolve_data_range(model: &RadarDiagramRenderModel) -> Result<(f64, f64)> {
+    let (data_minimum, data_maximum) = compute_data_range(model);
+    let minimum = configured_number(&model.options.min, "min", data_minimum)?;
+    let maximum = match &model.options.max {
+        Some(value) => configured_number(value, "max", data_maximum)?,
+        None => data_maximum,
+    };
+    if maximum <= minimum {
+        return Err(MermansiError::GeometryLayout {
+            family: "radar",
+            message: format!("max ({maximum}) must be greater than min ({minimum})"),
+        });
+    }
+    Ok((minimum, maximum))
 }
 
 fn compute_data_range(model: &RadarDiagramRenderModel) -> (f64, f64) {
-    let values: Vec<f64> = model
+    let mut minimum = f64::INFINITY;
+    let mut maximum = f64::NEG_INFINITY;
+    for value in model
         .curves
         .iter()
-        .flat_map(|c| c.entries.iter())
+        .flat_map(|curve| &curve.entries)
         .filter_map(json_to_f64)
-        .collect();
-    if values.is_empty() {
-        return (0.0, 1.0);
+        .filter(|value| value.is_finite())
+    {
+        minimum = minimum.min(value);
+        maximum = maximum.max(value);
     }
-    let min = values.iter().copied().fold(f64::INFINITY, f64::min);
-    let max = values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-    if (max - min).abs() < 1e-9 {
-        (min - 0.5, max + 0.5)
+    if !minimum.is_finite() || !maximum.is_finite() {
+        (0.0, 1.0)
+    } else if (maximum - minimum).abs() < 1e-9 {
+        (minimum - 0.5, maximum + 0.5)
     } else {
-        (min, max)
+        (minimum, maximum)
     }
 }
 
-fn parse_ticks(v: &Value) -> usize {
-    v.as_u64().unwrap_or(5) as usize
+fn configured_number(value: &Value, name: &'static str, fallback: f64) -> Result<f64> {
+    if value.is_null() {
+        return Ok(fallback);
+    }
+    let number = json_to_f64(value)
+        .filter(|number| number.is_finite())
+        .ok_or_else(|| MermansiError::GeometryLayout {
+            family: "radar",
+            message: format!("{name} must be a finite number"),
+        })?;
+    Ok(number)
 }
 
-fn parse_optional_number(v: &Value) -> Option<f64> {
-    match v {
-        Value::Null => None,
-        Value::Number(n) => n.as_f64(),
+fn parse_ticks(value: &Value) -> Result<usize> {
+    let Some(raw) = value.as_u64() else {
+        return Err(MermansiError::GeometryLayout {
+            family: "radar",
+            message: "ticks must be a positive integer".to_owned(),
+        });
+    };
+    let requested = usize::try_from(raw).unwrap_or(usize::MAX);
+    if requested == 0 {
+        return Err(MermansiError::GeometryLayout {
+            family: "radar",
+            message: "ticks must be greater than zero".to_owned(),
+        });
+    }
+    if requested > MAX_RADAR_TICKS {
+        return Err(MermansiError::RenderLimit {
+            context: "radar ticks",
+            requested,
+            limit: MAX_RADAR_TICKS,
+        });
+    }
+    Ok(requested)
+}
+
+fn json_to_f64(value: &Value) -> Option<f64> {
+    match value {
+        Value::Number(number) => number.as_f64(),
+        Value::String(text) => text.parse().ok(),
         _ => None,
     }
 }
 
-fn json_to_f64(v: &Value) -> Option<f64> {
-    match v {
-        Value::Number(n) => n.as_f64(),
-        Value::String(s) => s.parse().ok(),
-        _ => None,
+fn curve_line_char(index: usize, charset: Charset) -> &'static str {
+    const UNICODE: &[&str] = &["─", "═", "┄", "┈"];
+    const ASCII: &[&str] = &["-", "=", "~", ":"];
+    match charset {
+        Charset::Unicode => UNICODE[index % UNICODE.len()],
+        Charset::Ascii => ASCII[index % ASCII.len()],
     }
 }
 
-fn format_json_value(v: &Value) -> String {
-    match v {
-        Value::Number(n) => {
-            if let Some(f) = n.as_f64() {
-                format!("{f:.2}")
-            } else {
-                n.to_string()
-            }
-        }
-        Value::String(s) => s.clone(),
-        other => other.to_string(),
+fn format_number(value: f64) -> String {
+    format!("{value:.2}")
+}
+
+fn format_json_value(value: &Value) -> String {
+    match value {
+        Value::Number(number) => number
+            .as_f64()
+            .map_or_else(|| number.to_string(), format_number),
+        Value::String(text) => sanitize_label_text(text),
+        other => sanitize_label_text(&other.to_string()),
     }
 }

@@ -283,11 +283,11 @@ pub fn draw_radial_line(
 ) -> Result<()> {
     let ex = cx + (radius as f64 * angle.cos()).round() as i64;
     let ey = cy + (radius as f64 * angle.sin()).round() as i64;
-    draw_line_force(canvas, cx, cy, ex, ey, glyph)
+    draw_line_over(canvas, cx, cy, ex, ey, glyph)
 }
 
 /// Draw a line between two points, overwriting existing cells (Bresenham).
-fn draw_line_force(
+pub fn draw_line_over(
     canvas: &mut Canvas,
     x0: i64,
     y0: i64,

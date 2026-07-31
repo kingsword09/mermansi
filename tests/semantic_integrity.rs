@@ -1890,6 +1890,113 @@ fn radar_title_preserved() {
     );
 }
 
+#[test]
+fn radar_is_compact_readable_and_preserves_configured_ticks() {
+    use std::collections::{BTreeSet, VecDeque};
+
+    let source = "radar-beta\n  title Quality\n  axis A,B,C,D\n  ticks 6\n  min 0\n  max 10\n  curve Quality{8,6,7,5}";
+    let options = MermansiOptions::unicode()
+        .with_output_mode(OutputMode::Concise)
+        .with_max_width(80)
+        .with_max_height(40);
+    let output = render_source(source, &options).expect("compact six-tick radar");
+    assert!(
+        output.lines().count() <= 25,
+        "Radar should be compact, got {} rows:\n{output}",
+        output.lines().count()
+    );
+    assert!(
+        output.contains("Scale: 0.00..10.00 · ticks=6 · circle"),
+        "configured scale/ticks/graticule missing:\n{output}"
+    );
+    assert!(output.contains("Axes: A · B · C · D"));
+
+    let geometry = output.split("\nScale:").next().unwrap_or(&output);
+    for axis in ['A', 'B', 'C', 'D'] {
+        assert!(
+            geometry.contains(axis),
+            "axis {axis} must remain at a spoke endpoint:\n{geometry}"
+        );
+    }
+    let rows = geometry
+        .lines()
+        .map(|line| line.chars().collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    let markers = rows
+        .iter()
+        .enumerate()
+        .flat_map(|(row, cells)| {
+            cells
+                .iter()
+                .enumerate()
+                .filter(|(_, cell)| **cell == '●')
+                .map(move |(column, _)| (column, row))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        markers.len(),
+        4,
+        "every curve vertex needs a marker:\n{geometry}"
+    );
+
+    let mut queue = VecDeque::from([markers[0]]);
+    let mut visited = BTreeSet::from([markers[0]]);
+    while let Some((column, row)) = queue.pop_front() {
+        for delta_row in -1_i64..=1 {
+            for delta_column in -1_i64..=1 {
+                if delta_column == 0 && delta_row == 0 {
+                    continue;
+                }
+                let next_column = column as i64 + delta_column;
+                let next_row = row as i64 + delta_row;
+                if next_column < 0 || next_row < 0 {
+                    continue;
+                }
+                let next = (next_column as usize, next_row as usize);
+                let cell = rows
+                    .get(next.1)
+                    .and_then(|cells| cells.get(next.0))
+                    .copied();
+                if matches!(cell, Some('●' | '─')) && visited.insert(next) {
+                    queue.push_back(next);
+                }
+            }
+        }
+    }
+    assert!(
+        markers.iter().all(|marker| visited.contains(marker)),
+        "force-drawn curve layer must connect all vertices across grid/spoke crossings:\n{geometry}"
+    );
+
+    let without_legend = render_source(&format!("{source}\n  showLegend false"), &options)
+        .expect("showLegend=false radar");
+    assert!(!without_legend.contains("Legend:"));
+    assert!(without_legend.contains("Scale:") && without_legend.contains("Axes:"));
+
+    let ascii = render_source(
+        source,
+        &MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(80)
+            .with_max_height(40),
+    )
+    .expect("ASCII radar");
+    assert!(ascii.is_ascii() && ascii.contains("ticks=6"));
+
+    let excessive_ticks = render_source(
+        "radar-beta\n  axis A,B,C\n  ticks 19\n  curve Q{1,2,3}",
+        &options,
+    );
+    assert!(matches!(
+        excessive_ticks,
+        Err(mermansi::MermansiError::RenderLimit {
+            context: "radar ticks",
+            requested: 19,
+            limit: 18,
+        })
+    ));
+}
+
 // ---------------------------------------------------------------------------
 // QuadrantChart geometry tests
 // ---------------------------------------------------------------------------

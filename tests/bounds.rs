@@ -1038,6 +1038,38 @@ fn chart_entity_limit_enforced_for_radar() {
 }
 
 #[test]
+fn radar_curve_entry_limit_enforced_before_geometry() {
+    use merman_core::diagrams::radar::{
+        RadarDiagramRenderModel, RadarRenderAxis, RadarRenderCurve,
+    };
+
+    let model = RadarDiagramRenderModel {
+        axes: vec![RadarRenderAxis {
+            name: "A".to_owned(),
+            label: "A".to_owned(),
+        }],
+        curves: vec![RadarRenderCurve {
+            name: "oversized".to_owned(),
+            label: "oversized".to_owned(),
+            entries: vec![serde_json::json!(1); 4_097],
+        }],
+        ..RadarDiagramRenderModel::default()
+    };
+    let result = render_model(
+        &RenderSemanticModel::Radar(model),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    );
+    assert!(matches!(
+        result,
+        Err(MermansiError::RenderLimit {
+            context: "radar curve entries",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+}
+
+#[test]
 fn chart_entity_limit_enforced_for_quadrant() {
     use merman_core::diagram::RenderSemanticModel;
     use merman_core::diagrams::quadrant_chart::{
