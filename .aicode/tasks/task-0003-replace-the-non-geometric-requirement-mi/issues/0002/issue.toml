@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0003-replace-the-non-geometric-requirement-mi#0002"
 number = 2
 title = "AGENTS.md architecture boundary diagram lists Mindmap and TreeView under merman-ascii reuse instead of mermansi adapters"
-status = "open"
+status = "resolved"
 severity = "P3"
 category = "documentation-consistency"
 fingerprint = "sha256:6c1d78881555470588dbef50aea3589251f4bd41d9186ac97f4a0ec831fbe7ca"
 created_at = "unix:1785488341"
-updated_at = "unix:1785488341"
+updated_at = "unix:1785489934"
+resolved_at = "unix:1785489934"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "No functional impact — the code dispatches correctly. Minor document
 [acceptance]
 description = "Update the AGENTS.md architecture boundary diagram to move Mindmap and TreeView from the 'merman-ascii reuse' list to the 'mermansi structured terminal adapters' list, reflecting the actual dispatch in src/adapters/mod.rs."
 command = '''grep -n 'Mindmap.*TreeView\|TreeView.*Mindmap' AGENTS.md'''
+
+[resolution]
+review = "../../reviews/iteration-0005.json"
+description = "Adapter ownership and module responsibility documentation now match the implemented dispatch and geometry behavior."
