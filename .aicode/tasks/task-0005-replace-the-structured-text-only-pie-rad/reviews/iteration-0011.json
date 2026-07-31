@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "task": "task-0005-replace-the-structured-text-only-pie-rad",
+  "iteration": 11,
+  "loop_iteration": 1,
+  "created_at": "unix:1785501598",
+  "objective": "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared.",
+  "plan": {
+    "objective": "Replace the structured-text-only Pie, Radar, QuadrantChart, and Venn outputs with genuine deterministic terminal chart geometry. Implement mermansi-native bounded Canvas geometry without modifying or forking merman-core, merman-ascii, Selkie, or any parser. Pie must draw a closed circular/radial chart with visible sector boundaries or proportional sector fill derived from every finite nonnegative section value, plus a compact legend preserving every label, value, percentage, title, and showData semantics; a bar/table alone is not acceptable. Radar must draw a shared center, radial axis spokes, graticule rings or polygons, and connected plotted curve vertices normalized from configured min/max while preserving every axis label, curve label/value, ticks, graticule choice, showLegend, and title. QuadrantChart must draw a closed Cartesian plotting area with midpoint cross-axes, all four quadrant labels in their actual regions, endpoint axis labels, and every point placed from its normalized x/y coordinates with deterministic collision-safe markers/callouts; preserve class and style metadata without pretending terminal color is geometry. Venn must draw closed overlapping set outlines for the semantic singleton sets, place intersection/subset and text labels in or connect them to their associated regions, preserve sizes, labels, styles, and arbitrary parsed subsets, and remain genuine geometry rather than a Subsets/Text Nodes list. For every family preserve Complete-mode canonical models, Concise-mode chart geometry with no structured-text fallback, ASCII and Unicode geometry, Chinese/CJK display widths, ANSI-independent geometry, determinism, control sanitization, and typed width/height/cell/byte/entity limits before allocations. Add strong tests for shape closure, proportional/coordinate placement, axis/spoke/curve connectivity, overlap identity, collision handling, empty/zero/invalid constructed models, bilingual fixtures, narrow widths, ASCII, determinism, and bounds. Update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Apply KISS, YAGNI, DRY, and SOLID: reuse only minimal chart primitives that are genuinely shared.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Derive a compact checked canvas from quadrant/axis display widths and point count; keep a closed box and midpoint axes, overlay points before collision-safe full-label placement, and crop outer margins."
+      },
+      {
+        "id": "step-2",
+        "description": "Validate finite normalized coordinates, explicitly classify non-finite/out-of-range/unplaced points, and place valid points deterministically with a bounded nearby search restricted to the plot interior."
+      },
+      {
+        "id": "step-3",
+        "description": "Detect coincident ideal cells independently of placement and always emit truthful overlap groups; preserve full quadrant/axis labels via fallback callouts and preserve point-local plus class styles through one shared formatter."
+      },
+      {
+        "id": "step-4",
+        "description": "Add an exact constructed-model test for compactness, closure, coordinate ordering, full labels, invalid/out-of-range points, coincident points, local/class styles, ASCII/Unicode, and determinism; visually inspect fixtures and run full verification."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Rebuilt QuadrantChart sizing from label extents and point count; generalized checked dimensions to independent width/height; drew a compact closed plot; overlaid valid points by normalized coordinates; bounded deterministic collision shifts; emitted unconditional overlap groups; represented non-finite/out-of-range/unplaced points explicitly; preserved full overflow labels through callouts; and reused one local/class style formatter.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "The exact constructed-model test passed for compactness, all corners/cross, coordinate ordering, long label fallback, NaN/out-of-range rejection, coincident shift/callout, point/class styles, ASCII/Unicode, and determinism. All 11 focused Quadrant tests passed. fmt, clippy -D warnings, and all-target/all-feature tests passed; 210 tests passed with zero failures. Manual English/Chinese fixtures measured about 23/20 rows instead of about 49.",
+    "commands": []
+  },
+  "verdict": "pass",
+  "summary": "Current Codex diff and rendered-output review found no actionable defects for Issue #0007. The chart remains closed and coordinate-faithful, sparse defaults are compact, labels are never truncated without full fallback, invalid points are never projected, ideal-cell collisions are reported regardless of successful offset, and every point-local/class style field is preserved. Independent dimensions keep the shared bounds helper generic (KISS/SRP), while point placement and style formatting avoid duplicate logic (DRY).",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 7,
+      "description": "Acceptance met by compact dynamic geometry, validated coordinate placement, truthful collision groups, complete label/style fallbacks, exact coordinate-aware tests, visual inspection, and clean full verification."
+    }
+  ]
+}

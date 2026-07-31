@@ -13,9 +13,9 @@ pub const MAX_CHART_ENTITIES: usize = 4_096;
 
 /// Choose a terminal-chart canvas size without exceeding the caller's limits.
 ///
-/// Terminal cells are approximately twice as tall as they are wide, so the returned width is
-/// capped at twice the available height. A chart that cannot meet its minimum dimensions returns
-/// a typed limit error before any [`Canvas`] is allocated.
+/// Width and height are checked independently because radial charts and Cartesian charts require
+/// different aspect ratios. A chart that cannot meet its minimum dimensions returns a typed limit
+/// error before any [`Canvas`] is allocated.
 pub fn checked_chart_dimensions(
     opts: &MermansiOptions,
     minimum: (usize, usize),
@@ -39,11 +39,7 @@ pub fn checked_chart_dimensions(
         });
     }
 
-    let available_height = opts.max_height.min(maximum_height);
-    let width = opts
-        .max_width
-        .min(maximum_width)
-        .min(available_height.saturating_mul(2));
+    let width = opts.max_width.min(maximum_width);
     if width < minimum_width {
         return Err(MermansiError::RenderLimit {
             context: "chart width",
@@ -52,7 +48,7 @@ pub fn checked_chart_dimensions(
         });
     }
 
-    let height = width.div_ceil(2).min(available_height);
+    let height = opts.max_height.min(maximum_height);
     if height < minimum_height {
         return Err(MermansiError::RenderLimit {
             context: "chart height",

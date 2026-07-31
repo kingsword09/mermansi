@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0005-replace-the-structured-text-only-pie-rad#0007"
 number = 7
 title = "QuadrantChart wastes terminal space and can lose point and label information"
-status = "open"
+status = "resolved"
 severity = "P2"
 category = "layout-and-semantics"
 fingerprint = "sha256:5ffa90c42ece1cf963f74d0dd7decfc0c6f10ef837d50b20675315533c657280"
 created_at = "unix:1785497935"
-updated_at = "unix:1785497935"
+updated_at = "unix:1785501598"
+resolved_at = "unix:1785501598"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Sparse charts appear chaotic and oversized, while invalid or colliding
 [acceptance]
 description = "Derive a compact plotting box from data/label extents and bounds; validate or explicitly represent invalid/out-of-range points; preserve every full label and local/class style through in-plot text or callouts; make collision behavior deterministic and truthfully call it out; and add coordinate-aware tests for compactness, closure, all labels, invalid points, and coincident points."
 command = "cargo test --test semantic_integrity quadrant_is_compact_and_preserves_every_point_and_label -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0011.json"
+description = "Acceptance met by compact dynamic geometry, validated coordinate placement, truthful collision groups, complete label/style fallbacks, exact coordinate-aware tests, visual inspection, and clean full verification."

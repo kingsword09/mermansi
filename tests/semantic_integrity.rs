@@ -2067,6 +2067,165 @@ fn quadrant_title_preserved() {
     );
 }
 
+#[test]
+fn quadrant_is_compact_and_preserves_every_point_and_label() {
+    use merman_core::diagrams::quadrant_chart::{
+        QuadrantChartAxesModel, QuadrantChartPointModel, QuadrantChartQuadrantsModel,
+        QuadrantChartRenderModel, QuadrantChartStyles,
+    };
+    use std::collections::BTreeMap;
+
+    let local_style = QuadrantChartStyles {
+        radius: Some(7),
+        color: Some("#00ff00".to_owned()),
+        stroke_color: Some("#003300".to_owned()),
+        stroke_width: Some("2px".to_owned()),
+    };
+    let class_style = QuadrantChartStyles {
+        radius: Some(5),
+        color: Some("#ff0000".to_owned()),
+        stroke_color: None,
+        stroke_width: None,
+    };
+    let model = RenderSemanticModel::QuadrantChart(QuadrantChartRenderModel {
+        title: Some("Assessment".to_owned()),
+        acc_title: None,
+        acc_descr: None,
+        quadrants: QuadrantChartQuadrantsModel {
+            quadrant1_text: "Strategic opportunities requiring coordinated delivery".to_owned(),
+            quadrant2_text: "Major Projects".to_owned(),
+            quadrant3_text: "Fill-ins".to_owned(),
+            quadrant4_text: "Thankless Tasks".to_owned(),
+        },
+        axes: QuadrantChartAxesModel {
+            x_axis_left_text: "Low Impact".to_owned(),
+            x_axis_right_text: "High Impact".to_owned(),
+            y_axis_bottom_text: "Low Effort".to_owned(),
+            y_axis_top_text: "High Effort".to_owned(),
+        },
+        points: vec![
+            QuadrantChartPointModel {
+                text: "High".to_owned(),
+                x: 0.8,
+                y: 0.8,
+                class_name: Some("priority".to_owned()),
+                styles: local_style,
+            },
+            QuadrantChartPointModel {
+                text: "Low".to_owned(),
+                x: 0.2,
+                y: 0.2,
+                class_name: None,
+                styles: QuadrantChartStyles::default(),
+            },
+            QuadrantChartPointModel {
+                text: "Coincident".to_owned(),
+                x: 0.8,
+                y: 0.8,
+                class_name: None,
+                styles: QuadrantChartStyles::default(),
+            },
+            QuadrantChartPointModel {
+                text: "NotFinite".to_owned(),
+                x: f64::NAN,
+                y: 0.5,
+                class_name: None,
+                styles: QuadrantChartStyles::default(),
+            },
+            QuadrantChartPointModel {
+                text: "Outside".to_owned(),
+                x: 1.2,
+                y: 0.5,
+                class_name: None,
+                styles: QuadrantChartStyles::default(),
+            },
+        ],
+        classes: BTreeMap::from([("priority".to_owned(), class_style)]),
+    });
+    let options = MermansiOptions::unicode()
+        .with_output_mode(OutputMode::Concise)
+        .with_max_width(80)
+        .with_max_height(50);
+    let output = render_model(&model, &options).expect("complete compact quadrant geometry");
+    assert!(
+        output.lines().count() <= 42,
+        "QuadrantChart should remain compact with callouts, got {} rows:\n{output}",
+        output.lines().count()
+    );
+    for label in [
+        "Strategic opportunities requiring coordinated delivery",
+        "Major Projects",
+        "Fill-ins",
+        "Thankless Tasks",
+        "Low Impact",
+        "High Impact",
+        "Low Effort",
+        "High Effort",
+        "High",
+        "Low",
+        "Coincident",
+        "NotFinite",
+        "Outside",
+    ] {
+        assert!(output.contains(label), "missing label {label:?}:\n{output}");
+    }
+    assert!(output.contains("status: invalid: non-finite coordinate"));
+    assert!(output.contains("status: outside normalized range 0..1"));
+    assert!(output.contains("Overlapping points:"));
+    assert!(output.contains("● High") && output.contains("■ Coincident"));
+    assert!(output.contains("status: shifted from overlapping coordinate"));
+    assert!(output.contains("{radius=7, color=#00ff00, stroke-color=#003300, stroke-width=2px}"));
+    assert!(output.contains("priority {radius=5, color=#ff0000}"));
+
+    let geometry = output
+        .split("\nLabels:")
+        .next()
+        .unwrap_or(&output)
+        .split("\nPoints:")
+        .next()
+        .unwrap_or(&output);
+    assert!(
+        geometry.contains('┌')
+            && geometry.contains('┐')
+            && geometry.contains('└')
+            && geometry.contains('┘')
+            && geometry.contains('+'),
+        "plot must remain closed with a midpoint cross:\n{geometry}"
+    );
+    let marker_position = |marker: char| {
+        geometry.lines().enumerate().find_map(|(row, line)| {
+            line.chars()
+                .position(|cell| cell == marker)
+                .map(|column| (column, row))
+        })
+    };
+    let high = marker_position('●').expect("high marker");
+    let low = marker_position('◆').expect("low marker");
+    assert!(
+        high.0 > low.0 && high.1 < low.1,
+        "normalized placement is wrong:\n{geometry}"
+    );
+    assert!(
+        !geometry.contains('▲') && !geometry.contains('▼'),
+        "invalid/out-of-range points must not be projected into the plot:\n{geometry}"
+    );
+
+    let repeated = render_model(&model, &options).expect("deterministic quadrant");
+    assert_eq!(output, repeated);
+    let ascii = render_model(
+        &model,
+        &MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(80)
+            .with_max_height(50),
+    )
+    .expect("ASCII quadrant");
+    assert!(
+        ascii.is_ascii(),
+        "ASCII QuadrantChart emitted Unicode:\n{ascii}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Venn diagram geometry tests
 // ---------------------------------------------------------------------------
