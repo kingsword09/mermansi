@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0002-replace-the-text-only-architecture-block#0001"
 number = 1
 title = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "task-execution"
 fingerprint = "sha256:4e2b2c961aebf5b6af730956b1c72f1759fae65780e09f7d8bfc4ebabb3b4424"
 created_at = "unix:1785471514"
-updated_at = "unix:1785471514"
+updated_at = "unix:1785483653"
+resolved_at = "unix:1785483653"
 
 [source]
 kind = "task"
@@ -24,3 +25,7 @@ impact = "The requested Task has not yet passed implementation, verification, an
 [acceptance]
 description = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
 command = "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"
+
+[resolution]
+review = "../../reviews/iteration-0004.json"
+description = "Resolve Issue task-0002-replace-the-text-only-architecture-block#0001 — all acceptance criteria verified as met on committed commit 122c56e with clean working tree and 124/124 tests passing."

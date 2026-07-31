@@ -1,0 +1,18 @@
+schema_version = 1
+task = "task-0002-replace-the-text-only-architecture-block"
+iteration = 5
+loop_iteration = 3
+created_at = "unix:1785483685"
+objective = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
+open_issue_ids = []
+
+[plan]
+objective = "Replace the text-only Architecture, Block, and C4 adapters with genuine deterministic terminal geometry as the first reviewed work unit toward full geometry for all 29 Mermaid families. Render closed display-width-aware boxes and nested boundaries/groups, preserve English and Chinese labels and descriptions, route every relationship from one visible shape boundary to the other with correct direction and architecture port semantics, preserve hierarchy without duplicate synthetic nodes, enforce configured width/height/cell/output bounds, support ASCII and Unicode, and add strong geometry tests that reject Nodes/Groups/Edges/Shapes/Relationships/Blocks structured-text fallback. Update the support matrix honestly. Do not modify the parser or fork upstream crates."
+
+[[plan.steps]]
+id = "step-1"
+description = "Run the full acceptance command (cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features) on the committed state (122c56e) to confirm zero warnings and all 124 tests pass. No code changes are planned."
+
+[[plan.steps]]
+id = "step-2"
+description = "Confirm the working tree contains only .aicode Task artifacts (issue transition, plan, and review metadata) and no source/test/doc changes. Report changed:false since no implementation work is needed."
