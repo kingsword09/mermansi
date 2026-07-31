@@ -67,6 +67,7 @@ pub fn render_kanban(model: &KanbanDiagramRenderModel, opts: &MermansiOptions) -
             BoxNode {
                 id: geometry_id(order),
                 lines,
+                dividers: Vec::new(),
                 parent,
                 span: 1,
                 order,
@@ -84,7 +85,7 @@ pub fn render_kanban(model: &KanbanDiagramRenderModel, opts: &MermansiOptions) -
             edges: Vec::new(),
             columns: None,
             layout: BoxLayout::Packed,
-            show_edge_legend: false,
+            edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,
     )

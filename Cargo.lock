@@ -692,6 +692,7 @@ dependencies = [
 name = "mermansi"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "merman-ascii",
  "merman-core",
  "serde",

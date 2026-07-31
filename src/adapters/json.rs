@@ -32,7 +32,7 @@ pub fn render_json(value: &Value, opts: &MermansiOptions) -> Result<String> {
             edges,
             columns: None,
             layout: BoxLayout::Layered { direction, ranks },
-            show_edge_legend: false,
+            edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,
     )
@@ -69,6 +69,7 @@ fn collect_json(
     nodes.push(BoxNode {
         id: id.clone(),
         lines: vec![label],
+        dividers: Vec::new(),
         parent: None,
         span: 1,
         order,
@@ -78,8 +79,9 @@ fn collect_json(
             from: parent.to_owned(),
             to: id.clone(),
             label: String::new(),
-            arrow_start: false,
-            arrow_end: true,
+            marker_start: box_geometry::EdgeMarker::None,
+            marker_end: box_geometry::EdgeMarker::Arrow,
+            style: box_geometry::EdgeStyle::Solid,
             from_side: None,
             to_side: None,
         });

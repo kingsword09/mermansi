@@ -41,6 +41,7 @@ pub fn render_eventmodeling(
         nodes.push(BoxNode {
             id: frame_id(order),
             lines: frame_lines(frame),
+            dividers: Vec::new(),
             parent: None,
             span: 1,
             order,
@@ -57,6 +58,7 @@ pub fn render_eventmodeling(
         nodes.push(BoxNode {
             id: data_id(index),
             lines,
+            dividers: Vec::new(),
             parent: None,
             span: 1,
             order: model.frames.len() + index,
@@ -161,7 +163,7 @@ pub fn render_eventmodeling(
             edges,
             columns: None,
             layout: BoxLayout::Layered { direction, ranks },
-            show_edge_legend: false,
+            edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,
     )
@@ -219,8 +221,9 @@ fn edge(
         from,
         to,
         label: label.to_owned(),
-        arrow_start: false,
-        arrow_end: true,
+        marker_start: box_geometry::EdgeMarker::None,
+        marker_end: box_geometry::EdgeMarker::Arrow,
+        style: box_geometry::EdgeStyle::Solid,
         from_side: Some(from_side),
         to_side: Some(to_side),
     }

@@ -34,8 +34,9 @@ pub fn render_requirement(
             from: rel.src.clone(),
             to: rel.dst.clone(),
             label: rel.rel_type.clone(),
-            arrow_start: false,
-            arrow_end: true,
+            marker_start: box_geometry::EdgeMarker::None,
+            marker_end: box_geometry::EdgeMarker::Arrow,
+            style: box_geometry::EdgeStyle::Solid,
             from_side: Some(from_side),
             to_side: Some(to_side),
         })
@@ -52,7 +53,7 @@ pub fn render_requirement(
             edges,
             columns: None,
             layout: BoxLayout::Layered { direction, ranks },
-            show_edge_legend: true,
+            edge_legend: box_geometry::EdgeLegend::All,
         },
         opts,
     )
@@ -80,6 +81,7 @@ fn requirement_node(req: &RequirementRenderNode, order: usize) -> BoxNode {
     BoxNode {
         id: req.name.clone(),
         lines,
+        dividers: Vec::new(),
         parent: None,
         span: 1,
         order,
@@ -99,6 +101,7 @@ fn element_node(elem: &RequirementRenderElement, order: usize) -> BoxNode {
     BoxNode {
         id: elem.name.clone(),
         lines,
+        dividers: Vec::new(),
         parent: None,
         span: 1,
         order,

@@ -1,5 +1,7 @@
 //! Block diagram terminal geometry.
 
+use std::collections::HashMap;
+
 use crate::adapters::box_geometry::{
     self, BoxDiagram, BoxEdge, BoxGroup, BoxLayout, BoxNode, BoxSpacer,
 };
@@ -73,6 +75,16 @@ pub fn render_block(model: &BlockDiagramRenderModel, opts: &MermansiOptions) -> 
         }
     }
 
+    let node_orders = nodes
+        .iter()
+        .map(|node| (node.id.as_str(), node.order))
+        .collect::<HashMap<_, _>>();
+    let edges = model
+        .edges
+        .iter()
+        .map(|edge| block_edge(edge, &node_orders))
+        .collect();
+
     box_geometry::render(
         &BoxDiagram {
             family: "block",
@@ -80,10 +92,10 @@ pub fn render_block(model: &BlockDiagramRenderModel, opts: &MermansiOptions) -> 
             nodes,
             groups,
             spacers,
-            edges: model.edges.iter().map(block_edge).collect(),
+            edges,
             columns: root.and_then(|root| positive(root.columns)),
             layout: BoxLayout::Packed,
-            show_edge_legend: true,
+            edge_legend: box_geometry::EdgeLegend::Labeled,
         },
         opts,
     )
@@ -102,22 +114,70 @@ fn block_node(
     BoxNode {
         id: block.id.clone(),
         lines,
+        dividers: Vec::new(),
         parent,
         span: positive(block.width_in_columns).unwrap_or(1),
         order,
     }
 }
 
-fn block_edge(edge: &BlockEdgeRenderModel) -> BoxEdge {
+fn block_edge(edge: &BlockEdgeRenderModel, orders: &HashMap<&str, usize>) -> BoxEdge {
+    let (from_side, to_side) = route_sides(edge, orders);
     BoxEdge {
         from: edge.start.clone(),
         to: edge.end.clone(),
         label: normalized(&edge.label),
-        arrow_start: edge.arrow_type_start.as_deref() == Some("arrow_point"),
-        arrow_end: edge.arrow_type_end.as_deref() == Some("arrow_point"),
-        from_side: None,
-        to_side: None,
+        marker_start: if edge.arrow_type_start.as_deref() == Some("arrow_point") {
+            box_geometry::EdgeMarker::Arrow
+        } else {
+            box_geometry::EdgeMarker::None
+        },
+        marker_end: if edge.arrow_type_end.as_deref() == Some("arrow_point") {
+            box_geometry::EdgeMarker::Arrow
+        } else {
+            box_geometry::EdgeMarker::None
+        },
+        style: box_geometry::EdgeStyle::Solid,
+        from_side,
+        to_side,
     }
+}
+
+fn route_sides(
+    edge: &BlockEdgeRenderModel,
+    orders: &HashMap<&str, usize>,
+) -> (Option<box_geometry::Side>, Option<box_geometry::Side>) {
+    let (Some(&from), Some(&to)) = (
+        orders.get(edge.start.as_str()),
+        orders.get(edge.end.as_str()),
+    ) else {
+        return (None, None);
+    };
+    if from == to {
+        return (
+            Some(box_geometry::Side::Right),
+            Some(box_geometry::Side::Left),
+        );
+    }
+    if from.abs_diff(to) == 1 {
+        return if from < to {
+            (
+                Some(box_geometry::Side::Right),
+                Some(box_geometry::Side::Left),
+            )
+        } else {
+            (
+                Some(box_geometry::Side::Left),
+                Some(box_geometry::Side::Right),
+            )
+        };
+    }
+    let side = if from.min(to).saturating_add(from.max(to)).is_multiple_of(2) {
+        box_geometry::Side::Bottom
+    } else {
+        box_geometry::Side::Top
+    };
+    (Some(side), Some(side))
 }
 
 fn display_identity(id: &str, label: &str, charset: Charset) -> String {

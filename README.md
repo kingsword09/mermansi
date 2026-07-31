@@ -30,6 +30,10 @@ family.
 - **Native flow and hierarchy geometry** — Sankey, Treemap, Ishikawa, Event Modeling, and Info
   render connected flow routes, proportional nested rectangles, fishbones, frame/data graphs,
   and compact information cards instead of tables or indentation outlines.
+- **Native schedule and protocol geometry** — Gantt renders proportional dated task lanes and
+  Packet renders closed proportional 32-bit field rows, including cross-row fields.
+- **Native graph and UML geometry** — GitGraph renders branch/commit/merge lanes; Class renders
+  compartment boxes and connected UML relationships; Block cycles use deterministic routed ports.
 - **No Mermaid parser bundled** — uses `merman-core` as the single source of truth.
 
 ## Install
@@ -125,14 +129,14 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 | Flowchart / graph | Geometry preview + canonical model | merman-ascii + mermansi |
 | Sequence | Full geometry + canonical model | merman-ascii + mermansi |
 | State | Partial geometry + canonical model | merman-ascii + mermansi |
-| Class | Partial geometry + canonical model | merman-ascii + mermansi |
+| Class | Compartment/UML relationship geometry + canonical model | mermansi adapter |
 | Er | Partial geometry + canonical model | merman-ascii + mermansi |
-| Packet | Full geometry + canonical model | merman-ascii + mermansi |
+| Packet | Proportional closed bit-field geometry + canonical model | mermansi adapter |
 | TreeView | Layered box-tree geometry + canonical model | mermansi adapter |
 | XyChart | Partial geometry + canonical model | merman-ascii + mermansi |
 | Mindmap | Layered box-tree geometry + canonical model | mermansi adapter |
-| Gantt | Summary + canonical model | merman-ascii + mermansi |
-| GitGraph | Summary + canonical model | merman-ascii + mermansi |
+| Gantt | Proportional dated task-lane geometry + canonical model | mermansi adapter |
+| GitGraph | Connected branch/commit/merge geometry + canonical model | mermansi adapter |
 | Journey | Connected scored task-path geometry + canonical model | mermansi adapter |
 | Kanban | Nested board geometry + canonical model | mermansi adapter |
 | Timeline | Connected period/event geometry + canonical model | mermansi adapter |
@@ -146,7 +150,7 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 | Radar | Radial spoke/graticule geometry + legend | mermansi adapter |
 | Info | Closed information-card geometry + canonical model | mermansi adapter |
 | Treemap | Proportional nested-rectangle geometry + canonical model | mermansi adapter |
-| Block | Nested box geometry + canonical model | mermansi adapter |
+| Block | Nested box and deterministic cycle geometry + canonical model | mermansi adapter |
 | QuadrantChart | Cartesian quadrant geometry + legend | mermansi adapter |
 | Ishikawa | Connected fishbone geometry + canonical model | mermansi adapter |
 | EventModeling | Connected frame/data-box geometry + canonical model | mermansi adapter |

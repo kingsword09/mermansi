@@ -74,14 +74,14 @@ parser.
 | Flowchart | merman-ascii + mermansi | Geometry preview + canonical model | `fixtures/flowchart.en.mmd` | `fixtures/flowchart.zh.mmd` | yes |
 | Sequence | merman-ascii + mermansi | Full geometry + canonical model | `fixtures/sequence.en.mmd` | `fixtures/sequence.zh.mmd` | ✅ |
 | State | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/state.en.mmd` | `fixtures/state.zh.mmd` | ✅ |
-| Class | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/class.en.mmd` | `fixtures/class.zh.mmd` | ✅ |
+| Class | mermansi | Compartment/UML relationship geometry + canonical model | `fixtures/class.en.mmd` | `fixtures/class.zh.mmd` | ✅ |
 | Er | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/er.en.mmd` | `fixtures/er.zh.mmd` | ✅ |
-| Packet | merman-ascii + mermansi | Full geometry + canonical model | `fixtures/packet.en.mmd` | `fixtures/packet.zh.mmd` | ✅ |
+| Packet | mermansi | Proportional closed bit-field geometry + canonical model | `fixtures/packet.en.mmd` | `fixtures/packet.zh.mmd` | ✅ |
 | TreeView | mermansi | Layered box-tree geometry + canonical model | `fixtures/treeview.en.mmd` | `fixtures/treeview.zh.mmd` | ✅ |
 | XyChart | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/xychart.en.mmd` | `fixtures/xychart.zh.mmd` | ✅ |
 | Mindmap | mermansi | Layered box-tree geometry + canonical model | `fixtures/mindmap.en.mmd` | `fixtures/mindmap.zh.mmd` | ✅ |
-| Gantt | merman-ascii + mermansi | Summary + canonical model | `fixtures/gantt.en.mmd` | `fixtures/gantt.zh.mmd` | ✅ |
-| GitGraph | merman-ascii + mermansi | Summary + canonical model | `fixtures/gitgraph.en.mmd` | `fixtures/gitgraph.zh.mmd` | ✅ |
+| Gantt | mermansi | Proportional dated task-lane geometry + canonical model | `fixtures/gantt.en.mmd` | `fixtures/gantt.zh.mmd` | ✅ |
+| GitGraph | mermansi | Connected branch/commit/merge geometry + canonical model | `fixtures/gitgraph.en.mmd` | `fixtures/gitgraph.zh.mmd` | ✅ |
 | Journey | mermansi | Connected scored task-path geometry + canonical model | `fixtures/journey.en.mmd` | `fixtures/journey.zh.mmd` | ✅ |
 | Kanban | mermansi | Nested board geometry + canonical model | `fixtures/kanban.en.mmd` | `fixtures/kanban.zh.mmd` | ✅ |
 | Timeline | mermansi | Connected period/event geometry + canonical model | `fixtures/timeline.en.mmd` | `fixtures/timeline.zh.mmd` | ✅ |
@@ -95,7 +95,7 @@ parser.
 | Radar | mermansi | Radial spoke/graticule geometry + legend | `fixtures/radar.en.mmd` | `fixtures/radar.zh.mmd` | ✅ |
 | Info | mermansi | Closed information-card geometry + canonical model | `fixtures/info.en.mmd` | `fixtures/info.zh.mmd` | ✅ |
 | Treemap | mermansi | Proportional nested-rectangle geometry + canonical model | `fixtures/treemap.en.mmd` | `fixtures/treemap.zh.mmd` | ✅ |
-| Block | mermansi | Nested box geometry + canonical model | `fixtures/block.en.mmd` | `fixtures/block.zh.mmd` | ✅ |
+| Block | mermansi | Nested box and deterministic cycle geometry + canonical model | `fixtures/block.en.mmd` | `fixtures/block.zh.mmd` | ✅ |
 | QuadrantChart | mermansi | Cartesian quadrant geometry + legend | `fixtures/quadrant.en.mmd` | `fixtures/quadrant.zh.mmd` | ✅ |
 | Ishikawa | mermansi | Connected fishbone geometry + canonical model | `fixtures/ishikawa.en.mmd` | `fixtures/ishikawa.zh.mmd` | ✅ |
 | EventModeling | mermansi | Connected frame/data-box geometry + canonical model | `fixtures/eventmodeling.en.mmd` | `fixtures/eventmodeling.zh.mmd` | ✅ |
@@ -121,3 +121,7 @@ Sankey, Treemap, Ishikawa, EventModeling, and Info use bounded terminal-native f
 fishbone, frame/data, and card geometry. EventModeling preserves explicit source-frame references;
 when the semantic model contains ordered frames without an explicit source edge, adjacent frames
 remain connected in their parsed order.
+Gantt, GitGraph, Packet, and Class now use bounded native timeline, branch-lane, bit-grid, and UML
+geometry instead of delegated summaries or fractured multi-inheritance. Block reverse pairs share
+one routed path, long cycle edges use deterministic outer ports, and unlabeled edge legends are not
+duplicated below the geometry.

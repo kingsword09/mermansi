@@ -21,6 +21,7 @@ pub fn render_mindmap(model: &MindmapDiagramRenderModel, opts: &MermansiOptions)
             } else {
                 node.label.clone()
             }],
+            dividers: Vec::new(),
             parent: None,
             span: 1,
             order,
@@ -33,8 +34,9 @@ pub fn render_mindmap(model: &MindmapDiagramRenderModel, opts: &MermansiOptions)
             from: edge.start.clone(),
             to: edge.end.clone(),
             label: String::new(),
-            arrow_start: false,
-            arrow_end: true,
+            marker_start: box_geometry::EdgeMarker::None,
+            marker_end: box_geometry::EdgeMarker::Arrow,
+            style: box_geometry::EdgeStyle::Solid,
             from_side: Some(from_side),
             to_side: Some(to_side),
         })
@@ -51,7 +53,7 @@ pub fn render_mindmap(model: &MindmapDiagramRenderModel, opts: &MermansiOptions)
             edges,
             columns: None,
             layout: BoxLayout::Layered { direction, ranks },
-            show_edge_legend: false,
+            edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,
     )

@@ -37,7 +37,7 @@ pub fn render_treeview(
             edges,
             columns: None,
             layout: BoxLayout::Layered { direction, ranks },
-            show_edge_legend: false,
+            edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,
     )
@@ -75,6 +75,7 @@ fn collect_tree(
         } else {
             node.name.clone()
         }],
+        dividers: Vec::new(),
         parent: None,
         span: 1,
         order,
@@ -84,8 +85,9 @@ fn collect_tree(
             from: parent.to_owned(),
             to: id.clone(),
             label: String::new(),
-            arrow_start: false,
-            arrow_end: true,
+            marker_start: box_geometry::EdgeMarker::None,
+            marker_end: box_geometry::EdgeMarker::Arrow,
+            style: box_geometry::EdgeStyle::Solid,
             from_side: None,
             to_side: None,
         });

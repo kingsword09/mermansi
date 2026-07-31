@@ -153,6 +153,7 @@ fn render_ordered_journey(
         .map(|(order, lines)| BoxNode {
             id: format!("journey-{order}"),
             lines,
+            dividers: Vec::new(),
             parent: None,
             span: 1,
             order,
@@ -170,7 +171,7 @@ fn render_ordered_journey(
             edges,
             columns: None,
             layout: BoxLayout::Layered { direction, ranks },
-            show_edge_legend: false,
+            edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,
     )

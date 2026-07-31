@@ -76,7 +76,7 @@ pub fn render_architecture(
             edges,
             columns: layout.columns.get("").copied(),
             layout: BoxLayout::Packed,
-            show_edge_legend: true,
+            edge_legend: box_geometry::EdgeLegend::All,
         },
         opts,
     )
@@ -98,6 +98,7 @@ fn architecture_node(node: &ArchitectureRenderNode, order: usize, charset: Chars
     BoxNode {
         id: node.id.clone(),
         lines,
+        dividers: Vec::new(),
         parent: node.in_group.clone(),
         span: 1,
         order,
@@ -117,8 +118,17 @@ fn architecture_edge(edge: &ArchitectureRenderEdge, charset: Charset) -> BoxEdge
         from: edge.lhs_id.clone(),
         to: edge.rhs_id.clone(),
         label,
-        arrow_start: edge.lhs_into.unwrap_or_default(),
-        arrow_end: edge.rhs_into.unwrap_or_default(),
+        marker_start: if edge.lhs_into.unwrap_or_default() {
+            box_geometry::EdgeMarker::Arrow
+        } else {
+            box_geometry::EdgeMarker::None
+        },
+        marker_end: if edge.rhs_into.unwrap_or_default() {
+            box_geometry::EdgeMarker::Arrow
+        } else {
+            box_geometry::EdgeMarker::None
+        },
+        style: box_geometry::EdgeStyle::Solid,
         from_side: Side::from_port(edge.lhs_dir),
         to_side: Side::from_port(edge.rhs_dir),
     }

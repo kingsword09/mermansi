@@ -834,6 +834,278 @@ fn five_native_geometry_adapters_are_ascii_and_deterministic() {
     }
 }
 
+#[test]
+fn gantt_fixture_is_a_proportional_dated_timeline() {
+    let output = render_source(
+        include_str!("fixtures/gantt.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_closed_unicode_boxes(&output, 1);
+    for label in [
+        "Project Schedule",
+        "Design / Spec",
+        "Design / Review",
+        "Development / Implement",
+        "Development / Testing",
+        "2024-01-01",
+        "2024-02-08",
+    ] {
+        assert!(output.contains(label), "missing {label}:\n{output}");
+    }
+    let spec = output
+        .lines()
+        .find(|line| line.contains("Design / Spec"))
+        .unwrap();
+    let review = output
+        .lines()
+        .find(|line| line.contains("Design / Review"))
+        .unwrap();
+    assert!(
+        spec.matches('█').count() > review.matches('█').count(),
+        "the seven-day task should be wider than the three-day task:\n{output}"
+    );
+    assert!(!output.contains("dateFormat:"), "{output}");
+    assert!(!output.contains("section:"), "{output}");
+
+    let chinese = render_source(
+        include_str!("fixtures/gantt.zh.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    for label in ["项目计划", "设计 / 规格说明", "开发 / 实现", "2024-01-01"] {
+        assert!(chinese.contains(label), "missing {label}:\n{chinese}");
+    }
+}
+
+#[test]
+fn packet_fixture_is_closed_proportional_32_bit_geometry() {
+    let output = render_source(
+        include_str!("fixtures/packet.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_closed_unicode_boxes(&output, 2);
+    for label in [
+        "Source Port",
+        "Destination Port",
+        "Sequence Number",
+        "0..10",
+        "11..21",
+        "22..53",
+        "(32 bits)",
+    ] {
+        assert!(output.contains(label), "missing {label}:\n{output}");
+    }
+    let first_border = output
+        .lines()
+        .find(|line| line.matches('┬').count() == 2)
+        .unwrap();
+    let boundaries = first_border
+        .char_indices()
+        .filter(|(_, ch)| matches!(ch, '┌' | '┬' | '┐'))
+        .map(|(byte, _)| mermansi::str_display_width(&first_border[..byte]))
+        .collect::<Vec<_>>();
+    assert_eq!(boundaries.len(), 4, "{output}");
+    let widths = boundaries
+        .windows(2)
+        .map(|pair| pair[1] - pair[0])
+        .collect::<Vec<_>>();
+    assert!(widths[0].abs_diff(widths[1]) <= 1, "{output}");
+    assert!(
+        widths[2] < widths[0],
+        "the ten-bit field should be narrower:\n{output}"
+    );
+    assert!(!output.contains("row 1:"), "{output}");
+}
+
+#[test]
+fn packet_empty_narrow_labels_use_connected_callouts() {
+    let output = render_source(
+        "packet-beta\n  0: \"\"\n  1-31: \"payload\"",
+        &MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(48),
+    )
+    .unwrap();
+    assert_closed_unicode_boxes(&output, 1);
+    assert!(output.contains("[1]"), "{output}");
+    assert!(output.contains("(unnamed)"), "{output}");
+    assert!(output.contains("payload"), "{output}");
+}
+
+#[test]
+fn gitgraph_fixture_has_branch_lanes_commit_nodes_and_merge_routes() {
+    let output = render_source(
+        include_str!("fixtures/gitgraph.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    for label in [
+        "main",
+        "develop",
+        "[1] A",
+        "[3] C",
+        "[4] MERGE",
+        "parents=B,C",
+        "customId=true",
+    ] {
+        assert!(output.contains(label), "missing {label}:\n{output}");
+    }
+    assert!(output.matches('●').count() >= 4, "{output}");
+    assert_eq!(output.matches('◆').count(), 1, "{output}");
+    assert!(output.matches('▶').count() >= 4, "{output}");
+    assert!(
+        output.contains('┬') && output.contains('┘'),
+        "merge route missing:\n{output}"
+    );
+    assert!(!output.contains("branches:"), "{output}");
+    assert!(!output.contains("pa\nrents"), "word was split:\n{output}");
+
+    let chinese = render_source(
+        include_str!("fixtures/gitgraph.zh.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    for label in ["开发分支", "[1] 甲", "[4] 合并", "parents=乙,丙"] {
+        assert!(chinese.contains(label), "missing {label}:\n{chinese}");
+    }
+}
+
+#[test]
+fn gitgraph_honors_all_four_layout_directions() {
+    use merman_core::diagrams::git_graph::{
+        GitGraphBranchRenderModel, GitGraphCommitRenderModel, GitGraphRenderModel,
+    };
+
+    let commit = |id: &str, seq: i64, parents: &[&str]| GitGraphCommitRenderModel {
+        id: id.to_owned(),
+        message: String::new(),
+        seq,
+        commit_type: 0,
+        tags: Vec::new(),
+        parents: parents.iter().map(|parent| (*parent).to_owned()).collect(),
+        branch: "main".to_owned(),
+        custom_type: None,
+        custom_id: None,
+    };
+    for (direction, arrow) in [("LR", '▶'), ("RL", '◀'), ("TB", '▼'), ("BT", '▲')] {
+        let model = GitGraphRenderModel {
+            diagram_type: "gitGraph".to_owned(),
+            commits: vec![commit("A", 0, &[]), commit("B", 1, &["A"])],
+            branches: vec![GitGraphBranchRenderModel {
+                name: "main".to_owned(),
+            }],
+            current_branch: "main".to_owned(),
+            direction: direction.to_owned(),
+            acc_title: None,
+            acc_descr: None,
+            warning_facts: Vec::new(),
+        };
+        let output = render_model(
+            &RenderSemanticModel::GitGraph(model),
+            &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+        )
+        .unwrap();
+        assert!(
+            output.contains(&format!("direction={direction}")),
+            "{output}"
+        );
+        assert!(
+            output.contains(arrow),
+            "missing {arrow} for {direction}:\n{output}"
+        );
+        assert_eq!(output.matches('●').count(), 2, "{output}");
+    }
+}
+
+#[test]
+fn class_fixture_has_compartments_and_connected_multi_inheritance() {
+    let output = render_source(
+        include_str!("fixtures/class.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_closed_unicode_boxes(&output, 3);
+    assert!(
+        output.matches('├').count() >= 3,
+        "missing compartments:\n{output}"
+    );
+    assert!(output.contains('△'), "extension marker missing:\n{output}");
+    let animal = label_position(&output, "Animal");
+    let dog = label_position(&output, "Dog");
+    let cat = label_position(&output, "Cat");
+    assert!(animal.0 < dog.0 && animal.0 < cat.0, "{output}");
+    assert!(
+        dog.0.abs_diff(cat.0) <= 1,
+        "subclasses should share a vertically centered rank:\n{output}"
+    );
+    assert!(
+        !output.contains("┼──┼"),
+        "broken delegated connector leaked:\n{output}"
+    );
+
+    let relations = render_source(
+        "classDiagram\n  A o-- B : aggregates\n  A *-- C : owns\n  B ..> C : uses",
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert!(
+        relations.contains('◇'),
+        "aggregation marker missing:\n{relations}"
+    );
+    assert!(
+        relations.contains('◆'),
+        "composition marker missing:\n{relations}"
+    );
+    assert!(
+        relations.contains('·'),
+        "dotted dependency missing:\n{relations}"
+    );
+    for label in ["aggregates", "owns", "uses"] {
+        assert!(relations.contains(label), "missing {label}:\n{relations}");
+    }
+}
+
+#[test]
+fn class_namespaces_and_notes_are_nested_connected_geometry() {
+    let output = render_source(
+        "classDiagram\n  namespace Domain {\n    class Service\n  }\n  note for Service \"important note\"",
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_closed_unicode_boxes(&output, 3);
+    for label in ["[namespace] Domain", "Service", "[note]", "important note"] {
+        assert!(output.contains(label), "missing {label}:\n{output}");
+    }
+    assert!(
+        output.contains('·'),
+        "note association is not connected:\n{output}"
+    );
+}
+
+#[test]
+fn final_native_geometry_adapters_are_ascii_and_deterministic() {
+    let sources = [
+        include_str!("fixtures/gantt.en.mmd"),
+        include_str!("fixtures/gitgraph.en.mmd"),
+        include_str!("fixtures/packet.en.mmd"),
+        include_str!("fixtures/class.en.mmd"),
+        include_str!("fixtures/block.en.mmd"),
+    ];
+    let options = MermansiOptions::ascii().with_output_mode(OutputMode::Concise);
+    for source in sources {
+        let first = render_source(source, &options).unwrap();
+        let second = render_source(source, &options).unwrap();
+        assert_eq!(first, second);
+        assert!(first.is_ascii(), "ASCII mode leaked Unicode:\n{first}");
+        assert!(
+            first.contains('-') || first.contains('|'),
+            "missing ASCII geometry:\n{first}"
+        );
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Block diagram — hierarchy without duplicate nodes
 // ---------------------------------------------------------------------------
@@ -945,11 +1217,45 @@ fn concise_block_preview_omits_generated_spacers() {
 
     assert!(output.contains("A · One"), "{output}");
     assert!(output.contains("B · Two"), "{output}");
-    assert!(output.contains("A --> B"), "{output}");
+    assert!(
+        !output.contains("A --> B"),
+        "unlabeled edge legend leaked:\n{output}"
+    );
+    assert!(
+        output.contains('▶') || output.contains('▼'),
+        "directed route marker missing:\n{output}"
+    );
     assert_closed_unicode_boxes(&output, 2);
     assert_no_structured_fallback(&output);
     assert!(!output.contains("[space]"), "{output}");
     assert!(!output.contains("id-"), "{output}");
+}
+
+#[test]
+fn dense_block_cycles_use_connected_routes_without_text_duplicates() {
+    let output = render_source(
+        include_str!("fixtures/block.en.mmd"),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_closed_unicode_boxes(&output, 3);
+    for edge in ["A --> B", "B --> C", "C --> A"] {
+        assert!(
+            !output.contains(edge),
+            "duplicated edge legend {edge}:\n{output}"
+        );
+    }
+    assert!(output.matches('▶').count() >= 2, "{output}");
+    assert!(
+        output.matches('▲').count() >= 2,
+        "return route missing:\n{output}"
+    );
+    assert!(
+        output
+            .lines()
+            .any(|line| line.contains("▲─") && line.ends_with('▲')),
+        "return route is not visibly connected:\n{output}"
+    );
 }
 
 #[test]

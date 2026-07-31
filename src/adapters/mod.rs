@@ -5,10 +5,11 @@
 //! adapters.
 
 use crate::adapters::{
-    architecture::render_architecture, block::render_block, c4::render_c4,
-    eventmodeling::render_eventmodeling, flowchart::render_flowchart, info::render_info,
-    ishikawa::render_ishikawa, journey::render_journey, json::render_json, kanban::render_kanban,
-    mindmap::render_mindmap, pie::render_pie, quadrant_chart::render_quadrant_chart,
+    architecture::render_architecture, block::render_block, c4::render_c4, class::render_class,
+    eventmodeling::render_eventmodeling, flowchart::render_flowchart, gantt::render_gantt,
+    git_graph::render_git_graph, info::render_info, ishikawa::render_ishikawa,
+    journey::render_journey, json::render_json, kanban::render_kanban, mindmap::render_mindmap,
+    packet::render_packet, pie::render_pie, quadrant_chart::render_quadrant_chart,
     radar::render_radar, requirement::render_requirement, sankey::render_sankey,
     timeline::render_timeline, treemap::render_treemap, treeview::render_treeview,
     venn::render_venn,
@@ -26,14 +27,18 @@ pub mod block;
 mod box_geometry;
 pub mod c4;
 mod chart_primitives;
+pub mod class;
 pub mod eventmodeling;
 pub mod flowchart;
+pub mod gantt;
+pub mod git_graph;
 pub mod info;
 pub mod ishikawa;
 pub mod journey;
 pub mod json;
 pub mod kanban;
 pub mod mindmap;
+pub mod packet;
 pub mod pie;
 pub mod quadrant_chart;
 pub mod radar;
@@ -72,10 +77,12 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
             render_ascii("sequence", m, opts, merman_ascii::render_sequence)
         }
         RenderSemanticModel::State(m) => render_ascii("state", m, opts, merman_ascii::render_state),
-        RenderSemanticModel::Class(m) => render_ascii("class", m, opts, merman_ascii::render_class),
+        RenderSemanticModel::Class(m) => {
+            render_structured_adapter("class", m, opts, || render_class(m, opts))
+        }
         RenderSemanticModel::Er(m) => render_ascii("er", m, opts, merman_ascii::render_er),
         RenderSemanticModel::Packet(m) => {
-            render_ascii("packet", m, opts, merman_ascii::render_packet)
+            render_structured_adapter("packet", m, opts, || render_packet(m, opts))
         }
         RenderSemanticModel::TreeView(m) => {
             render_structured_adapter("treeView", m, opts, || render_treeview(m, opts))
@@ -86,9 +93,11 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
         RenderSemanticModel::Mindmap(m) => {
             render_structured_adapter("mindmap", m, opts, || render_mindmap(m, opts))
         }
-        RenderSemanticModel::Gantt(m) => render_ascii("gantt", m, opts, merman_ascii::render_gantt),
+        RenderSemanticModel::Gantt(m) => {
+            render_structured_adapter("gantt", m, opts, || render_gantt(m, opts))
+        }
         RenderSemanticModel::GitGraph(m) => {
-            render_ascii("gitGraph", m, opts, merman_ascii::render_git_graph)
+            render_structured_adapter("gitGraph", m, opts, || render_git_graph(m, opts))
         }
         RenderSemanticModel::Journey(m) => {
             render_structured_adapter("journey", m, opts, || render_journey(m, opts))

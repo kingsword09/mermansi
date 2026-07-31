@@ -111,6 +111,7 @@ pub fn render_sankey(model: &SankeyDiagramRenderModel, opts: &MermansiOptions) -
                     },
                     format!("flow {} {bar}", format_f64(total)),
                 ],
+                dividers: Vec::new(),
                 parent: None,
                 span: 1,
                 order,
@@ -132,8 +133,9 @@ pub fn render_sankey(model: &SankeyDiagramRenderModel, opts: &MermansiOptions) -
                 from: geometry_ids[link.source.as_str()].clone(),
                 to: geometry_ids[link.target.as_str()].clone(),
                 label: format!("{} {}", format_json_value(&link.value), fill.repeat(length)),
-                arrow_start: false,
-                arrow_end: true,
+                marker_start: box_geometry::EdgeMarker::None,
+                marker_end: box_geometry::EdgeMarker::Arrow,
+                style: box_geometry::EdgeStyle::Solid,
                 from_side: Some(from_side),
                 to_side: Some(to_side),
             }
@@ -168,7 +170,7 @@ pub fn render_sankey(model: &SankeyDiagramRenderModel, opts: &MermansiOptions) -
             edges,
             columns: None,
             layout: BoxLayout::Layered { direction, ranks },
-            show_edge_legend: true,
+            edge_legend: box_geometry::EdgeLegend::All,
         },
         opts,
     )

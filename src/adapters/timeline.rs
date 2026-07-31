@@ -129,6 +129,7 @@ fn render_ordered_timeline(
         .map(|(order, lines)| BoxNode {
             id: format!("timeline-{order}"),
             lines,
+            dividers: Vec::new(),
             parent: None,
             span: 1,
             order,
@@ -146,7 +147,7 @@ fn render_ordered_timeline(
             edges,
             columns: None,
             layout: BoxLayout::Layered { direction, ranks },
-            show_edge_legend: false,
+            edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,
     )

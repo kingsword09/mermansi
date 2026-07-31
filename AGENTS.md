@@ -25,10 +25,11 @@ RenderSemanticModel   (28 variants: the authoritative semantic inventory)
     ▼
 ┌──────────────────────────────┐
 │  Adapter dispatch            │  src/adapters/mod.rs
-│  ├─ merman-ascii reuse       │  Class, Er, Flowchart, Gantt, GitGraph,
-│  │                           │  Packet, Sequence, State, XyChart, ZenUML
-│  └─ mermansi native           │  Json, Architecture, C4, Journey, Kanban,
-│     terminal adapters         │  Pie, Requirement, Sankey, Timeline, Radar,
+│  ├─ merman-ascii reuse       │  Er, Flowchart, Sequence, State,
+│  │                           │  XyChart, ZenUML
+│  └─ mermansi native          │  Json, Architecture, C4, Class, Gantt,
+│     terminal adapters        │  GitGraph, Packet, Journey, Kanban,
+│                              │  Pie, Requirement, Sankey, Timeline, Radar,
 │                               │  Info, Treemap, Block, QuadrantChart,
 │                               │  Ishikawa, EventModeling, Mindmap,
 │                               │  TreeView, Venn
@@ -54,9 +55,9 @@ Deterministic ASCII / Unicode text output
 4. **Every successfully parsed built-in family must produce deterministic nonempty output.**
    No family may silently drop parsed semantic entities, relationships, labels, endpoints,
    markers, hierarchy, or chart values.
-5. **Terminal-native geometry where meaningful; structured terminal representation where
-   exact browser geometry is not meaningful.** Summary output is explicitly labeled as such —
-   never disguised as full geometric parity.
+5. **Every supported family has terminal-native geometry in concise output.** Complete output
+   additionally retains the canonical semantic model; terminal geometry never claims SVG-coordinate
+   parity.
 6. **Optional ANSI roles do not affect geometry.** ANSI escape sequences add color only.
 7. **All allocations are bounded and return typed errors.** Source, row, column, cell,
    routing, and output sizes are capped.
@@ -87,6 +88,7 @@ Deterministic ASCII / Unicode text output
 | `src/output.rs` | Canonical structured output and final output bounds |
 | `src/adapters/mod.rs` | Dispatch by `RenderSemanticModel` variant |
 | `src/adapters/*.rs` | Per-family terminal geometry and structured adapters |
+| `src/adapters/box_geometry.rs` | Shared bounded box layout, compartment, marker, and relationship routing |
 | `src/adapters/chart_primitives.rs` | Shared bounded chart primitives (circle, line, sector) for Pie/Radar/QuadrantChart/Venn |
 | `src/bin/mermansi.rs` | CLI binary |
 | `tests/support_matrix.rs` | Executable conformance test |

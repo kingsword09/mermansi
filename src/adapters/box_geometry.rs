@@ -26,6 +26,8 @@ const MIN_CANVAS_WIDTH: usize = 12;
 pub(crate) struct BoxNode {
     pub(crate) id: String,
     pub(crate) lines: Vec<String>,
+    /// Line-row offsets that are painted as full-width compartment dividers.
+    pub(crate) dividers: Vec<usize>,
     pub(crate) parent: Option<String>,
     pub(crate) span: usize,
     pub(crate) order: usize,
@@ -53,10 +55,37 @@ pub(crate) struct BoxEdge {
     pub(crate) from: String,
     pub(crate) to: String,
     pub(crate) label: String,
-    pub(crate) arrow_start: bool,
-    pub(crate) arrow_end: bool,
+    pub(crate) marker_start: EdgeMarker,
+    pub(crate) marker_end: EdgeMarker,
+    pub(crate) style: EdgeStyle,
     pub(crate) from_side: Option<Side>,
     pub(crate) to_side: Option<Side>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum EdgeMarker {
+    #[default]
+    None,
+    Arrow,
+    OpenTriangle,
+    OpenDiamond,
+    FilledDiamond,
+    Circle,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum EdgeStyle {
+    #[default]
+    Solid,
+    Dotted,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum EdgeLegend {
+    #[default]
+    None,
+    Labeled,
+    All,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
@@ -108,7 +137,7 @@ pub(crate) struct BoxDiagram {
     pub(crate) edges: Vec<BoxEdge>,
     pub(crate) columns: Option<usize>,
     pub(crate) layout: BoxLayout,
-    pub(crate) show_edge_legend: bool,
+    pub(crate) edge_legend: EdgeLegend,
 }
 
 pub(crate) fn directed_ranks(nodes: &[BoxNode], edges: &[BoxEdge]) -> HashMap<String, usize> {
@@ -178,8 +207,9 @@ pub(crate) fn directed_chain_edges(
             from: format!("{prefix}-{}", index - 1),
             to: format!("{prefix}-{index}"),
             label: String::new(),
-            arrow_start: false,
-            arrow_end: true,
+            marker_start: EdgeMarker::None,
+            marker_end: EdgeMarker::Arrow,
+            style: EdgeStyle::Solid,
             from_side: Some(from_side),
             to_side: Some(to_side),
         })
@@ -220,6 +250,7 @@ struct Item {
     id: String,
     kind: ItemKind,
     lines: Vec<String>,
+    dividers: Vec<usize>,
     width: usize,
     height: usize,
     span: usize,
@@ -334,10 +365,11 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
         .max()
         .unwrap_or(0);
     let content_width = diagram_width.max(title_width).max(1);
-    let legend_width = if diagram.show_edge_legend {
+    let legend_width = if diagram.edge_legend != EdgeLegend::None {
         diagram
             .edges
             .iter()
+            .filter(|edge| include_legend_edge(diagram.edge_legend, edge))
             .map(|edge| str_display_width(&edge_legend_text(edge)))
             .max()
             .unwrap_or(0)
@@ -353,7 +385,7 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
     let diagram_x = ROUTE_MARGIN + drawing_width.saturating_sub(diagram_width) / 2;
     let title_y = 1;
     let geometry_edges = coalesced_geometry_edges(&diagram.edges);
-    let (top_route_lanes, bottom_route_lanes) = if geometry_edges.is_empty() {
+    let (mut top_route_lanes, mut bottom_route_lanes) = if geometry_edges.is_empty() {
         (0, 0)
     } else if matches!(&diagram.layout, BoxLayout::Layered { .. }) {
         (1, 1)
@@ -361,6 +393,18 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
         let route_lanes = geometry_edges.len().min(MAX_OUTER_ROUTE_LANES);
         (route_lanes.div_ceil(2), route_lanes / 2)
     };
+    if geometry_edges
+        .iter()
+        .any(|edge| edge.from_side == Some(Side::Top) || edge.to_side == Some(Side::Top))
+    {
+        top_route_lanes = top_route_lanes.max(2);
+    }
+    if geometry_edges
+        .iter()
+        .any(|edge| edge.from_side == Some(Side::Bottom) || edge.to_side == Some(Side::Bottom))
+    {
+        bottom_route_lanes = bottom_route_lanes.max(2);
+    }
     let diagram_y =
         title_y + title_lines.len() + usize::from(!title_lines.is_empty()) + top_route_lanes;
     for item in &mut placed {
@@ -368,8 +412,8 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
         item.y += diagram_y;
     }
 
-    let legend = if diagram.show_edge_legend {
-        edge_legend(&diagram.edges, width.saturating_sub(2))
+    let legend = if diagram.edge_legend != EdgeLegend::None {
+        edge_legend(&diagram.edges, diagram.edge_legend, width.saturating_sub(2))
     } else {
         Vec::new()
     };
@@ -518,6 +562,7 @@ fn build_group(
         id: group.id.clone(),
         kind: ItemKind::Group,
         lines,
+        dividers: Vec::new(),
         width,
         height,
         span: group.span.max(1),
@@ -527,7 +572,17 @@ fn build_group(
 
 fn build_node(node: &BoxNode, max_width: usize) -> Item {
     let inner_limit = max_width.saturating_sub(2).clamp(1, MAX_INNER_WIDTH);
-    let lines = wrapped_lines(&node.lines, inner_limit);
+    let mut lines = Vec::new();
+    let mut dividers = Vec::new();
+    for (index, line) in node.lines.iter().enumerate() {
+        if node.dividers.contains(&index) {
+            dividers.push(lines.len());
+        }
+        lines.extend(wrap_words(&normalized(line), inner_limit));
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
     let natural_width = lines
         .iter()
         .map(|line| str_display_width(line))
@@ -542,6 +597,7 @@ fn build_node(node: &BoxNode, max_width: usize) -> Item {
         id: node.id.clone(),
         kind: ItemKind::Node,
         lines,
+        dividers,
         width,
         height,
         span: node.span.max(1),
@@ -554,6 +610,7 @@ fn build_spacer(spacer: &BoxSpacer, max_width: usize) -> Item {
         id: String::new(),
         kind: ItemKind::Spacer,
         lines: Vec::new(),
+        dividers: Vec::new(),
         width: spacer
             .span
             .max(1)
@@ -757,6 +814,9 @@ fn paint_item(
     match placed.item.kind {
         ItemKind::Node => {
             obstacles.push(rect);
+            for divider in &placed.item.dividers {
+                draw_horizontal_line(canvas, rect.y + 1 + divider, rect.x, rect.right(), charset)?;
+            }
             for (offset, line) in placed.item.lines.iter().enumerate() {
                 write_centered(
                     canvas,
@@ -868,7 +928,7 @@ fn draw_edge(
         )
     })
     .ok_or_else(|| layout_error(family, format!("no route for {} -> {}", edge.from, edge.to)))?;
-    draw_path(canvas, &path, charset)?;
+    draw_path(canvas, &path, charset, edge.style)?;
     for point in path_cells(&path)
         .into_iter()
         .filter(|point| point.x < width && point.y < route_height)
@@ -876,13 +936,15 @@ fn draw_edge(
         routed[grid_index(point, width)] = true;
     }
 
-    let (source_marker, source_arrow) = endpoint_arrow(path[0], path[1], charset);
+    let (source_marker, source_arrow) =
+        endpoint_marker(path[0], path[1], edge.marker_start, charset);
     let last = path.len() - 1;
-    let (target_marker, target_arrow) = endpoint_arrow(path[last], path[last - 1], charset);
-    if edge.arrow_start {
+    let (target_marker, target_arrow) =
+        endpoint_marker(path[last], path[last - 1], edge.marker_end, charset);
+    if edge.marker_start != EdgeMarker::None {
         canvas.set_char(source_marker.x, source_marker.y, source_arrow)?;
     }
-    if edge.arrow_end {
+    if edge.marker_end != EdgeMarker::None {
         canvas.set_char(target_marker.x, target_marker.y, target_arrow)?;
     }
     Ok(())
@@ -1139,18 +1201,35 @@ fn compress_path(points: Vec<Point>) -> Vec<Point> {
     normalized
 }
 
-fn endpoint_arrow(endpoint: Point, neighbor: Point, charset: Charset) -> (Point, char) {
+fn endpoint_marker(
+    endpoint: Point,
+    neighbor: Point,
+    marker_kind: EdgeMarker,
+    charset: Charset,
+) -> (Point, char) {
     let unicode = charset == Charset::Unicode;
-    let direction = if endpoint.x < neighbor.x {
-        if unicode { '◀' } else { '<' }
-    } else if endpoint.x > neighbor.x {
-        if unicode { '▶' } else { '>' }
-    } else if endpoint.y < neighbor.y {
-        if unicode { '▲' } else { '^' }
-    } else if unicode {
-        '▼'
-    } else {
-        'v'
+    let directional = |left, right, up, down| {
+        if endpoint.x < neighbor.x {
+            left
+        } else if endpoint.x > neighbor.x {
+            right
+        } else if endpoint.y < neighbor.y {
+            up
+        } else {
+            down
+        }
+    };
+    let glyph = match marker_kind {
+        EdgeMarker::None => ' ',
+        EdgeMarker::Arrow if unicode => directional('◀', '▶', '▲', '▼'),
+        EdgeMarker::Arrow => directional('<', '>', '^', 'v'),
+        EdgeMarker::OpenTriangle if unicode => directional('◁', '▷', '△', '▽'),
+        EdgeMarker::OpenTriangle => directional('<', '>', '^', 'v'),
+        EdgeMarker::OpenDiamond if unicode => '◇',
+        EdgeMarker::FilledDiamond if unicode => '◆',
+        EdgeMarker::Circle if unicode => '○',
+        EdgeMarker::OpenDiamond | EdgeMarker::Circle => 'o',
+        EdgeMarker::FilledDiamond => '*',
     };
     let marker = if endpoint.x < neighbor.x {
         Point::new(endpoint.x.saturating_add(1), endpoint.y)
@@ -1161,10 +1240,30 @@ fn endpoint_arrow(endpoint: Point, neighbor: Point, charset: Charset) -> (Point,
     } else {
         Point::new(endpoint.x, endpoint.y.saturating_sub(1))
     };
-    (marker, direction)
+    (marker, glyph)
 }
 
-fn draw_path(canvas: &mut Canvas, points: &[Point], charset: Charset) -> Result<()> {
+fn draw_path(
+    canvas: &mut Canvas,
+    points: &[Point],
+    charset: Charset,
+    style: EdgeStyle,
+) -> Result<()> {
+    if style == EdgeStyle::Dotted {
+        let cells = path_cells(points);
+        let last = cells.len().saturating_sub(1);
+        let glyph = if charset == Charset::Unicode {
+            '·'
+        } else {
+            '.'
+        };
+        for (index, point) in cells.into_iter().enumerate() {
+            if index != 0 && index != last && index.is_multiple_of(2) {
+                canvas.set_char(point.x, point.y, glyph)?;
+            }
+        }
+        return Ok(());
+    }
     for pair in points.windows(2) {
         if pair[0].x == pair[1].x {
             let (start, end) = ordered(pair[0].y, pair[1].y);
@@ -1197,21 +1296,28 @@ fn path_cells(points: &[Point]) -> Vec<Point> {
     cells
 }
 
-fn edge_legend(edges: &[BoxEdge], width: usize) -> Vec<String> {
+fn edge_legend(edges: &[BoxEdge], policy: EdgeLegend, width: usize) -> Vec<String> {
     let mut lines = Vec::new();
-    for edge in edges {
+    for edge in edges
+        .iter()
+        .filter(|edge| include_legend_edge(policy, edge))
+    {
         lines.extend(wrap_words(&edge_legend_text(edge), width));
     }
     lines
 }
 
 fn edge_legend_text(edge: &BoxEdge) -> String {
-    let arrow = match (edge.arrow_start, edge.arrow_end) {
-        (true, true) => "<-->",
-        (true, false) => "<--",
-        (false, true) => "-->",
-        (false, false) => "---",
+    let line = if edge.style == EdgeStyle::Dotted {
+        ".."
+    } else {
+        "--"
     };
+    let arrow = format!(
+        "{}{line}{}",
+        marker_legend(edge.marker_start, true),
+        marker_legend(edge.marker_end, false)
+    );
     let label = normalized(&edge.label);
     if label.is_empty() {
         format!("{} {arrow} {}", edge.from, edge.to)
@@ -1220,7 +1326,28 @@ fn edge_legend_text(edge: &BoxEdge) -> String {
     }
 }
 
-fn wrap_words(text: &str, max_width: usize) -> Vec<String> {
+fn include_legend_edge(policy: EdgeLegend, edge: &BoxEdge) -> bool {
+    match policy {
+        EdgeLegend::None => false,
+        EdgeLegend::Labeled => !normalized(&edge.label).is_empty(),
+        EdgeLegend::All => true,
+    }
+}
+
+fn marker_legend(marker: EdgeMarker, start: bool) -> &'static str {
+    match (marker, start) {
+        (EdgeMarker::None, _) => "",
+        (EdgeMarker::Arrow, true) => "<",
+        (EdgeMarker::Arrow, false) => ">",
+        (EdgeMarker::OpenTriangle, true) => "<|",
+        (EdgeMarker::OpenTriangle, false) => "|>",
+        (EdgeMarker::OpenDiamond, _) => "o",
+        (EdgeMarker::FilledDiamond, _) => "*",
+        (EdgeMarker::Circle, _) => "()",
+    }
+}
+
+pub(crate) fn wrap_words(text: &str, max_width: usize) -> Vec<String> {
     let max_width = max_width.max(1);
     let sanitized = sanitize_label_text(text);
     if str_display_width(&sanitized) <= max_width {
@@ -1289,12 +1416,20 @@ fn coalesced_geometry_edges(edges: &[BoxEdge]) -> Vec<BoxEdge> {
                     })
         {
             consumed[reverse_index] = true;
-            combined.arrow_start |= reverse.arrow_end;
-            combined.arrow_end |= reverse.arrow_start;
+            combined.marker_start = combine_marker(combined.marker_start, reverse.marker_end);
+            combined.marker_end = combine_marker(combined.marker_end, reverse.marker_start);
         }
         geometry.push(combined);
     }
     geometry
+}
+
+fn combine_marker(existing: EdgeMarker, reverse: EdgeMarker) -> EdgeMarker {
+    if existing == EdgeMarker::None {
+        reverse
+    } else {
+        existing
+    }
 }
 
 fn write_centered(
@@ -1309,7 +1444,7 @@ fn write_centered(
     canvas.set_text(x, y, text)
 }
 
-fn wrap_display(text: &str, max_width: usize) -> Vec<String> {
+pub(crate) fn wrap_display(text: &str, max_width: usize) -> Vec<String> {
     let max_width = max_width.max(1);
     let text = sanitize_label_text(text);
     let mut lines = Vec::new();

@@ -505,6 +505,157 @@ fn five_native_geometry_adapters_reject_impossible_narrow_layouts() {
 }
 
 #[test]
+fn final_native_adapters_enforce_entity_limits_before_geometry() {
+    use merman_core::diagrams::gantt::{GanttDiagramRenderModel, GanttRenderTask};
+    use merman_core::diagrams::git_graph::{
+        GitGraphBranchRenderModel, GitGraphCommitRenderModel, GitGraphRenderModel,
+    };
+    use merman_core::diagrams::packet::PacketDiagramRenderModel;
+
+    let gantt = GanttDiagramRenderModel {
+        tasks: (0..4_097)
+            .map(|index| GanttRenderTask {
+                id: format!("task-{index}"),
+                task: "task".to_owned(),
+                section: "section".to_owned(),
+                task_type: "section".to_owned(),
+                classes: Vec::new(),
+                active: false,
+                done: false,
+                crit: false,
+                milestone: false,
+                vert: false,
+                order: i64::from(index),
+                start_ms: 0,
+                end_ms: 1,
+                render_end_ms: None,
+            })
+            .collect(),
+        ..GanttDiagramRenderModel::default()
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Gantt(gantt),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "gantt tasks",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+
+    let packet = PacketDiagramRenderModel {
+        packet: vec![Vec::new(); 4_097],
+        ..PacketDiagramRenderModel::default()
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Packet(packet),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "packet rows",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+
+    let git_graph = GitGraphRenderModel {
+        diagram_type: "gitGraph".to_owned(),
+        commits: (0..4_097)
+            .map(|index| GitGraphCommitRenderModel {
+                id: format!("commit-{index}"),
+                message: String::new(),
+                seq: i64::from(index),
+                commit_type: 0,
+                tags: Vec::new(),
+                parents: Vec::new(),
+                branch: "main".to_owned(),
+                custom_type: None,
+                custom_id: None,
+            })
+            .collect(),
+        branches: vec![GitGraphBranchRenderModel {
+            name: "main".to_owned(),
+        }],
+        current_branch: "main".to_owned(),
+        direction: "LR".to_owned(),
+        acc_title: None,
+        acc_descr: None,
+        warning_facts: Vec::new(),
+    };
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::GitGraph(git_graph),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "gitGraph commits",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+
+    let parsed = merman_core::Engine::new()
+        .parse_diagram_for_render_model_sync(
+            "classDiagram\n  class A",
+            merman_core::ParseOptions::strict(),
+        )
+        .unwrap()
+        .unwrap();
+    let RenderSemanticModel::Class(mut class) = parsed.model else {
+        panic!("expected class model");
+    };
+    let template = class.classes.values().next().unwrap().clone();
+    class.classes.clear();
+    for index in 0..4_097 {
+        let mut node = template.clone();
+        node.id = format!("Class{index}");
+        node.label = node.id.clone();
+        node.text = node.id.clone();
+        node.dom_id = format!("class-{index}");
+        class.classes.insert(node.id.clone(), node);
+    }
+    assert!(matches!(
+        render_model(
+            &RenderSemanticModel::Class(class),
+            &MermansiOptions::unicode()
+        ),
+        Err(MermansiError::RenderLimit {
+            context: "class entities",
+            requested: 4_097,
+            limit: 4_096,
+        })
+    ));
+}
+
+#[test]
+fn final_native_adapters_reject_impossible_narrow_layouts() {
+    let sources = [
+        include_str!("fixtures/gantt.en.mmd"),
+        include_str!("fixtures/gitgraph.en.mmd"),
+        include_str!("fixtures/packet.en.mmd"),
+        include_str!("fixtures/class.en.mmd"),
+        include_str!("fixtures/block.en.mmd"),
+    ];
+    let options = MermansiOptions::unicode()
+        .with_output_mode(OutputMode::Concise)
+        .with_max_width(10)
+        .with_max_height(10);
+    for source in sources {
+        let result = render_source(source, &options);
+        assert!(
+            matches!(
+                result,
+                Err(MermansiError::RenderLimit { .. }) | Err(MermansiError::GeometryLayout { .. })
+            ),
+            "narrow layout unexpectedly rendered: {result:?}"
+        );
+    }
+}
+
+#[test]
 fn delegated_model_is_bounded_before_ascii_rendering() {
     let engine = merman_core::Engine::new();
     let parsed = engine

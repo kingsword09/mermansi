@@ -53,7 +53,7 @@ pub fn render_c4(model: &C4DiagramRenderModel, opts: &MermansiOptions) -> Result
             columns: positive(model.layout.c4_boundary_in_row)
                 .or_else(|| positive(model.layout.c4_shape_in_row)),
             layout: BoxLayout::Packed,
-            show_edge_legend: true,
+            edge_legend: box_geometry::EdgeLegend::All,
         },
         opts,
     )
@@ -132,6 +132,7 @@ fn shape_node(shape: &C4ShapeRenderModel, order: usize, charset: Charset) -> Box
     BoxNode {
         id: shape.alias.clone(),
         lines,
+        dividers: Vec::new(),
         parent: visible_parent(&shape.parent_boundary),
         span: 1,
         order,
@@ -169,8 +170,13 @@ fn relation_edge(relation: &C4RelRenderModel, charset: Charset) -> BoxEdge {
         from: relation.from_alias.clone(),
         to: relation.to_alias.clone(),
         label: details,
-        arrow_start: bidirectional,
-        arrow_end: true,
+        marker_start: if bidirectional {
+            box_geometry::EdgeMarker::Arrow
+        } else {
+            box_geometry::EdgeMarker::None
+        },
+        marker_end: box_geometry::EdgeMarker::Arrow,
+        style: box_geometry::EdgeStyle::Solid,
         from_side: None,
         to_side: None,
     }

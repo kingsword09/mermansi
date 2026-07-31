@@ -1,0 +1,46 @@
+schema_version = 1
+task = "task-0007-replace-the-last-non-geometric-or-visibl"
+iteration = 1
+loop_iteration = 1
+created_at = "unix:1785512262"
+objective = "Replace the last non-geometric or visibly broken Mermaid terminal renderers so all 29 supported families produce genuine, readable deterministic geometry in Concise mode. Implement mermansi-owned native adapters for Gantt, GitGraph, Packet, and Class instead of the current merman-ascii structured-text or broken class output, and clean up Block routing. Gantt must draw a bounded dated timeline with section/task lanes, proportional task bars or milestone markers, exact task labels/date ranges/status flags, and visible ordering. GitGraph must draw branch lanes and connected commit nodes preserving branch membership, parent links, merges, cherry-picks, commit kinds, ids, messages, tags, current branch, and LR/TB/BT/RL direction where present. Packet must draw closed 32-bit word rows with contiguous field rectangles proportional to bit ranges, including fields spanning rows, exact bit ranges/counts/labels, and row boundaries. Class must draw closed compartment boxes for every class/interface/note, preserve annotations/members/methods/namespaces, and route every relationship as a continuous non-crossing-or-clearly-disambiguated path with endpoint relation kinds, line type, labels, and multi-inheritance intact. Block must preserve every node/group/spacer and semantic edge while removing duplicated unlabeled text legends and avoiding frame-like or disconnected-looking routes for cycles and reverse pairs; labeled edges must remain identifiable. Preserve Complete-mode canonical semantic models. Support Unicode and ASCII, English and Chinese display width, sanitization, deterministic output, ANSI-independent geometry, narrow dimensions, and typed width/height/cell/entity/depth limits before allocation. Add substantive semantic, closure, connection, proportionality, direction, bilingual, ASCII, determinism, and bounds tests; update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Do not modify or fork merman-core, merman-ascii, Selkie, or any parser. Apply KISS, YAGNI, DRY, and SOLID and reuse existing bounded Canvas/box primitives only where behavior is genuinely shared."
+open_issue_ids = ["task-0007-replace-the-last-non-geometric-or-visibl#0001"]
+
+[plan]
+objective = "Replace the last non-geometric or visibly broken Mermaid terminal renderers so all 29 supported families produce genuine, readable deterministic geometry in Concise mode. Implement mermansi-owned native adapters for Gantt, GitGraph, Packet, and Class instead of the current merman-ascii structured-text or broken class output, and clean up Block routing. Gantt must draw a bounded dated timeline with section/task lanes, proportional task bars or milestone markers, exact task labels/date ranges/status flags, and visible ordering. GitGraph must draw branch lanes and connected commit nodes preserving branch membership, parent links, merges, cherry-picks, commit kinds, ids, messages, tags, current branch, and LR/TB/BT/RL direction where present. Packet must draw closed 32-bit word rows with contiguous field rectangles proportional to bit ranges, including fields spanning rows, exact bit ranges/counts/labels, and row boundaries. Class must draw closed compartment boxes for every class/interface/note, preserve annotations/members/methods/namespaces, and route every relationship as a continuous non-crossing-or-clearly-disambiguated path with endpoint relation kinds, line type, labels, and multi-inheritance intact. Block must preserve every node/group/spacer and semantic edge while removing duplicated unlabeled text legends and avoiding frame-like or disconnected-looking routes for cycles and reverse pairs; labeled edges must remain identifiable. Preserve Complete-mode canonical semantic models. Support Unicode and ASCII, English and Chinese display width, sanitization, deterministic output, ANSI-independent geometry, narrow dimensions, and typed width/height/cell/entity/depth limits before allocation. Add substantive semantic, closure, connection, proportionality, direction, bilingual, ASCII, determinism, and bounds tests; update AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md honestly. Do not modify or fork merman-core, merman-ascii, Selkie, or any parser. Apply KISS, YAGNI, DRY, and SOLID and reuse existing bounded Canvas/box primitives only where behavior is genuinely shared."
+
+[[plan.steps]]
+id = "step-1"
+description = "Inspect existing adapters (Class, Block, Gantt, GitGraph, Packet), dispatch in src/adapters/mod.rs, and box/chart primitives to understand current semantics, Canvas usage, and merman-core model structure."
+
+[[plan.steps]]
+id = "step-2"
+description = "Implement native Gantt adapter drawing bounded dated timelines with section/task lanes, proportional task bars/milestones, exact labels/date ranges/status flags, and visible ordering."
+
+[[plan.steps]]
+id = "step-3"
+description = "Implement native GitGraph adapter drawing branch lanes and connected commit nodes with parent links, merges, cherry-picks, commit kinds, ids, messages, tags, current branch, and orientation directions (LR/TB/BT/RL)."
+
+[[plan.steps]]
+id = "step-4"
+description = "Implement native Packet adapter drawing closed 32-bit word rows with contiguous proportional field rectangles (including multi-row spanning fields), bit ranges, counts, and labels."
+
+[[plan.steps]]
+id = "step-5"
+description = "Implement native Class adapter drawing closed compartment boxes for classes/interfaces/notes with annotations, members, methods, and namespaces, along with non-crossing or clearly disambiguated relationship routing for endpoint relation kinds, line types, labels, and multi-inheritance."
+
+[[plan.steps]]
+id = "step-6"
+description = "Clean up Block adapter routing to eliminate duplicated unlabeled text legends, avoid frame-like/disconnected routes for cycles/reverse pairs, and preserve labeled edge visibility."
+
+[[plan.steps]]
+id = "step-7"
+description = "Update src/adapters/mod.rs to route Gantt, GitGraph, Packet, Class, and Block to native mermansi adapters instead of merman-ascii delegates."
+
+[[plan.steps]]
+id = "step-8"
+description = "Add comprehensive tests for semantic preservation, box closure, routing, proportionality, direction, bilingual display width, ASCII/Unicode, determinism, and typed resource limits."
+
+[[plan.steps]]
+id = "step-9"
+description = "Update documentation in AGENTS.md, README.md, and docs/SUPPORT_MATRIX.md to honestly reflect the native adapter additions and capabilities, then run project verification."
