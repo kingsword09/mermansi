@@ -711,20 +711,56 @@ fn ishikawa_fixture_has_one_effect_and_connected_upper_and_lower_bones() {
 }
 
 #[test]
-fn ishikawa_fixtures_render_bounded_geometry_at_100_and_120_columns() {
+fn ishikawa_fixtures_render_bounded_geometry_at_95_100_and_120_columns() {
     let fixtures = [
         (
             "English",
             include_str!("fixtures/ishikawa.en.mmd"),
-            &["Effect: Poor Quality", "Process", "Poor Maintenance"][..],
+            "Effect: Poor Quality",
+            &[
+                "Effect: Poor Quality",
+                "Process",
+                "Variability",
+                "Inefficiency",
+                "People",
+                "Lack of Training",
+                "Fatigue",
+                "Equipment",
+                "Outdated Tools",
+                "Poor Maintenance",
+                "Materials",
+                "Defective Parts",
+                "Environment",
+                "Temperature",
+            ][..],
         ),
         (
             "Chinese",
             include_str!("fixtures/ishikawa.zh.mmd"),
-            &["质量问题", "流程", "维护不足"][..],
+            "质量问题",
+            &[
+                "质量问题",
+                "流程",
+                "变异性",
+                "效率低",
+                "人员",
+                "缺乏培训",
+                "疲劳",
+                "设备",
+                "工具过时",
+                "维护不足",
+                "材料",
+                "缺陷零件",
+            ][..],
         ),
     ];
     let options = [
+        MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(95),
+        MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(95),
         MermansiOptions::unicode()
             .with_output_mode(OutputMode::Concise)
             .with_max_width(100),
@@ -739,7 +775,7 @@ fn ishikawa_fixtures_render_bounded_geometry_at_100_and_120_columns() {
             .with_max_width(120),
     ];
 
-    for (language, source, labels) in fixtures {
+    for (language, source, effect, labels) in fixtures {
         for options in &options {
             let first = render_source(source, options)
                 .unwrap_or_else(|error| panic!("{language} Ishikawa failed: {error}"));
@@ -758,8 +794,33 @@ fn ishikawa_fixtures_render_bounded_geometry_at_100_and_120_columns() {
                     || (first.contains('\\') && first.contains('/')),
                 "{language} Ishikawa lost its upper/lower bones:\n{first}"
             );
+            assert_eq!(
+                first.matches(effect).count(),
+                1,
+                "{language} Ishikawa duplicated or dropped its effect:\n{first}"
+            );
+            assert!(
+                !first.contains("ishikawa-beta"),
+                "{language} Ishikawa leaked source instead of geometry:\n{first}"
+            );
             for label in labels {
                 assert!(first.contains(label), "missing {label}:\n{first}");
+            }
+            if let Some((geometry, callouts)) = first.split_once("\nLabels:\n") {
+                for line in callouts.lines() {
+                    let Some(marker) = line.split_whitespace().next() else {
+                        continue;
+                    };
+                    assert_eq!(
+                        first.matches(marker).count(),
+                        2,
+                        "{language} callout {marker} must appear once in geometry and once in the legend:\n{first}"
+                    );
+                    assert!(
+                        geometry.contains(marker),
+                        "{language} callout {marker} is missing from geometry:\n{first}"
+                    );
+                }
             }
         }
     }

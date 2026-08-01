@@ -511,13 +511,13 @@ fn ishikawa_compression_respects_width_and_minimum_slot_bounds() {
         source,
         &MermansiOptions::unicode()
             .with_output_mode(OutputMode::Concise)
-            .with_max_width(120),
+            .with_max_width(95),
     )
     .unwrap();
     assert!(
         rendered
             .lines()
-            .all(|line| mermansi::str_display_width(line) <= 120),
+            .all(|line| mermansi::str_display_width(line) <= 95),
         "compressed Ishikawa exceeded its width bound:\n{rendered}"
     );
 
@@ -526,12 +526,12 @@ fn ishikawa_compression_respects_width_and_minimum_slot_bounds() {
             source,
             &MermansiOptions::unicode()
                 .with_output_mode(OutputMode::Concise)
-                .with_max_width(97),
+                .with_max_width(92),
         ),
         Err(MermansiError::RenderLimit {
             context: "ishikawa columns",
-            requested: 98,
-            limit: 97,
+            requested: 93,
+            limit: 92,
         })
     ));
 }

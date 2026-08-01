@@ -1,0 +1,14 @@
+schema_version = 1
+task = "task-0010-create-the-next-task-because-real-100-co"
+iteration = 1
+loop_iteration = 1
+created_at = "unix:1785578793"
+objective = "Create the next Task because real 100-column aicode TUI rendering disproves the completed 100-column library-only assumption: Markdown and TUI padding leaves only 95 display columns, while ishikawa.en.mmd currently requests 98 and aicode falls back to Mermaid source. Make the Ishikawa renderer produce deterministic bounded terminal geometry for both English and Chinese fixtures, ASCII and Unicode, at max_width 95. Preserve the effect exactly once, upper and lower connected bones, every label through visible geometry or connected callout markers, display-width correctness, and true narrow-width RenderLimit behavior. Add focused 95-column regression coverage without weakening Task 9's 100 and 120 matrix or completed history. Run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task."
+open_issue_ids = ["task-0010-create-the-next-task-because-real-100-co#0001"]
+
+[plan]
+objective = "Create the next Task because real 100-column aicode TUI rendering disproves the completed 100-column library-only assumption: Markdown and TUI padding leaves only 95 display columns, while ishikawa.en.mmd currently requests 98 and aicode falls back to Mermaid source. Make the Ishikawa renderer produce deterministic bounded terminal geometry for both English and Chinese fixtures, ASCII and Unicode, at max_width 95. Preserve the effect exactly once, upper and lower connected bones, every label through visible geometry or connected callout markers, display-width correctness, and true narrow-width RenderLimit behavior. Add focused 95-column regression coverage without weakening Task 9's 100 and 120 matrix or completed history. Run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task."
+
+[[plan.steps]]
+id = "step-1"
+description = "Review the 95-column Ishikawa layout, bilingual geometry invariants, narrow failure boundary, and required verification evidence."

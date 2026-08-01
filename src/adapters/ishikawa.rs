@@ -14,7 +14,7 @@ use merman_core::diagrams::ishikawa::{IshikawaDiagramRenderModel, IshikawaNodeRe
 
 const MAX_ISHIKAWA_NODES: usize = 4_096;
 const MAX_ISHIKAWA_DEPTH: usize = 64;
-const MIN_SLOT_WIDTH: usize = 16;
+const MIN_SLOT_WIDTH: usize = 15;
 const MAX_SLOT_WIDTH: usize = 24;
 const MIN_EFFECT_WIDTH: usize = 14;
 const MAX_EFFECT_WIDTH: usize = 34;

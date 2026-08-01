@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "task": "task-0010-create-the-next-task-because-real-100-co",
+  "iteration": 1,
+  "loop_iteration": 1,
+  "created_at": "unix:1785578793",
+  "objective": "Create the next Task because real 100-column aicode TUI rendering disproves the completed 100-column library-only assumption: Markdown and TUI padding leaves only 95 display columns, while ishikawa.en.mmd currently requests 98 and aicode falls back to Mermaid source. Make the Ishikawa renderer produce deterministic bounded terminal geometry for both English and Chinese fixtures, ASCII and Unicode, at max_width 95. Preserve the effect exactly once, upper and lower connected bones, every label through visible geometry or connected callout markers, display-width correctness, and true narrow-width RenderLimit behavior. Add focused 95-column regression coverage without weakening Task 9's 100 and 120 matrix or completed history. Run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task.",
+  "plan": {
+    "objective": "Create the next Task because real 100-column aicode TUI rendering disproves the completed 100-column library-only assumption: Markdown and TUI padding leaves only 95 display columns, while ishikawa.en.mmd currently requests 98 and aicode falls back to Mermaid source. Make the Ishikawa renderer produce deterministic bounded terminal geometry for both English and Chinese fixtures, ASCII and Unicode, at max_width 95. Preserve the effect exactly once, upper and lower connected bones, every label through visible geometry or connected callout markers, display-width correctness, and true narrow-width RenderLimit behavior. Add focused 95-column regression coverage without weakening Task 9's 100 and 120 matrix or completed history. Run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Review the 95-column Ishikawa layout, bilingual geometry invariants, narrow failure boundary, and required verification evidence."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Reduced the Ishikawa minimum cause slot from 16 to 15 columns and added 95-column English/Chinese ASCII/Unicode coverage for deterministic bounded geometry, complete labels, callouts, unique effects, and upper/lower bones; retained a precise 92-column RenderLimit boundary.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "3/3 required verification commands passed",
+    "commands": [
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Current Codex ran this exact command in the reviewed mermansi worktree; exit status 0. Focused Ishikawa tests also passed at 95 columns in both languages and charsets."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Current Codex ran this exact command in the reviewed mermansi worktree; exit status 0. Focused Ishikawa tests also passed at 95 columns in both languages and charsets."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "Current Codex ran this exact command in the reviewed mermansi worktree; exit status 0. Focused Ishikawa tests also passed at 95 columns in both languages and charsets."
+      }
+    ]
+  },
+  "verdict": "pass",
+  "summary": "Current Codex Review passed with no findings: the one-column slot reduction satisfies the real TUI budget without dropping labels, geometry, deterministic behavior, or narrow-limit enforcement.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 1,
+      "description": "Current Codex reviewed the exact diff and verification evidence: 95-column renders preserve every bilingual label, unique effects, connected upper/lower geometry, visible callout markers, determinism, and display bounds; width 92 still returns requested 93 / limit 92."
+    }
+  ]
+}

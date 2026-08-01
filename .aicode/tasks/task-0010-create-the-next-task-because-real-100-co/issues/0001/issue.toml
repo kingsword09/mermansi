@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0010-create-the-next-task-because-real-100-co#0001"
+number = 1
+title = "Create the next Task because real 100-column aicode TUI rendering disproves the completed 100-column library-only assumption: Markdown and TUI padding leaves only 95 display columns, while ishikawa.en.mmd currently requests 98 and aicode falls back to Mermaid source. Make the Ishikawa renderer produce deterministic bounded terminal geometry for both English and Chinese fixtures, ASCII and Unicode, at max_width 95. Preserve the effect exactly once, upper and lower connected bones, every label through visible geometry or connected callout markers, display-width correctness, and true narrow-width RenderLimit behavior. Add focused 95-column regression coverage without weakening Task 9's 100 and 120 matrix or completed history. Run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task."
+status = "open"
+severity = "P1"
+category = "task-execution"
+fingerprint = "sha256:002f75b837448f0ae6f5662409121aacc63b650059b38d1c880215baf5c75a6a"
+created_at = "unix:1785578452"
+updated_at = "unix:1785578452"
+
+[source]
+kind = "task"
+task = "task-0010-create-the-next-task-because-real-100-co"
+
+[location]
+path = ".aicode/tasks/task-0010-create-the-next-task-because-real-100-co/task.toml"
+line = 1
+
+[problem]
+description = "Create the next Task because real 100-column aicode TUI rendering disproves the completed 100-column library-only assumption: Markdown and TUI padding leaves only 95 display columns, while ishikawa.en.mmd currently requests 98 and aicode falls back to Mermaid source. Make the Ishikawa renderer produce deterministic bounded terminal geometry for both English and Chinese fixtures, ASCII and Unicode, at max_width 95. Preserve the effect exactly once, upper and lower connected bones, every label through visible geometry or connected callout markers, display-width correctness, and true narrow-width RenderLimit behavior. Add focused 95-column regression coverage without weakening Task 9's 100 and 120 matrix or completed history. Run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task."
+impact = "The requested Task has not yet passed implementation, verification, and review."
+
+[acceptance]
+description = "Create the next Task because real 100-column aicode TUI rendering disproves the completed 100-column library-only assumption: Markdown and TUI padding leaves only 95 display columns, while ishikawa.en.mmd currently requests 98 and aicode falls back to Mermaid source. Make the Ishikawa renderer produce deterministic bounded terminal geometry for both English and Chinese fixtures, ASCII and Unicode, at max_width 95. Preserve the effect exactly once, upper and lower connected bones, every label through visible geometry or connected callout markers, display-width correctness, and true narrow-width RenderLimit behavior. Add focused 95-column regression coverage without weakening Task 9's 100 and 120 matrix or completed history. Run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task."
+command = "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"
