@@ -1,0 +1,18 @@
+schema_version = 1
+task = "task-0008-create-the-next-task-for-user-feedback-a"
+iteration = 7
+loop_iteration = 1
+created_at = "unix:1785546066"
+objective = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+open_issue_ids = []
+
+[plan]
+objective = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
+
+[[plan.steps]]
+id = "step-1"
+description = "Verify existing tests pass cleanly without modifying repository files."
+
+[[plan.steps]]
+id = "step-2"
+description = "Perform final review pass."

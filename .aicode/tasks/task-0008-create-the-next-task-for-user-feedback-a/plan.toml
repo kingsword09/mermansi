@@ -1,14 +1,14 @@
 schema_version = 1
 task = "task-0008-create-the-next-task-for-user-feedback-a"
 title = "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow."
-status = "in_progress"
+status = "completed"
 created_at = "unix:1785516747"
-updated_at = "unix:1785516747"
+updated_at = "unix:1785546078"
 
 [[phases]]
 id = "S0"
 title = "Implement, verify, and review the Task objective"
-status = "in_progress"
+status = "completed"
 acceptance = [
     "Create the next Task for user feedback after completed Task 7: Ishikawa still falls back to source at 100-120 column terminals because its natural geometry is 143 columns. Implement bounded compressed slot layout and connected callouts so the Ishikawa fixture renders genuine geometry at width 120 in both English and Chinese without dropping labels or relationships. Add focused width, ASCII/Unicode, deterministic, and bounds tests. Preserve prior completed Task history, use one task-sourced Issue, review and commit the work, then complete the Task workflow.",
     "Verification passes: cargo fmt --check",
