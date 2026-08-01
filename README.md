@@ -13,7 +13,8 @@ family.
 ## Features
 
 - **All 28 `RenderSemanticModel` variants supported** — 33 pinned render parser IDs and 29
-  fixture families (including the ZenUML-to-Sequence transform) are checked at runtime.
+  fixture families (including the ZenUML-to-Sequence transform) are checked in 232 concise
+  rendering combinations: English/Chinese, ASCII/Unicode, and 100/120 display columns.
 - **One public source-to-text API** — `render_source(source, &options)` accepts Mermaid or a raw
   JSON object/array.
 - **Complete or concise output** — keep the canonical semantic model for lossless inspection, or

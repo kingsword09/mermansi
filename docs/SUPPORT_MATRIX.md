@@ -125,3 +125,10 @@ Gantt, GitGraph, Packet, and Class now use bounded native timeline, branch-lane,
 geometry instead of delegated summaries or fractured multi-inheritance. Block reverse pairs share
 one routed path, long cycle edges use deterministic outer ports, and unlabeled edge legends are not
 duplicated below the geometry.
+
+`tests/support_matrix.rs` executes every English and Chinese fixture in concise mode at 100 and
+120 display columns in both ASCII and Unicode, for 232 combinations. Each combination must stay
+within its display-column bound, render deterministically with a minimum terminal-geometry signal,
+preserve quoted fixture labels, and contain neither source/structured-text nor semantic-model
+fallback output. Complete-mode renders are also compared with the parsed semantic model so typed
+entities, relationships, hierarchy, and chart values remain lossless.

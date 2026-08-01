@@ -1,0 +1,22 @@
+schema_version = 1
+task = "task-0009-verify-all-29-supported-mermaid-families"
+iteration = 3
+loop_iteration = 1
+created_at = "unix:1785549920"
+objective = "Verify all 29 supported Mermaid families across at least 58 English and Chinese fixtures, ASCII and Unicode charsets, and maximum widths 100 and 120 (232 render combinations). Every combination must render deterministic, bounded, nonempty terminal-native geometry in concise output, with no structured-text or semantic-model fallback and with parsed labels, entities, relationships, hierarchy, and chart values preserved. Add a single executable support-matrix gate in tests/support_matrix.rs using shared assertions instead of family exceptions; fix every renderer defect it exposes without weakening fixtures or assertions. Run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the new Task. Preserve all completed Task history."
+open_issue_ids = ["task-0009-verify-all-29-supported-mermaid-families#0001"]
+
+[plan]
+objective = "Verify all 29 supported Mermaid families across at least 58 English and Chinese fixtures, ASCII and Unicode charsets, and maximum widths 100 and 120 (232 render combinations). Every combination must render deterministic, bounded, nonempty terminal-native geometry in concise output, with no structured-text or semantic-model fallback and with parsed labels, entities, relationships, hierarchy, and chart values preserved. Add a single executable support-matrix gate in tests/support_matrix.rs using shared assertions instead of family exceptions; fix every renderer defect it exposes without weakening fixtures or assertions. Run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the new Task. Preserve all completed Task history."
+
+[[plan.steps]]
+id = "step-1"
+description = "Confirm the support-matrix gate (tests/support_matrix.rs::every_fixture_renders_terminal_geometry_in_the_supported_width_matrix) iterates all 58 fixtures (29 families × en/zh) across 4 option combinations each (ASCII/Unicode × width 100/120 = 232 total), using the shared assertion function assert_concise_terminal_geometry with zero per-family assertion exceptions (the only family check is for JSON semantic-model construction, not assertion logic). Verify the final assert_eq!(rendered_combinations, total * 2 * 2) gate enforces the full matrix was executed."
+
+[[plan.steps]]
+id = "step-2"
+description = "Confirm the shared assertion asserts for every combination: (a) nonempty output, (b) every line within max_width display columns, (c) ≥16 terminal-geometry cells, (d) no '[<family> semantic model]' fallback marker in concise mode, (e) no structured-text fallback markers (Nodes:/Edges:/Blocks:/etc.), (f) no source-header leak, (g) ASCII-purity in ASCII charset, (h) all quoted fixture labels preserved, (i) deterministic repeat rendering (byte-identical), and (j) complete-mode semantic-model round-trip equality via assert_structured_model_round_trips."
+
+[[plan.steps]]
+id = "step-3"
+description = "Run the full acceptance command: cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features. Confirm all 232 combinations pass green (currently: 24 lib + 4 bin + 64 bounds + 2 cli + 126 semantic_integrity + 12 support_matrix = 232 tests, all passing). If any renderer defect is exposed, fix the renderer (not the fixture or assertion) and re-run until all pass."

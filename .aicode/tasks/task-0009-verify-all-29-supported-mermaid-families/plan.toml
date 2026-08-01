@@ -1,0 +1,17 @@
+schema_version = 1
+task = "task-0009-verify-all-29-supported-mermaid-families"
+title = "Verify all 29 supported Mermaid families across at least 58 English and Chinese fixtures, ASCII and Unicode charsets, and maximum widths 100 and 120 (232 render combinations). Every combination must render deterministic, bounded, nonempty terminal-native geometry in concise output, with no structured-text or semantic-model fallback and with parsed labels, entities, relationships, hierarchy, and chart values preserved. Add a single executable support-matrix gate in tests/support_matrix.rs using shared assertions instead of family exceptions; fix every renderer defect it exposes without weakening fixtures or assertions. Run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the new Task. Preserve all completed Task history."
+status = "in_progress"
+created_at = "unix:1785546518"
+updated_at = "unix:1785546518"
+
+[[phases]]
+id = "S0"
+title = "Implement, verify, and review the Task objective"
+status = "in_progress"
+acceptance = [
+    "Verify all 29 supported Mermaid families across at least 58 English and Chinese fixtures, ASCII and Unicode charsets, and maximum widths 100 and 120 (232 render combinations). Every combination must render deterministic, bounded, nonempty terminal-native geometry in concise output, with no structured-text or semantic-model fallback and with parsed labels, entities, relationships, hierarchy, and chart values preserved. Add a single executable support-matrix gate in tests/support_matrix.rs using shared assertions instead of family exceptions; fix every renderer defect it exposes without weakening fixtures or assertions. Run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the new Task. Preserve all completed Task history.",
+    "Verification passes: cargo fmt --check",
+    "Verification passes: cargo clippy --all-targets --all-features -- -D warnings",
+    "Verification passes: cargo test --all-targets --all-features",
+]

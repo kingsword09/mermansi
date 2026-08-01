@@ -12,7 +12,7 @@ use crate::adapters::{
     packet::render_packet, pie::render_pie, quadrant_chart::render_quadrant_chart,
     radar::render_radar, requirement::render_requirement, sankey::render_sankey,
     timeline::render_timeline, treemap::render_treemap, treeview::render_treeview,
-    venn::render_venn,
+    venn::render_venn, xychart::render_xychart,
 };
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
@@ -48,6 +48,7 @@ pub mod timeline;
 pub mod treemap;
 pub mod treeview;
 pub mod venn;
+pub mod xychart;
 
 /// Convert `MermansiOptions` to the `merman-ascii` equivalent.
 pub(crate) fn to_ascii_options(opts: &MermansiOptions) -> AsciiRenderOptions {
@@ -88,7 +89,7 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
             render_structured_adapter("treeView", m, opts, || render_treeview(m, opts))
         }
         RenderSemanticModel::XyChart(m) => {
-            render_ascii("xychart", m, opts, merman_ascii::render_xychart)
+            render_structured_adapter("xychart", m, opts, || render_xychart(m, opts))
         }
         RenderSemanticModel::Mindmap(m) => {
             render_structured_adapter("mindmap", m, opts, || render_mindmap(m, opts))

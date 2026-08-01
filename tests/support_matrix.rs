@@ -10,7 +10,7 @@
 
 use merman_core::diagram::RenderSemanticModel;
 use mermansi::ansi::strip_ansi;
-use mermansi::{ColorMode, MermansiOptions, render_source};
+use mermansi::{Charset, ColorMode, MermansiOptions, OutputMode, render_source, str_display_width};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -166,46 +166,19 @@ fn upstream_render_parser_inventory_is_fully_accounted_for() {
 }
 
 #[test]
-fn every_fixture_renders_nonempty_in_unicode_and_ascii() {
+fn every_fixture_renders_terminal_geometry_in_the_supported_width_matrix() {
     let fixtures = collect_fixtures();
     assert!(!fixtures.is_empty(), "no fixtures found in {FIXTURE_DIR}");
 
     let total: usize = fixtures.values().map(|f| f.all.len()).sum();
     assert!(total >= 58, "expected at least 58 fixtures, found {total}");
+    let mut rendered_combinations = 0usize;
 
     for (family, f) in &fixtures {
         for file in &f.all {
             let path = format!("{FIXTURE_DIR}/{file}");
             let source =
                 fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read {path}: {e}"));
-
-            let unicode = render_source(&source, &MermansiOptions::unicode()).unwrap_or_else(|e| {
-                panic!(
-                    "Unicode render failed for family '{family}' fixture '{file}':\n\
-                         source:\n{source}\n\
-                         error: {e}"
-                )
-            });
-            assert!(
-                !unicode.trim().is_empty(),
-                "Unicode output for family '{family}' fixture '{file}' is empty"
-            );
-
-            let ascii = render_source(&source, &MermansiOptions::ascii()).unwrap_or_else(|e| {
-                panic!(
-                    "ASCII render failed for family '{family}' fixture '{file}':\n\
-                         source:\n{source}\n\
-                         error: {e}"
-                )
-            });
-            assert!(
-                !ascii.trim().is_empty(),
-                "ASCII output for family '{family}' fixture '{file}' is empty"
-            );
-            assert!(
-                !ascii.chars().any(is_non_ascii_decoration),
-                "ASCII output for family '{family}' fixture '{file}' contains Unicode drawing decoration:\n{ascii}"
-            );
 
             let model = if family == "json" {
                 RenderSemanticModel::Json(
@@ -221,23 +194,194 @@ fn every_fixture_renders_nonempty_in_unicode_and_ascii() {
                     .expect("fixture should produce a render model")
                     .model
             };
-            assert_structured_model_round_trips(&model, &unicode, file);
+            let complete = render_source(&source, &MermansiOptions::unicode())
+                .unwrap_or_else(|error| panic!("complete render failed for '{file}': {error}"));
+            assert_structured_model_round_trips(&model, &complete, file);
 
-            // Determinism: re-render and compare.
-            let unicode2 = render_source(&source, &MermansiOptions::unicode())
-                .expect("determinism re-render (unicode) should succeed");
-            let ascii2 = render_source(&source, &MermansiOptions::ascii())
-                .expect("determinism re-render (ascii) should succeed");
-            assert_eq!(
-                unicode, unicode2,
-                "Unicode output is not deterministic for family '{family}' fixture '{file}'"
-            );
-            assert_eq!(
-                ascii, ascii2,
-                "ASCII output is not deterministic for family '{family}' fixture '{file}'"
-            );
+            let expected_labels = quoted_fixture_labels(&source);
+            for width in [100, 120] {
+                for (charset_name, options) in [
+                    ("Unicode", MermansiOptions::unicode()),
+                    ("ASCII", MermansiOptions::ascii()),
+                ] {
+                    let options = options
+                        .with_output_mode(OutputMode::Concise)
+                        .with_max_width(width);
+                    let first = render_source(&source, &options).unwrap_or_else(|error| {
+                        panic!(
+                            "{charset_name} concise render failed for family '{family}' fixture \
+                             '{file}' at width {width}: {error}\nsource:\n{source}"
+                        )
+                    });
+                    let second = render_source(&source, &options).unwrap_or_else(|error| {
+                        panic!(
+                            "repeat {charset_name} concise render failed for '{file}' at width \
+                             {width}: {error}"
+                        )
+                    });
+
+                    assert_eq!(
+                        first, second,
+                        "nondeterministic {charset_name} output for '{file}' at width {width}"
+                    );
+                    assert_concise_terminal_geometry(
+                        family,
+                        file,
+                        &source,
+                        &first,
+                        options.charset,
+                        width,
+                        &expected_labels,
+                    );
+                    rendered_combinations += 1;
+                }
+            }
         }
     }
+
+    assert_eq!(
+        rendered_combinations,
+        total * 2 * 2,
+        "the complete fixture/charset/width matrix was not executed"
+    );
+}
+
+fn assert_concise_terminal_geometry(
+    family: &str,
+    fixture: &str,
+    source: &str,
+    output: &str,
+    charset: Charset,
+    width: usize,
+    expected_labels: &BTreeSet<String>,
+) {
+    const MIN_GEOMETRY_CELLS: usize = 16;
+
+    assert!(
+        !output.trim().is_empty(),
+        "empty concise output for family '{family}' fixture '{fixture}' at width {width}"
+    );
+    assert!(
+        output.lines().all(|line| str_display_width(line) <= width),
+        "overwide concise output for '{fixture}' at width {width}:\n{output}"
+    );
+    assert!(
+        !output.contains(" semantic model]"),
+        "semantic-model fallback leaked for '{fixture}' at width {width}:\n{output}"
+    );
+    assert!(
+        terminal_geometry_cells(output, charset) >= MIN_GEOMETRY_CELLS,
+        "too little terminal geometry for '{fixture}' at width {width}:\n{output}"
+    );
+    assert!(
+        !contains_structured_text_fallback(output),
+        "structured-text fallback leaked for '{fixture}' at width {width}:\n{output}"
+    );
+    assert_ne!(
+        output.trim(),
+        source.trim(),
+        "source text was returned instead of geometry for '{fixture}' at width {width}"
+    );
+    if let Some(header) = first_source_header(source) {
+        assert!(
+            !output.lines().any(|line| line.trim() == header),
+            "source header {header:?} leaked for '{fixture}' at width {width}:\n{output}"
+        );
+    }
+    if charset == Charset::Ascii {
+        assert!(
+            !output.chars().any(is_non_ascii_decoration),
+            "ASCII output for '{fixture}' contains Unicode drawing decoration:\n{output}"
+        );
+    }
+    for label in expected_labels {
+        assert!(
+            output.contains(label),
+            "quoted label {label:?} is missing from '{fixture}' at width {width}:\n{output}"
+        );
+    }
+}
+
+fn terminal_geometry_cells(output: &str, charset: Charset) -> usize {
+    output
+        .chars()
+        .filter(|character| {
+            let ascii_geometry = matches!(
+                character,
+                '-' | '|' | '+' | '/' | '\\' | '<' | '>' | '*' | '#' | '=' | 'o'
+            );
+            ascii_geometry
+                || (charset != Charset::Ascii
+                    && matches!(
+                        character,
+                        '\u{2190}'..='\u{21ff}'
+                            | '\u{2500}'..='\u{259f}'
+                            | '\u{25a0}'..='\u{25ff}'
+                    ))
+        })
+        .count()
+}
+
+fn contains_structured_text_fallback(output: &str) -> bool {
+    const MARKERS: &[&str] = &[
+        "Nodes:",
+        "Groups:",
+        "Edges:",
+        "Blocks:",
+        "Boundaries:",
+        "Shapes:",
+        "Requirements:",
+        "Elements:",
+        "Relationships:",
+        "Flows:",
+        "section:",
+        "branches:",
+    ];
+
+    output.lines().any(|line| {
+        let line = line.trim();
+        MARKERS.contains(&line) || (line.starts_with("row ") && line.ends_with(':'))
+    })
+}
+
+fn first_source_header(source: &str) -> Option<&str> {
+    source
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty() && !line.starts_with("%%"))
+}
+
+fn quoted_fixture_labels(source: &str) -> BTreeSet<String> {
+    let mut labels = BTreeSet::new();
+    for line in source.lines().map(str::trim) {
+        if line.starts_with("%%") {
+            continue;
+        }
+        let mut characters = line.chars();
+        while let Some(character) = characters.next() {
+            if character != '"' {
+                continue;
+            }
+            let mut label = String::new();
+            let mut escaped = false;
+            for character in characters.by_ref() {
+                if escaped {
+                    label.push(character);
+                    escaped = false;
+                } else if character == '\\' {
+                    escaped = true;
+                } else if character == '"' {
+                    break;
+                } else {
+                    label.push(character);
+                }
+            }
+            if !label.is_empty() {
+                labels.insert(label);
+            }
+        }
+    }
+    labels
 }
 
 fn is_non_ascii_decoration(ch: char) -> bool {

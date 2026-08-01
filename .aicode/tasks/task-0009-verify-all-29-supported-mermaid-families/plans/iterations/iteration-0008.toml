@@ -1,0 +1,30 @@
+schema_version = 1
+task = "task-0009-verify-all-29-supported-mermaid-families"
+iteration = 8
+loop_iteration = 1
+created_at = "unix:1785556432"
+objective = "Verify all 29 supported Mermaid families across at least 58 English and Chinese fixtures, ASCII and Unicode charsets, and maximum widths 100 and 120 (232 render combinations). Every combination must render deterministic, bounded, nonempty terminal-native geometry in concise output, with no structured-text or semantic-model fallback and with parsed labels, entities, relationships, hierarchy, and chart values preserved. Add a single executable support-matrix gate in tests/support_matrix.rs using shared assertions instead of family exceptions; fix every renderer defect it exposes without weakening fixtures or assertions. Run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the new Task. Preserve all completed Task history."
+open_issue_ids = ["task-0009-verify-all-29-supported-mermaid-families#0001"]
+
+[plan]
+objective = "Verify all 29 supported Mermaid families across at least 58 English and Chinese fixtures, ASCII and Unicode charsets, and maximum widths 100 and 120 (232 render combinations). Every combination must render deterministic, bounded, nonempty terminal-native geometry in concise output, with no structured-text or semantic-model fallback and with parsed labels, entities, relationships, hierarchy, and chart values preserved. Add a single executable support-matrix gate in tests/support_matrix.rs using shared assertions instead of family exceptions; fix every renderer defect it exposes without weakening fixtures or assertions. Run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the new Task. Preserve all completed Task history."
+
+[[plan.steps]]
+id = "step-1"
+description = "Confirm the fixture inventory: 29 families each with .en.mmd and .zh.mmd (≥58 fixtures), verified by all_expected_families_have_en_and_zh_fixtures."
+
+[[plan.steps]]
+id = "step-2"
+description = "Confirm the single executable gate every_fixture_renders_terminal_geometry_in_the_supported_width_matrix exercises all 58 fixtures × {Unicode, ASCII} × {width 100, width 120} = 232 combinations and asserts rendered_combinations == total*2*2."
+
+[[plan.steps]]
+id = "step-3"
+description = "Confirm assert_concise_terminal_geometry uses only shared assertions (no match/if on family): nonempty output, display-width ≤ requested width, no semantic-model fallback marker, ≥16 geometry cells, no structured-text fallback markers, output ≠ source, no source-header leak, ASCII charset has no Unicode decoration, and every quoted fixture label is present."
+
+[[plan.steps]]
+id = "step-4"
+description = "Confirm assert_structured_model_round_trips covers all 28 RenderSemanticModel variants plus Json, canonicalizing and comparing the embedded semantic JSON to verify labels, entities, relationships, hierarchy, and chart values are preserved."
+
+[[plan.steps]]
+id = "step-5"
+description = "Run the full acceptance command: cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features, and confirm zero warnings and zero failures across all 232 combinations and all other tests."
