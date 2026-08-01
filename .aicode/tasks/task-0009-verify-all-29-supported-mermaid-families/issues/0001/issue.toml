@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0009-verify-all-29-supported-mermaid-families#0001"
 number = 1
 title = "Verify all 29 supported Mermaid families across at least 58 English and Chinese fixtures, ASCII and Unicode charsets, and maximum widths 100 and 120 (232 render combinations). Every combination must render deterministic, bounded, nonempty terminal-native geometry in concise output, with no structured-text or semantic-model fallback and with parsed labels, entities, relationships, hierarchy, and chart values preserved. Add a single executable support-matrix gate in tests/support_matrix.rs using shared assertions instead of family exceptions; fix every renderer defect it exposes without weakening fixtures or assertions. Run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the new Task. Preserve all completed Task history."
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "task-execution"
 fingerprint = "sha256:e5a9da32b6d4a131127446f442708d051229061c3f4a9dfab0bd9150cd461604"
 created_at = "unix:1785546518"
-updated_at = "unix:1785546518"
+updated_at = "unix:1785578327"
+resolved_at = "unix:1785578327"
 
 [source]
 kind = "task"
@@ -24,3 +25,7 @@ impact = "The requested Task has not yet passed implementation, verification, an
 [acceptance]
 description = "Verify all 29 supported Mermaid families across at least 58 English and Chinese fixtures, ASCII and Unicode charsets, and maximum widths 100 and 120 (232 render combinations). Every combination must render deterministic, bounded, nonempty terminal-native geometry in concise output, with no structured-text or semantic-model fallback and with parsed labels, entities, relationships, hierarchy, and chart values preserved. Add a single executable support-matrix gate in tests/support_matrix.rs using shared assertions instead of family exceptions; fix every renderer defect it exposes without weakening fixtures or assertions. Run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the new Task. Preserve all completed Task history."
 command = "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"
+
+[resolution]
+review = "../../reviews/iteration-0009.json"
+description = "Current Codex reviewed the exact diff and verification evidence: all 29 families have bilingual fixtures, all 232 concise combinations use shared geometry assertions, complete semantic models round-trip, and every required command passes."
