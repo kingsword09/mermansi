@@ -91,11 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ));
     }
 
-    write_showcase_cast(
-        &config.output,
-        config.terminal_width,
-        &rendered_entries,
-    )?;
+    write_showcase_cast(&config.output, config.terminal_width, &rendered_entries)?;
 
     fs::write(
         config.output.join("manifest.json"),
@@ -136,7 +132,10 @@ fn write_showcase_cast(
     for (id, text) in rendered {
         let rows = text.lines().count();
         let label = id.to_ascii_uppercase();
-        let title = format!("\u{1b}[1;36m\u{2500}\u{2500} {label} {}\u{2500}\u{2500}\u{1b}[0m", "\u{2500}".repeat(label.len()));
+        let title = format!(
+            "\u{1b}[1;36m\u{2500}\u{2500} {label} {}\u{2500}\u{2500}\u{1b}[0m",
+            "\u{2500}".repeat(label.len())
+        );
 
         // Announce the diagram on its own screen: clear, show a centered
         // title card with a box rule, and hold it before drawing.
@@ -152,10 +151,7 @@ fn write_showcase_cast(
         // Read the title before the diagram starts drawing. A marker event
         // advances the clock without changing the terminal contents.
         delta = 0.80;
-        cast.push_str(&format!(
-            "{}\n",
-            json!([delta, "m", "title"]).to_string()
-        ));
+        cast.push_str(&format!("{}\n", json!([delta, "m", "title"]).to_string()));
         // Type the rendered diagram line by line.
         for line in text.lines() {
             cast.push_str(&format!(

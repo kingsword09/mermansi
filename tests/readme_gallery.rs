@@ -29,10 +29,12 @@ fn readme_embeds_the_exact_supported_svg_gallery() {
 
     let mut expected = families.clone();
     expected.extend(SCENARIOS.iter().map(|(id, _)| (*id).to_owned()));
+    // The animated hero is a composite asset, not a per-family gallery entry.
+    expected.insert("showcase".to_owned());
     let actual = svg_ids(&root.join("docs/gallery"));
     assert_eq!(
         actual, expected,
-        "docs/gallery must contain exactly 29 family and four scenario SVGs"
+        "docs/gallery must contain 29 family SVGs, four scenario SVGs, and the showcase hero"
     );
 
     let readme = fs::read_to_string(root.join("README.md")).expect("README.md must be readable");
@@ -52,6 +54,24 @@ fn readme_embeds_the_exact_supported_svg_gallery() {
     for (id, source) in SCENARIOS {
         assert_gallery_entry(root, &readme, id, source);
     }
+
+    // The showcase hero is embedded once near the top of the README.
+    let hero_asset = "docs/gallery/showcase.svg";
+    assert!(
+        readme.contains(&format!("src=\"{hero_asset}\"")),
+        "README must embed the {hero_asset} hero"
+    );
+    let hero_svg = fs::read_to_string(root.join(hero_asset))
+        .unwrap_or_else(|error| panic!("{hero_asset} must be readable UTF-8: {error}"));
+    let hero_svg = hero_svg.trim();
+    assert!(
+        hero_svg.starts_with("<svg ") && hero_svg.ends_with("</svg>"),
+        "{hero_asset} must contain a complete SVG root"
+    );
+    assert!(
+        hero_svg.contains("@keyframes"),
+        "{hero_asset} must remain an animated ASG capture"
+    );
 }
 
 fn family_ids(root: &Path) -> BTreeSet<String> {
