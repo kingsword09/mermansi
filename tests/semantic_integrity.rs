@@ -9,7 +9,9 @@ use merman_core::diagram::RenderSemanticModel;
 use merman_core::diagrams::journey::{JourneyDiagramRenderModel, JourneyRenderTask};
 use merman_core::diagrams::kanban::{KanbanDiagramRenderModel, KanbanRenderNode};
 use merman_core::diagrams::timeline::{TimelineDiagramRenderModel, TimelineRenderTask};
-use mermansi::{ColorMode, MermansiOptions, OutputMode, render_model, render_source};
+use mermansi::{
+    Charset, ColorMode, MermansiOptions, OutputMode, render_model, render_source, str_display_width,
+};
 
 fn family_preview<'a>(output: &'a str, family: &str) -> &'a str {
     let marker = format!("[{family} semantic model]");
@@ -2607,6 +2609,78 @@ fn radar_title_preserved() {
         output.contains("My Radar"),
         "Radar title missing:\n{output}"
     );
+}
+
+#[test]
+fn radial_charts_compensate_terminal_cell_aspect_ratio() {
+    fn geometry_bounds(output: &str, glyphs: &[char]) -> (usize, usize) {
+        let mut first_row = None::<usize>;
+        let mut last_row = 0usize;
+        let mut left = usize::MAX;
+        let mut right = 0usize;
+        for (row, line) in output.lines().enumerate() {
+            if first_row.is_some() && line.trim().is_empty() {
+                break;
+            }
+            for (byte, character) in line.char_indices() {
+                if glyphs.contains(&character) {
+                    first_row.get_or_insert(row);
+                    last_row = row;
+                    let column = str_display_width(&line[..byte]);
+                    left = left.min(column);
+                    right = right.max(column);
+                }
+            }
+        }
+        let first_row = first_row.expect("radial geometry");
+        (right - left + 1, last_row - first_row + 1)
+    }
+
+    for charset in [Charset::Unicode, Charset::Ascii] {
+        let options = match charset {
+            Charset::Unicode => MermansiOptions::unicode(),
+            Charset::Ascii => MermansiOptions::ascii(),
+            _ => unreachable!(),
+        }
+        .with_output_mode(OutputMode::Concise)
+        .with_max_width(95)
+        .with_max_height(80);
+        let pie = render_source(
+            "pie title T\n  \"A\" : 70\n  \"B\" : 20\n  \"C\" : 10",
+            &options,
+        )
+        .unwrap();
+        let radar = render_source(
+            "radar-beta\n  title Q\n  axis A,B,C\n  curve R{4,3,5}",
+            &options,
+        )
+        .unwrap();
+        let (pie_width, pie_height) = match charset {
+            Charset::Unicode => geometry_bounds(&pie, &['○', '◆', '✛']),
+            Charset::Ascii => geometry_bounds(&pie, &['o', '+']),
+            _ => unreachable!(),
+        };
+        let (radar_width, radar_height) = match charset {
+            Charset::Unicode => geometry_bounds(&radar, &['·', '┊', '●', '✛', '─']),
+            Charset::Ascii => geometry_bounds(&radar, &['.', ':', '*', '+', '-']),
+            _ => unreachable!(),
+        };
+
+        for (family, width, height) in [
+            ("pie", pie_width, pie_height),
+            ("radar", radar_width, radar_height),
+        ] {
+            assert!(
+                width * 4 >= height * 7,
+                "{family} remained vertically distorted ({width}x{height}):\n{}",
+                if family == "pie" { &pie } else { &radar }
+            );
+            assert!(
+                width <= height * 3,
+                "{family} became horizontally distorted ({width}x{height})"
+            );
+        }
+    }
 }
 
 #[test]

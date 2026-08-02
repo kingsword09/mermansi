@@ -99,8 +99,8 @@ pub fn render_radar(model: &RadarDiagramRenderModel, opts: &MermansiOptions) -> 
         Charset::Ascii => ":",
     };
     for angle in &axis_angles {
-        let endpoint_x = center_x + radius * angle.cos();
-        let endpoint_y = center_y + radius * angle.sin();
+        let (endpoint_x, endpoint_y) =
+            chart_primitives::radial_point(center_x, center_y, radius, *angle);
         chart_primitives::draw_line_over(
             &mut canvas,
             center_x.round() as i64,
@@ -125,9 +125,11 @@ pub fn render_radar(model: &RadarDiagramRenderModel, opts: &MermansiOptions) -> 
                 let angle = axis_angles[entry_index % axis_angles.len()];
                 let normalized = ((value - minimum) / range).clamp(0.0, 1.0);
                 let vertex_radius = radius * normalized;
-                Some((
-                    center_x + vertex_radius * angle.cos(),
-                    center_y + vertex_radius * angle.sin(),
+                Some(chart_primitives::radial_point(
+                    center_x,
+                    center_y,
+                    vertex_radius,
+                    angle,
                 ))
             })
             .collect::<Vec<_>>();
@@ -166,13 +168,9 @@ pub fn render_radar(model: &RadarDiagramRenderModel, opts: &MermansiOptions) -> 
     canvas.set_text(center_x as usize, center_y as usize, center)?;
     for (axis, angle) in model.axes.iter().zip(&axis_angles) {
         let label_radius = radius + 1.5;
-        place_axis_label(
-            &mut canvas,
-            center_x + label_radius * angle.cos(),
-            center_y + label_radius * angle.sin(),
-            *angle,
-            &axis_label(axis),
-        )?;
+        let (label_x, label_y) =
+            chart_primitives::radial_point(center_x, center_y, label_radius, *angle);
+        place_axis_label(&mut canvas, label_x, label_y, *angle, &axis_label(axis))?;
     }
 
     out.push_str(&chart_primitives::render_cropped_canvas(&canvas));
@@ -234,12 +232,8 @@ fn draw_sparse_ring(
     let samples = axis_count.saturating_mul(4).clamp(12, 48);
     for sample in 0..samples {
         let angle = sample as f64 / samples as f64 * std::f64::consts::TAU;
-        plot_grid_point(
-            canvas,
-            (center_x + radius * angle.cos()).round() as i64,
-            (center_y + radius * angle.sin()).round() as i64,
-            glyph,
-        )?;
+        let (x, y) = chart_primitives::radial_point(center_x, center_y, radius, angle);
+        plot_grid_point(canvas, x.round() as i64, y.round() as i64, glyph)?;
     }
     Ok(())
 }
@@ -255,10 +249,8 @@ fn draw_graticule_polygon(
     let vertices = angles
         .iter()
         .map(|angle| {
-            (
-                (center_x + radius * angle.cos()).round() as i64,
-                (center_y + radius * angle.sin()).round() as i64,
-            )
+            let (x, y) = chart_primitives::radial_point(center_x, center_y, radius, *angle);
+            (x.round() as i64, y.round() as i64)
         })
         .collect::<Vec<_>>();
     for window in vertices.windows(2) {

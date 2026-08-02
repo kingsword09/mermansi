@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "task": "task-0011-create-the-next-task-because-user-visibl",
+  "iteration": 3,
+  "loop_iteration": 3,
+  "created_at": "unix:1785635290",
+  "objective": "Resolve Issue 0003 by compensating Pie and Radar geometry for terminal character-cell aspect ratio.",
+  "plan": {
+    "objective": "Review the shared radial projection, Pie and Radar integration, coordinate/output regression tests, full repository verification, and regenerated ASG images.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Verify one shared 2:1 horizontal terminal-cell projection is applied at every Pie and Radar polar-to-canvas boundary."
+      },
+      {
+        "id": "step-2",
+        "description": "Verify values, sectors, ticks, labels, legend behavior, bounds, determinism, and ASCII/Unicode output remain intact."
+      },
+      {
+        "id": "step-3",
+        "description": "Run exact aspect tests and full checks, regenerate 33 ASG SVGs, and visually inspect Pie and Radar at real pixel dimensions."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Added a shared radial_point projection with a 2.0 horizontal character-cell scale. Reworked Pie circle outline/fill/sector/radial endpoints and Radar graticules/spokes/vertices/labels to project logical circular coordinates through it. Added an exact projection unit test and an ASCII/Unicode output-bounds aspect test.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "Focused Issue 0003 tests, all required checks, and regenerated ASG inspection passed. Pie is near-circular and Radar is balanced without semantic or bounds regressions.",
+    "commands": [
+      {
+        "command": "cargo test --test semantic_integrity radial_charts_compensate_terminal_cell_aspect_ratio -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed."
+      },
+      {
+        "command": "cargo test adapters::chart_primitives::tests::radial_projection_compensates_terminal_cells --lib -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed."
+      },
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "All suites passed, including 26 library tests, 64 bounds tests, and 127 semantic-integrity tests."
+      },
+      {
+        "command": "scripts/asg-gallery.sh /Users/kingsword09/Documents/code/ai/asg/target/release/asg .aicode/state/task-0011-asg/current",
+        "passed": true,
+        "output": "Generated 33/33 SVGs; Pie and Radar were visually inspected in the real ASG terminal rendering."
+      }
+    ]
+  },
+  "verdict": "pass",
+  "summary": "Issue 0003 passes with no new findings. A single shared coordinate projection removes the vertical distortion while retaining all prior semantic, safety, and charset guarantees. Issues 0004-0007 remain outside this Review and continue to block Task completion.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 3,
+      "description": "Resolved by the shared 2:1 radial projection, complete Pie/Radar integration, coordinate and output aspect tests, full verification, and ASG visual inspection."
+    }
+  ]
+}

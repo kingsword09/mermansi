@@ -11,6 +11,17 @@ use crate::options::{Charset, MermansiOptions};
 /// Maximum number of chart entities (sections, axes, curves, points, sets) rendered.
 pub const MAX_CHART_ENTITIES: usize = 4_096;
 
+/// Horizontal character cells per vertical row for visually balanced radial geometry.
+pub const RADIAL_X_SCALE: f64 = 2.0;
+
+/// Project a logical polar coordinate into terminal character-cell coordinates.
+pub fn radial_point(center_x: f64, center_y: f64, radius: f64, angle: f64) -> (f64, f64) {
+    (
+        center_x + radius * RADIAL_X_SCALE * angle.cos(),
+        center_y + radius * angle.sin(),
+    )
+}
+
 /// Choose a terminal-chart canvas size without exceeding the caller's limits.
 ///
 /// Width and height are checked independently because radial charts and Cartesian charts require
@@ -120,11 +131,11 @@ pub fn marker_char(index: usize, charset: Charset) -> &'static str {
 const UNICODE_MARKERS: &[&str] = &["●", "◆", "■", "▲", "▼", "★", "◉", "◈"];
 const ASCII_MARKERS: &[&str] = &["*", "+", "x", "o", "#", "@", "%", "&"];
 
-/// Draw a circle outline on the canvas using the midpoint algorithm.
+/// Draw a visually circular outline on the terminal canvas.
 ///
-/// `(cx, cy)` is the center, `radius` is the radius in cells. The outline character is
-/// placed at each computed perimeter point. Points outside the canvas bounds are silently
-/// skipped (safe with bounded canvas).
+/// `(cx, cy)` is the center and `radius` is measured in terminal rows. Horizontal coordinates
+/// use [`RADIAL_X_SCALE`] so the result remains circular when character cells are taller than
+/// they are wide. Points outside the canvas bounds are silently skipped.
 pub fn draw_circle_outline(
     canvas: &mut Canvas,
     cx: i64,
@@ -135,19 +146,18 @@ pub fn draw_circle_outline(
     if radius <= 0 {
         return Ok(());
     }
-    let mut x = radius;
-    let mut y = 0i64;
-    let mut err = 0i64;
-
-    while x >= y {
-        plot_8(canvas, cx, cy, x, y, glyph)?;
-        y += 1;
-        if err <= 0 {
-            err += 2 * y + 1;
-        } else {
-            x -= 1;
-            err += 2 * (y - x) + 1;
-        }
+    let horizontal_radius = (radius as f64 * RADIAL_X_SCALE).round() as i64;
+    for y in -radius..=radius {
+        let normalized = y as f64 / radius as f64;
+        let x = (horizontal_radius as f64 * (1.0 - normalized * normalized).sqrt()).round() as i64;
+        plot(canvas, cx - x, cy + y, glyph)?;
+        plot(canvas, cx + x, cy + y, glyph)?;
+    }
+    for x in -horizontal_radius..=horizontal_radius {
+        let normalized = x as f64 / horizontal_radius as f64;
+        let y = (radius as f64 * (1.0 - normalized * normalized).sqrt()).round() as i64;
+        plot(canvas, cx + x, cy - y, glyph)?;
+        plot(canvas, cx + x, cy + y, glyph)?;
     }
     Ok(())
 }
@@ -164,7 +174,7 @@ pub fn fill_circle(canvas: &mut Canvas, cx: i64, cy: i64, radius: i64, glyph: &s
         if chord < 0.0 {
             continue;
         }
-        let dx = chord.sqrt() as i64;
+        let dx = (chord.sqrt() * RADIAL_X_SCALE).round() as i64;
         for x in -dx..=dx {
             plot_safe(canvas, cx + x, cy + y, glyph)?;
         }
@@ -233,13 +243,15 @@ pub fn fill_pie_sector(
         return fill_circle(canvas, cx, cy, radius, glyph);
     }
 
+    let horizontal_radius = (radius as f64 * RADIAL_X_SCALE).round() as i64;
     for y in -radius..=radius {
-        for x in -radius..=radius {
-            let dist_sq = x * x + y * y;
-            if dist_sq > radius * radius {
+        for x in -horizontal_radius..=horizontal_radius {
+            let logical_x = x as f64 / RADIAL_X_SCALE;
+            let dist_sq = logical_x * logical_x + (y * y) as f64;
+            if dist_sq > (radius * radius) as f64 {
                 continue;
             }
-            let angle = (y as f64).atan2(x as f64);
+            let angle = (y as f64).atan2(logical_x);
             let mut a = angle;
             // Normalize a to be >= sa - 2π
             while a < sa - 1e-9 {
@@ -277,8 +289,9 @@ pub fn draw_radial_line(
     angle: f64,
     glyph: &str,
 ) -> Result<()> {
-    let ex = cx + (radius as f64 * angle.cos()).round() as i64;
-    let ey = cy + (radius as f64 * angle.sin()).round() as i64;
+    let (ex, ey) = radial_point(cx as f64, cy as f64, radius as f64, angle);
+    let ex = ex.round() as i64;
+    let ey = ey.round() as i64;
     draw_line_over(canvas, cx, cy, ex, ey, glyph)
 }
 
@@ -332,19 +345,6 @@ fn plot_safe(canvas: &mut Canvas, x: i64, y: i64, glyph: &str) -> Result<()> {
     canvas.set_text(ux, uy, glyph)
 }
 
-/// Plot 8 symmetric points for the circle algorithm.
-fn plot_8(canvas: &mut Canvas, cx: i64, cy: i64, x: i64, y: i64, glyph: &str) -> Result<()> {
-    plot(canvas, cx + x, cy + y, glyph)?;
-    plot(canvas, cx - x, cy + y, glyph)?;
-    plot(canvas, cx + x, cy - y, glyph)?;
-    plot(canvas, cx - x, cy - y, glyph)?;
-    plot(canvas, cx + y, cy + x, glyph)?;
-    plot(canvas, cx - y, cy + x, glyph)?;
-    plot(canvas, cx + y, cy - x, glyph)?;
-    plot(canvas, cx - y, cy - x, glyph)?;
-    Ok(())
-}
-
 /// Plot a point, overwriting whatever is there (used for outlines).
 fn plot(canvas: &mut Canvas, x: i64, y: i64, glyph: &str) -> Result<()> {
     if x < 0 || y < 0 {
@@ -355,4 +355,19 @@ fn plot(canvas: &mut Canvas, x: i64, y: i64, glyph: &str) -> Result<()> {
         return Ok(());
     }
     canvas.set_text(ux, uy, glyph)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn radial_projection_compensates_terminal_cells() {
+        let center = (20.0, 10.0);
+        let east = radial_point(center.0, center.1, 4.0, 0.0);
+        let north = radial_point(center.0, center.1, 4.0, -std::f64::consts::FRAC_PI_2);
+
+        assert_eq!(east.0 - center.0, 8.0);
+        assert_eq!(center.1 - north.1, 4.0);
+    }
 }

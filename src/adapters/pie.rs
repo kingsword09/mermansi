@@ -159,8 +159,14 @@ fn render_chart(
         Charset::Ascii => "+",
     };
     for boundary in boundary_angles {
-        let endpoint_x = center_x + (radius as f64 * boundary.cos()).round() as i64;
-        let endpoint_y = center_y + (radius as f64 * boundary.sin()).round() as i64;
+        let (endpoint_x, endpoint_y) = chart_primitives::radial_point(
+            center_x as f64,
+            center_y as f64,
+            radius as f64,
+            boundary,
+        );
+        let endpoint_x = endpoint_x.round() as i64;
+        let endpoint_y = endpoint_y.round() as i64;
         if endpoint_x >= 0
             && endpoint_y >= 0
             && (endpoint_x as usize) < canvas.width()
