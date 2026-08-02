@@ -125,7 +125,7 @@ fn write_showcase_cast(
         },
         "title": "mermansi / showcase",
     });
-    let mut cast = String::from(format!("{header}\n"));
+    let mut cast = format!("{header}\n");
     // asciicast v3 event times are relative intervals, not absolute
     // timestamps: emit each event as its delta from the previous one.
     let mut delta = 0.05f64;
@@ -139,25 +139,19 @@ fn write_showcase_cast(
 
         // Announce the diagram on its own screen: clear, show a centered
         // title card with a box rule, and hold it before drawing.
-        cast.push_str(&format!(
-            "{}\n",
-            json!([delta, "o", "\u{1b}[2J\u{1b}[H"]).to_string()
-        ));
+        cast.push_str(&format!("{}\n", json!([delta, "o", "\u{1b}[2J\u{1b}[H"])));
         delta = 0.05;
         cast.push_str(&format!(
             "{}\n",
-            json!([delta, "o", format!("{title}\r\n")]).to_string()
+            json!([delta, "o", format!("{title}\r\n")])
         ));
         // Read the title before the diagram starts drawing. A marker event
         // advances the clock without changing the terminal contents.
         delta = 0.80;
-        cast.push_str(&format!("{}\n", json!([delta, "m", "title"]).to_string()));
+        cast.push_str(&format!("{}\n", json!([delta, "m", "title"])));
         // Type the rendered diagram line by line.
         for line in text.lines() {
-            cast.push_str(&format!(
-                "{}\n",
-                json!([0.02, "o", format!("{line}\r\n")]).to_string()
-            ));
+            cast.push_str(&format!("{}\n", json!([0.02, "o", format!("{line}\r\n")])));
         }
         // Hold the finished diagram long enough to actually read it.
         // Reading time scales with diagram height, capped at 4 seconds.
