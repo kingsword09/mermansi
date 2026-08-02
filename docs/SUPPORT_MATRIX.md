@@ -91,7 +91,7 @@ does not define.
 | Sequence | merman-ascii + mermansi | Full geometry + canonical model | `fixtures/sequence.en.mmd` | `fixtures/sequence.zh.mmd` | ✅ |
 | State | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/state.en.mmd` | `fixtures/state.zh.mmd` | ✅ |
 | Class | mermansi | Compartment/UML relationship geometry + canonical model | `fixtures/class.en.mmd` | `fixtures/class.zh.mmd` | ✅ |
-| Er | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/er.en.mmd` | `fixtures/er.zh.mmd` | ✅ |
+| Er | mermansi | Entity compartments and explicit cardinality routes + canonical model | `fixtures/er.en.mmd` | `fixtures/er.zh.mmd` | ✅ |
 | Packet | mermansi | Proportional closed bit-field geometry + canonical model | `fixtures/packet.en.mmd` | `fixtures/packet.zh.mmd` | ✅ |
 | TreeView | mermansi | Layered box-tree geometry + canonical model | `fixtures/treeview.en.mmd` | `fixtures/treeview.zh.mmd` | ✅ |
 | XyChart | merman-ascii + mermansi | Partial geometry + canonical model | `fixtures/xychart.en.mmd` | `fixtures/xychart.zh.mmd` | ✅ |

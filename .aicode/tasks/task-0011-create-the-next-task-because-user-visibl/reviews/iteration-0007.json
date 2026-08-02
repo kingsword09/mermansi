@@ -1,0 +1,79 @@
+{
+  "schema_version": 2,
+  "task": "task-0011-create-the-next-task-because-user-visibl",
+  "iteration": 7,
+  "loop_iteration": 7,
+  "created_at": "unix:1785638360",
+  "objective": "Resolve Issue 0007 by making ER endpoint cardinalities and labels visibly belong to the same connected relationship route.",
+  "plan": {
+    "objective": "Review native ER entity compartments, explicit relationship routes, complete marker/type/direction behavior, focused coverage, full verification, documentation, and regenerated ASG output.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Verify every entity and attribute is retained in bounded shared box geometry with proper compartment dividers."
+      },
+      {
+        "id": "step-2",
+        "description": "Verify each relationship forms one continuous route containing both named endpoints, their cardinalities, label, identification type, and configured order."
+      },
+      {
+        "id": "step-3",
+        "description": "Run focused and full checks, update renderer ownership documentation, regenerate all ASG output, and visually inspect ER."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Added a native ER adapter that uses shared packed box geometry for entity and attribute compartments, then renders each relationship as a continuous three-part bracket. Endpoint names and cardinalities share their rows, the label branches from the same spine, identifying versus non-identifying styles remain distinct, and reverse layout directions reverse displayed endpoint order. Added exact ASCII/Unicode and dotted reverse-direction coverage and updated architecture/support documentation.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "Focused ER structure, width-matrix, ANSI, all repository checks, and regenerated ASG visual inspection passed. ER dropped from 25 to 17 ASG rows and all cardinalities are now visibly associated with named endpoints and labels.",
+    "commands": [
+      {
+        "command": "cargo test --test semantic_integrity er_relationships_connect_cardinalities_and_labels -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed with exact Unicode/ASCII routes and reverse dotted direction."
+      },
+      {
+        "command": "cargo test --test support_matrix every_fixture_renders_terminal_geometry_in_the_supported_width_matrix -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed across the configured width and charset matrix."
+      },
+      {
+        "command": "cargo test --test support_matrix ansi_modes_do_not_change_rendered_geometry_or_text -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed."
+      },
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "All suites passed, including 27 library tests and 131 semantic-integrity tests."
+      },
+      {
+        "command": "scripts/asg-gallery.sh /Users/kingsword09/Documents/code/ai/asg/target/release/asg .aicode/state/task-0011-asg/current",
+        "passed": true,
+        "output": "Generated 33/33 SVGs; ER is 17 terminal rows and was visually inspected with clear endpoint-marker-label association."
+      }
+    ]
+  },
+  "verdict": "pass",
+  "summary": "Issue 0007 passes with no new findings. ER entities and attributes remain complete, while each relationship now has a deterministic connected route with unambiguous endpoint cardinalities, label, line type, and direction in both charsets. No review-sourced Issues remain open.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 7,
+      "description": "Resolved by native entity compartments and explicit cardinality routes, exact structure tests, full verification, updated support documentation, and ASG inspection."
+    }
+  ]
+}

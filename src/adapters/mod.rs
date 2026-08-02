@@ -6,8 +6,8 @@
 
 use crate::adapters::{
     architecture::render_architecture, block::render_block, c4::render_c4, class::render_class,
-    eventmodeling::render_eventmodeling, flowchart::render_flowchart, gantt::render_gantt,
-    git_graph::render_git_graph, info::render_info, ishikawa::render_ishikawa,
+    er::render_er, eventmodeling::render_eventmodeling, flowchart::render_flowchart,
+    gantt::render_gantt, git_graph::render_git_graph, info::render_info, ishikawa::render_ishikawa,
     journey::render_journey, json::render_json, kanban::render_kanban, mindmap::render_mindmap,
     packet::render_packet, pie::render_pie, quadrant_chart::render_quadrant_chart,
     radar::render_radar, requirement::render_requirement, sankey::render_sankey,
@@ -28,6 +28,7 @@ mod box_geometry;
 pub mod c4;
 mod chart_primitives;
 pub mod class;
+pub mod er;
 pub mod eventmodeling;
 pub mod flowchart;
 pub mod gantt;
@@ -84,7 +85,9 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
         RenderSemanticModel::Class(m) => {
             render_structured_adapter("class", m, opts, || render_class(m, opts))
         }
-        RenderSemanticModel::Er(m) => render_ascii("er", m, opts, merman_ascii::render_er),
+        RenderSemanticModel::Er(m) => {
+            render_structured_adapter("er", m, opts, || render_er(m, opts))
+        }
         RenderSemanticModel::Packet(m) => {
             render_structured_adapter("packet", m, opts, || render_packet(m, opts))
         }

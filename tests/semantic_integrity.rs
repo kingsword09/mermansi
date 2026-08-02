@@ -481,6 +481,66 @@ fn er_relationship_preserved() {
     );
 }
 
+#[test]
+fn er_relationships_connect_cardinalities_and_labels() {
+    let source = include_str!("fixtures/er.en.mmd");
+    let unicode = render_source(
+        source,
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert_closed_unicode_boxes(&unicode, 3);
+    for route in [
+        "┌─ CUSTOMER  ||\n├─ places\n└─ ORDER  o{",
+        "┌─ ORDER  ||\n├─ contains\n└─ LINE-ITEM  |{",
+    ] {
+        assert!(
+            unicode.contains(route),
+            "missing connected route:\n{unicode}"
+        );
+    }
+    for attribute in [
+        "string name",
+        "string email",
+        "int orderNumber",
+        "string status",
+    ] {
+        assert!(
+            unicode.contains(attribute),
+            "missing '{attribute}':\n{unicode}"
+        );
+        assert!(
+            !unicode.contains(&format!("├{attribute}")),
+            "attribute merged into divider:\n{unicode}"
+        );
+    }
+
+    let ascii = render_source(
+        source,
+        &MermansiOptions::ascii().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert!(
+        ascii.contains("+- CUSTOMER  ||\n|- places\n+- ORDER  o{"),
+        "{ascii}"
+    );
+    assert!(
+        ascii.contains("+- ORDER  ||\n|- contains\n+- LINE-ITEM  |{"),
+        "{ascii}"
+    );
+
+    let reverse = render_source(
+        "erDiagram\n  direction RL\n  A ||..o{ B : optional",
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert!(reverse.contains("Relationships · RL"), "{reverse}");
+    assert!(
+        reverse.contains("┌─ B  o{\n├╌ optional\n└─ A  ||"),
+        "{reverse}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Sequence diagram specifics
 // ---------------------------------------------------------------------------

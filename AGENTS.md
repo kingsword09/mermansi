@@ -25,9 +25,9 @@ RenderSemanticModel   (28 variants: the authoritative semantic inventory)
     ▼
 ┌──────────────────────────────┐
 │  Adapter dispatch            │  src/adapters/mod.rs
-│  ├─ merman-ascii reuse       │  Er, Flowchart, Sequence, State,
+│  ├─ merman-ascii reuse       │  Flowchart, Sequence, State,
 │  │                           │  XyChart, ZenUML
-│  └─ mermansi native          │  Json, Architecture, C4, Class, Gantt,
+│  └─ mermansi native          │  Json, Architecture, C4, Class, Er, Gantt,
 │     terminal adapters        │  GitGraph, Packet, Journey, Kanban,
 │                              │  Pie, Requirement, Sankey, Timeline, Radar,
 │                               │  Info, Treemap, Block, QuadrantChart,

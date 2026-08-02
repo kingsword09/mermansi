@@ -145,7 +145,7 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 | Sequence | Full geometry + canonical model | merman-ascii + mermansi |
 | State | Partial geometry + canonical model | merman-ascii + mermansi |
 | Class | Compartment/UML relationship geometry + canonical model | mermansi adapter |
-| Er | Partial geometry + canonical model | merman-ascii + mermansi |
+| Er | Entity compartments and explicit cardinality routes + canonical model | mermansi adapter |
 | Packet | Proportional closed bit-field geometry + canonical model | mermansi adapter |
 | TreeView | Layered box-tree geometry + canonical model | mermansi adapter |
 | XyChart | Partial geometry + canonical model | merman-ascii + mermansi |
