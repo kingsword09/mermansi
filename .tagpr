@@ -4,4 +4,5 @@
 	releaseBranch = main
 	release = true
 	changelog = true
+	changelogFile = CHANGELOG.md
 	template = .github/tagpr_template.md
