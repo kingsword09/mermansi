@@ -3131,6 +3131,57 @@ fn venn_labels_are_collision_free_and_region_associated() {
 }
 
 #[test]
+fn venn_labels_keep_outline_clearance() {
+    fn assert_clearance(output: &str, labels: &[&str], outline: char) {
+        let geometry = output.split("\nIntersections:").next().unwrap_or(output);
+        let lines = geometry.lines().collect::<Vec<_>>();
+        for label in labels {
+            let (row, byte) = lines
+                .iter()
+                .enumerate()
+                .find_map(|(row, line)| line.find(label).map(|byte| (row, byte)))
+                .unwrap_or_else(|| panic!("missing label {label:?}:\n{geometry}"));
+            let left = str_display_width(&lines[row][..byte]);
+            let right = left + str_display_width(label);
+            let top = row.saturating_sub(1);
+            let bottom = (row + 1).min(lines.len().saturating_sub(1));
+            for (neighbor_row, line) in lines.iter().enumerate().take(bottom + 1).skip(top) {
+                for (outline_byte, character) in line.char_indices() {
+                    if character != outline {
+                        continue;
+                    }
+                    let column = str_display_width(&line[..outline_byte]);
+                    assert!(
+                        column.saturating_add(2) < left || column > right.saturating_add(1),
+                        "outline touches {label:?} near row {neighbor_row}:\n{geometry}"
+                    );
+                }
+            }
+        }
+    }
+
+    let source = "venn-beta\n  title Skills\n  set A[\"Dev\"]\n  set B[\"Design\"]\n  set C[\"Manage\"]\n  union A,B[\"AB\"]\n  union A,C[\"AC\"]\n  union A,B,C[\"ABC\"]";
+    for (options, outline) in [
+        (MermansiOptions::unicode(), '○'),
+        (MermansiOptions::ascii(), 'o'),
+    ] {
+        let output = render_source(
+            source,
+            &options
+                .with_output_mode(OutputMode::Concise)
+                .with_max_width(80)
+                .with_max_height(40),
+        )
+        .unwrap();
+        assert_clearance(
+            &output,
+            &["Dev", "Design", "Manage", "AB", "AC", "ABC"],
+            outline,
+        );
+    }
+}
+
+#[test]
 fn venn_title_preserved() {
     let source = "venn-beta\n  title Skill Overlap\n  set A\n  set B\n  union A,B";
     let output = render_source(source, &MermansiOptions::unicode()).unwrap();

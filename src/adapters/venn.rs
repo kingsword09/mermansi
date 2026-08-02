@@ -13,6 +13,9 @@ use crate::str_display_width;
 use merman_core::diagrams::venn::{VennDiagramRenderModel, VennSubsetRenderModel};
 use std::collections::{BTreeMap, BTreeSet};
 
+const LABEL_CLEARANCE_X: usize = 2;
+const LABEL_CLEARANCE_Y: usize = 1;
+
 #[derive(Clone, Debug)]
 struct SetCircle {
     name: String,
@@ -597,12 +600,16 @@ fn span_is_clear(canvas: &Canvas, x: usize, y: usize, width: usize) -> bool {
 }
 
 fn span_has_clear_margin(canvas: &Canvas, x: usize, y: usize, width: usize) -> bool {
-    let start = x.saturating_sub(1);
-    let end = x
+    let start_x = x.saturating_sub(LABEL_CLEARANCE_X);
+    let end_x = x
         .saturating_add(width)
-        .saturating_add(1)
+        .saturating_add(LABEL_CLEARANCE_X)
         .min(canvas.width());
-    (start..end).all(|column| cell_is_clear(canvas, column, y))
+    let start_y = y.saturating_sub(LABEL_CLEARANCE_Y);
+    let end_y = y
+        .saturating_add(LABEL_CLEARANCE_Y)
+        .min(canvas.height().saturating_sub(1));
+    (start_y..=end_y).all(|row| (start_x..end_x).all(|column| cell_is_clear(canvas, column, row)))
 }
 
 fn rightmost_occupied_column(canvas: &Canvas) -> Option<usize> {
@@ -647,5 +654,14 @@ mod tests {
         canvas.set_text(5, 3, "A").expect("label");
         canvas.set_text(7, 4, "B").expect("label");
         assert_eq!(chart_primitives::render_cropped_canvas(&canvas), "A\n  B\n");
+    }
+
+    #[test]
+    fn label_clearance_checks_neighboring_outline_rows() {
+        let mut canvas = Canvas::new(20, 8).expect("canvas");
+        canvas.set_text(8, 2, "○").expect("outline");
+
+        assert!(!span_has_clear_margin(&canvas, 7, 3, 4));
+        assert!(span_has_clear_margin(&canvas, 7, 5, 4));
     }
 }

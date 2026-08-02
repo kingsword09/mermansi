@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0011-create-the-next-task-because-user-visibl#0004"
 number = 4
 title = "Venn labels collide visually with ellipse outlines"
-status = "open"
+status = "resolved"
 severity = "P2"
 category = "layout-collision"
 fingerprint = "sha256:6c68b53168ae8157e18bccf250368d85b71f91a23b1d44a4c026133f1f440262"
 created_at = "unix:1785595960"
-updated_at = "unix:1785595960"
+updated_at = "unix:1785636034"
+resolved_at = "unix:1785636034"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "The diagram is technically non-overlapping but remains visually ambigu
 [acceptance]
 description = "Require deterministic clearance around in-region labels or use connected callouts when clearance is unavailable. Preserve exact region association, every label and intersection, compact bounds, and both charsets. Add structural tests that reject outline glyphs immediately adjacent to label spans."
 command = "cargo test --test semantic_integrity venn_labels_keep_outline_clearance -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0004.json"
+description = "Resolved by two-dimensional label clearance, deterministic region callouts, exact ASCII/Unicode tests, full verification, and ASG visual inspection."

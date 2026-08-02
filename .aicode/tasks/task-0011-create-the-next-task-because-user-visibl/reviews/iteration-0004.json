@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "task": "task-0011-create-the-next-task-because-user-visibl",
+  "iteration": 4,
+  "loop_iteration": 4,
+  "created_at": "unix:1785636034",
+  "objective": "Resolve Issue 0004 by keeping Venn region labels visually clear of overlapping ellipse outlines.",
+  "plan": {
+    "objective": "Review two-dimensional label clearance, connected callout fallback, structural tests, full verification, and regenerated Venn ASG output.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Verify label candidates reserve horizontal and vertical clearance from all painted ellipse and label cells."
+      },
+      {
+        "id": "step-2",
+        "description": "Verify labels that cannot fit retain exact region association through deterministic marker and connector callouts."
+      },
+      {
+        "id": "step-3",
+        "description": "Run exact and full tests, regenerate all ASG output, and visually inspect the Chinese three-set fixture."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Extended Venn label candidate checks from same-row margins to a two-dimensional clearance region of two columns and one row. Existing region-aware callouts now handle dense intersections. Added a direct neighboring-row clearance unit test and an ASCII/Unicode structural integration test for every set and intersection label.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "Focused Venn tests, all repository checks, and ASG visual inspection passed. Three dense intersection labels use readable external callouts while singleton labels retain clear in-region placement.",
+    "commands": [
+      {
+        "command": "cargo test --test semantic_integrity venn_labels_keep_outline_clearance -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed."
+      },
+      {
+        "command": "cargo test --test semantic_integrity venn_",
+        "passed": true,
+        "output": "12 passed; 0 failed."
+      },
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "All suites passed, including 27 library tests and 128 semantic-integrity tests."
+      },
+      {
+        "command": "scripts/asg-gallery.sh /Users/kingsword09/Documents/code/ai/asg/target/release/asg .aicode/state/task-0011-asg/current",
+        "passed": true,
+        "output": "Generated 33/33 SVGs; the Venn SVG was visually inspected after regeneration."
+      }
+    ]
+  },
+  "verdict": "pass",
+  "summary": "Issue 0004 passes with no new findings. Region labels no longer touch outlines, dense intersections remain connected through compact callouts, and all prior region, bounds, and charset guarantees remain intact. Issues 0005-0007 remain outside this Review.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 4,
+      "description": "Resolved by two-dimensional label clearance, deterministic region callouts, exact ASCII/Unicode tests, full verification, and ASG visual inspection."
+    }
+  ]
+}
