@@ -6,3 +6,4 @@
 	changelog = true
 	changelogFile = CHANGELOG.md
 	template = .github/tagpr_template.md
+	postVersionCommand = cargo check --quiet && git add Cargo.lock
