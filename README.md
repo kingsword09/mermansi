@@ -8,7 +8,7 @@ Deterministic ASCII and Unicode diagrams for terminals, CLIs, logs, and AI codin
 
 [Rendering gallery](#rendering-gallery) · [Install](#install) · [CLI](#cli-usage) · [Rust API](#library-api) · [Support matrix](#support-matrix)
 
-<a href="docs/gallery/architecture.svg"><img src="docs/gallery/architecture.svg" alt="mermansi Architecture terminal rendering" width="900"></a>
+<a href="docs/gallery/showcase.svg"><img src="docs/gallery/showcase.svg" alt="mermansi terminal rendering showcase" width="900"></a>
 
 </div>
 
@@ -151,7 +151,8 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 `mermansi` outputs terminal text, not native SVG. Every image below is an
 [ASG](https://github.com/kingsword09/asg) capture of real CLI output produced with
 `mermansi --unicode --no-color --concise`, using a 95-column diagram budget inside a 100-column
-terminal.
+terminal. The animated hero above plays all 29 families and 4 scenarios in sequence, generated
+from a single asciicast v3 recording.
 The canonical gallery uses Chinese fixtures so CJK display-width behavior is visible rather than
 only asserted by tests. Select an image for its full-size SVG or select **source** for the Mermaid
 fixture that produced it.

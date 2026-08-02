@@ -37,6 +37,10 @@ for cast in "$output"/casts/*.cast; do
         --window --at 0.01 --no-cursor --theme github-dark --cols "$terminal_width"
 done
 
+# Showcase: one animated SVG playing every diagram in sequence.
+"$asg_bin" "$output/showcase.cast" "$output/svg/showcase.svg" \
+    --window --no-cursor --theme github-dark --cols "$terminal_width" --fps 20
+
 if command -v rsvg-convert >/dev/null 2>&1; then
     for svg in "$output"/svg/*.svg; do
         id=$(basename "$svg" .svg)
@@ -51,8 +55,8 @@ else
 fi
 
 svg_count=$(find "$output/svg" -type f -name '*.svg' | wc -l | tr -d ' ')
-if [ "$svg_count" -ne 33 ]; then
-    echo "error: expected 33 SVG files (29 families + 4 scenarios), found $svg_count" >&2
+if [ "$svg_count" -ne 34 ]; then
+    echo "error: expected 34 SVG files (29 families + 4 scenarios + showcase), found $svg_count" >&2
     exit 1
 fi
 
@@ -63,8 +67,8 @@ if [ "$publish_readme" -eq 1 ]; then
     cp "$output"/svg/*.svg "$readme_gallery"/
 
     published_count=$(find "$readme_gallery" -maxdepth 1 -type f -name '*.svg' | wc -l | tr -d ' ')
-    if [ "$published_count" -ne 33 ]; then
-        echo "error: expected to publish 33 README SVG files, found $published_count" >&2
+    if [ "$published_count" -ne 34 ]; then
+        echo "error: expected to publish 34 README SVG files, found $published_count" >&2
         exit 1
     fi
     echo "README gallery: $readme_gallery"

@@ -38,8 +38,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut manifest = Vec::with_capacity(entries.len());
     let mut figures = String::new();
+    let mut rendered_entries = Vec::with_capacity(entries.len());
     for entry in entries {
         let rendered = render_cli(&config, &entry.source)?;
+        rendered_entries.push((entry.id.clone(), rendered.clone()));
         let rows = rendered.lines().count();
         let columns = rendered.lines().map(str_display_width).max().unwrap_or(0);
         let terminal_rows = u16::try_from(rows.saturating_add(2).max(3))?;
@@ -89,12 +91,83 @@ fn main() -> Result<(), Box<dyn Error>> {
         ));
     }
 
+    write_showcase_cast(
+        &config.output,
+        config.terminal_width,
+        &rendered_entries,
+    )?;
+
     fs::write(
         config.output.join("manifest.json"),
         serde_json::to_string_pretty(&manifest)?,
     )?;
     fs::write(config.output.join("index.html"), gallery_html(&figures))?;
     println!("{}", config.output.display());
+    Ok(())
+}
+
+/// Write a single combined v3 cast that plays every rendered diagram in
+/// sequence: clear screen, print the MERMAID banner, then type each line.
+fn write_showcase_cast(
+    output: &Path,
+    terminal_width: usize,
+    rendered: &[(String, String)],
+) -> Result<(), Box<dyn Error>> {
+    let max_rows = rendered
+        .iter()
+        .map(|(_, text)| text.lines().count())
+        .max()
+        .unwrap_or(0)
+        .saturating_add(2);
+    let terminal_rows = u16::try_from(max_rows.max(3))?;
+    let header = json!({
+        "version": 3,
+        "term": {
+            "cols": terminal_width,
+            "rows": terminal_rows,
+            "type": "xterm-256color",
+        },
+        "title": "mermansi / showcase",
+    });
+    let mut cast = String::from(format!("{header}\n"));
+    // asciicast v3 event times are relative intervals, not absolute
+    // timestamps: emit each event as its delta from the previous one.
+    let mut delta = 0.05f64;
+    for (id, text) in rendered {
+        let rows = text.lines().count();
+        let label = id.to_ascii_uppercase();
+        let title = format!("\u{1b}[1;36m\u{2500}\u{2500} {label} {}\u{2500}\u{2500}\u{1b}[0m", "\u{2500}".repeat(label.len()));
+
+        // Announce the diagram on its own screen: clear, show a centered
+        // title card with a box rule, and hold it before drawing.
+        cast.push_str(&format!(
+            "{}\n",
+            json!([delta, "o", "\u{1b}[2J\u{1b}[H"]).to_string()
+        ));
+        delta = 0.05;
+        cast.push_str(&format!(
+            "{}\n",
+            json!([delta, "o", format!("{title}\r\n")]).to_string()
+        ));
+        // Read the title before the diagram starts drawing. A marker event
+        // advances the clock without changing the terminal contents.
+        delta = 0.80;
+        cast.push_str(&format!(
+            "{}\n",
+            json!([delta, "m", "title"]).to_string()
+        ));
+        // Type the rendered diagram line by line.
+        for line in text.lines() {
+            cast.push_str(&format!(
+                "{}\n",
+                json!([0.02, "o", format!("{line}\r\n")]).to_string()
+            ));
+        }
+        // Hold the finished diagram long enough to actually read it.
+        // Reading time scales with diagram height, capped at 4 seconds.
+        delta = (0.9 + rows as f64 * 0.06).min(4.0);
+    }
+    fs::write(output.join("showcase.cast"), cast)?;
     Ok(())
 }
 
