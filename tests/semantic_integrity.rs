@@ -409,6 +409,35 @@ fn state_transitions_preserved() {
     );
 }
 
+#[test]
+fn state_pseudostates_have_single_closed_borders() {
+    let source = "stateDiagram-v2\n  [*] --> Active\n  Active --> [*]";
+
+    let unicode = render_source(source, &MermansiOptions::unicode()).unwrap();
+    let unicode_lines = family_preview(&unicode, "state")
+        .lines()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        &unicode_lines[..3],
+        &["┌────────┐", "│    ●   │", "└────┬───┘"]
+    );
+    assert_eq!(
+        &unicode_lines[unicode_lines.len() - 3..],
+        &["┌────────┐", "│    ◎   │", "└────────┘"]
+    );
+
+    let ascii = render_source(source, &MermansiOptions::ascii()).unwrap();
+    let ascii_lines = family_preview(&ascii, "state").lines().collect::<Vec<_>>();
+    assert_eq!(
+        &ascii_lines[..3],
+        &["/--------\\", "|    *   |", "\\--------/"]
+    );
+    assert_eq!(
+        &ascii_lines[ascii_lines.len() - 3..],
+        &["/--------\\", "|    @   |", "\\--------/"]
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Class diagram specifics
 // ---------------------------------------------------------------------------

@@ -11,8 +11,8 @@ use crate::adapters::{
     journey::render_journey, json::render_json, kanban::render_kanban, mindmap::render_mindmap,
     packet::render_packet, pie::render_pie, quadrant_chart::render_quadrant_chart,
     radar::render_radar, requirement::render_requirement, sankey::render_sankey,
-    timeline::render_timeline, treemap::render_treemap, treeview::render_treeview,
-    venn::render_venn, xychart::render_xychart,
+    state::render_state, timeline::render_timeline, treemap::render_treemap,
+    treeview::render_treeview, venn::render_venn, xychart::render_xychart,
 };
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
@@ -44,6 +44,7 @@ pub mod quadrant_chart;
 pub mod radar;
 pub mod requirement;
 pub mod sankey;
+pub mod state;
 pub mod timeline;
 pub mod treemap;
 pub mod treeview;
@@ -77,7 +78,9 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
         RenderSemanticModel::Sequence(m) => {
             render_ascii("sequence", m, opts, merman_ascii::render_sequence)
         }
-        RenderSemanticModel::State(m) => render_ascii("state", m, opts, merman_ascii::render_state),
+        RenderSemanticModel::State(m) => {
+            render_structured_adapter("state", m, opts, || render_state(m, opts))
+        }
         RenderSemanticModel::Class(m) => {
             render_structured_adapter("class", m, opts, || render_class(m, opts))
         }

@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0011-create-the-next-task-because-user-visibl#0005"
 number = 5
 title = "Delegated State pseudo-state borders are visibly split"
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "delegated-rendering"
 fingerprint = "sha256:610dcbfdc728fd6ec2e225170c3de816c7ec923c8c8a4bf62b53ad98ede0e816"
 created_at = "unix:1785595960"
-updated_at = "unix:1785595960"
+updated_at = "unix:1785636702"
+resolved_at = "unix:1785636702"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "A basic supported State fixture violates the closed-shape requirement 
 [acceptance]
 description = "Render initial/final pseudo-states as one closed terminal shape in ASCII and Unicode without changing transition semantics, labels, direction, bounds, or determinism. Add exact structural assertions for one top and one bottom border with connected sides."
 command = "cargo test --test semantic_integrity state_pseudostates_have_single_closed_borders -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0005.json"
+description = "Resolved by a narrow State adapter that preserves delegated layout while replacing Unicode pseudo-state corners with visibly connected borders. Exact ASCII/Unicode assertions, ANSI geometry checks, full verification, and ASG inspection passed."

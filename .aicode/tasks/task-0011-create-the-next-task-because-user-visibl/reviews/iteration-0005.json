@@ -1,0 +1,79 @@
+{
+  "schema_version": 2,
+  "task": "task-0011-create-the-next-task-because-user-visibl",
+  "iteration": 5,
+  "loop_iteration": 5,
+  "created_at": "unix:1785636702",
+  "objective": "Resolve Issue 0005 by rendering delegated State pseudo-states with visibly closed terminal borders.",
+  "plan": {
+    "objective": "Review the narrow State adapter, exact pseudo-state structure, charset and color invariants, full verification, and regenerated ASG output.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Verify only Unicode pseudo-state border corners are normalized after delegated State rendering."
+      },
+      {
+        "id": "step-2",
+        "description": "Verify initial and final pseudo-state borders are exact and ASCII output remains unchanged."
+      },
+      {
+        "id": "step-3",
+        "description": "Run focused and full checks, regenerate all ASG output, and visually inspect state.svg."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Added a single-purpose State adapter that delegates parsing and layout to merman-ascii, then replaces rounded Unicode pseudo-state corners on the rows surrounding initial and final markers. ANSI sequences and trailing newlines are retained; ASCII bypasses normalization. Added exact structural assertions for both pseudo-states in both charsets.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "Focused State and ANSI tests, all repository checks, and regenerated ASG visual inspection passed. The initial and final boxes are visibly closed with no State transition or label regressions.",
+    "commands": [
+      {
+        "command": "cargo test --test semantic_integrity state_pseudostates_have_single_closed_borders -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed."
+      },
+      {
+        "command": "cargo test --test semantic_integrity state_ -- --nocapture",
+        "passed": true,
+        "output": "2 passed; 0 failed."
+      },
+      {
+        "command": "cargo test --test support_matrix ansi_modes_do_not_change_rendered_geometry_or_text -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed."
+      },
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "All suites passed, including 27 library tests and 129 semantic-integrity tests."
+      },
+      {
+        "command": "scripts/asg-gallery.sh /Users/kingsword09/Documents/code/ai/asg/target/release/asg .aicode/state/task-0011-asg/current",
+        "passed": true,
+        "output": "Generated 33/33 SVGs; state.svg was visually inspected with closed initial and final pseudo-state borders."
+      }
+    ]
+  },
+  "verdict": "pass",
+  "summary": "Issue 0005 passes with no new findings. State pseudo-states now use visibly connected borders while delegated semantics, ASCII geometry, ANSI color independence, determinism, and bounds remain intact. Issues 0006-0007 remain outside this Review.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 5,
+      "description": "Resolved by the narrow State border adapter, exact ASCII/Unicode tests, full verification, and ASG visual inspection."
+    }
+  ]
+}
