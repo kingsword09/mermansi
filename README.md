@@ -1,7 +1,16 @@
+<div align="center">
+
 # mermansi
 
-A production-quality pure Rust terminal renderer library and CLI for [Mermaid](https://mermaid.js.org/)
-diagrams.
+**Terminal-native Mermaid rendering in pure Rust**
+
+Deterministic ASCII and Unicode diagrams for terminals, CLIs, logs, and AI coding tools.
+
+[Rendering gallery](#rendering-gallery) · [Install](#install) · [CLI](#cli-usage) · [Rust API](#library-api) · [Support matrix](#support-matrix)
+
+<a href="docs/gallery/architecture.svg"><img src="docs/gallery/architecture.svg" alt="mermansi Architecture terminal rendering" width="900"></a>
+
+</div>
 
 `mermansi` renders Mermaid diagrams as deterministic ASCII or Unicode text for terminals,
 CLIs, logs, markdown previews, and documentation. It uses [`merman-core`](https://crates.io/crates/merman-core)
@@ -135,6 +144,107 @@ use mermansi::{render_source_ascii, render_source_unicode};
 
 let ascii_output = render_source_ascii(mermaid_text).unwrap();
 let unicode_output = render_source_unicode(mermaid_text).unwrap();
+```
+
+## Rendering gallery
+
+`mermansi` outputs terminal text, not native SVG. Every image below is an
+[ASG](https://github.com/kingsword09/asg) capture of real CLI output produced with
+`mermansi --unicode --no-color --concise`, using a 95-column diagram budget inside a 100-column
+terminal.
+The canonical gallery uses Chinese fixtures so CJK display-width behavior is visible rather than
+only asserted by tests. Select an image for its full-size SVG or select **source** for the Mermaid
+fixture that produced it.
+
+<details open>
+<summary><strong>All 29 supported families</strong></summary>
+
+<table>
+<tr>
+<td width="50%" valign="top"><strong>Architecture</strong> · <a href="tests/fixtures/architecture.zh.mmd">source</a><br><a href="docs/gallery/architecture.svg"><img src="docs/gallery/architecture.svg" alt="Architecture terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Block</strong> · <a href="tests/fixtures/block.zh.mmd">source</a><br><a href="docs/gallery/block.svg"><img src="docs/gallery/block.svg" alt="Block terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>C4</strong> · <a href="tests/fixtures/c4.zh.mmd">source</a><br><a href="docs/gallery/c4.svg"><img src="docs/gallery/c4.svg" alt="C4 terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Class</strong> · <a href="tests/fixtures/class.zh.mmd">source</a><br><a href="docs/gallery/class.svg"><img src="docs/gallery/class.svg" alt="Class terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Entity Relationship</strong> · <a href="tests/fixtures/er.zh.mmd">source</a><br><a href="docs/gallery/er.svg"><img src="docs/gallery/er.svg" alt="Entity Relationship terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Event Modeling</strong> · <a href="tests/fixtures/eventmodeling.zh.mmd">source</a><br><a href="docs/gallery/eventmodeling.svg"><img src="docs/gallery/eventmodeling.svg" alt="Event Modeling terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Flowchart</strong> · <a href="tests/fixtures/flowchart.zh.mmd">source</a><br><a href="docs/gallery/flowchart.svg"><img src="docs/gallery/flowchart.svg" alt="Flowchart terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Gantt</strong> · <a href="tests/fixtures/gantt.zh.mmd">source</a><br><a href="docs/gallery/gantt.svg"><img src="docs/gallery/gantt.svg" alt="Gantt terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>GitGraph</strong> · <a href="tests/fixtures/gitgraph.zh.mmd">source</a><br><a href="docs/gallery/gitgraph.svg"><img src="docs/gallery/gitgraph.svg" alt="GitGraph terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Info</strong> · <a href="tests/fixtures/info.zh.mmd">source</a><br><a href="docs/gallery/info.svg"><img src="docs/gallery/info.svg" alt="Info terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Ishikawa</strong> · <a href="tests/fixtures/ishikawa.zh.mmd">source</a><br><a href="docs/gallery/ishikawa.svg"><img src="docs/gallery/ishikawa.svg" alt="Ishikawa terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Journey</strong> · <a href="tests/fixtures/journey.zh.mmd">source</a><br><a href="docs/gallery/journey.svg"><img src="docs/gallery/journey.svg" alt="Journey terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>JSON</strong> · <a href="tests/fixtures/json.zh.mmd">source</a><br><a href="docs/gallery/json.svg"><img src="docs/gallery/json.svg" alt="JSON terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Kanban</strong> · <a href="tests/fixtures/kanban.zh.mmd">source</a><br><a href="docs/gallery/kanban.svg"><img src="docs/gallery/kanban.svg" alt="Kanban terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Mindmap</strong> · <a href="tests/fixtures/mindmap.zh.mmd">source</a><br><a href="docs/gallery/mindmap.svg"><img src="docs/gallery/mindmap.svg" alt="Mindmap terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Packet</strong> · <a href="tests/fixtures/packet.zh.mmd">source</a><br><a href="docs/gallery/packet.svg"><img src="docs/gallery/packet.svg" alt="Packet terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Pie</strong> · <a href="tests/fixtures/pie.zh.mmd">source</a><br><a href="docs/gallery/pie.svg"><img src="docs/gallery/pie.svg" alt="Pie terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Quadrant Chart</strong> · <a href="tests/fixtures/quadrant.zh.mmd">source</a><br><a href="docs/gallery/quadrant.svg"><img src="docs/gallery/quadrant.svg" alt="Quadrant Chart terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Radar</strong> · <a href="tests/fixtures/radar.zh.mmd">source</a><br><a href="docs/gallery/radar.svg"><img src="docs/gallery/radar.svg" alt="Radar terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Requirement</strong> · <a href="tests/fixtures/requirement.zh.mmd">source</a><br><a href="docs/gallery/requirement.svg"><img src="docs/gallery/requirement.svg" alt="Requirement terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Sankey</strong> · <a href="tests/fixtures/sankey.zh.mmd">source</a><br><a href="docs/gallery/sankey.svg"><img src="docs/gallery/sankey.svg" alt="Sankey terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Sequence</strong> · <a href="tests/fixtures/sequence.zh.mmd">source</a><br><a href="docs/gallery/sequence.svg"><img src="docs/gallery/sequence.svg" alt="Sequence terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>State</strong> · <a href="tests/fixtures/state.zh.mmd">source</a><br><a href="docs/gallery/state.svg"><img src="docs/gallery/state.svg" alt="State terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Timeline</strong> · <a href="tests/fixtures/timeline.zh.mmd">source</a><br><a href="docs/gallery/timeline.svg"><img src="docs/gallery/timeline.svg" alt="Timeline terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Treemap</strong> · <a href="tests/fixtures/treemap.zh.mmd">source</a><br><a href="docs/gallery/treemap.svg"><img src="docs/gallery/treemap.svg" alt="Treemap terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>TreeView</strong> · <a href="tests/fixtures/treeview.zh.mmd">source</a><br><a href="docs/gallery/treeview.svg"><img src="docs/gallery/treeview.svg" alt="TreeView terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Venn</strong> · <a href="tests/fixtures/venn.zh.mmd">source</a><br><a href="docs/gallery/venn.svg"><img src="docs/gallery/venn.svg" alt="Venn terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>XY Chart</strong> · <a href="tests/fixtures/xychart.zh.mmd">source</a><br><a href="docs/gallery/xychart.svg"><img src="docs/gallery/xychart.svg" alt="XY Chart terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>ZenUML</strong> · <a href="tests/fixtures/zenuml.zh.mmd">source</a><br><a href="docs/gallery/zenuml.svg"><img src="docs/gallery/zenuml.svg" alt="ZenUML terminal rendering" width="480"></a></td>
+<td width="50%"></td>
+</tr>
+</table>
+
+</details>
+
+<details>
+<summary><strong>Complex scenarios (4)</strong></summary>
+
+<table>
+<tr>
+<td width="50%" valign="top"><strong>Deployment Flowchart</strong> · <a href="tests/scenarios/deployment.flowchart.mmd">source</a><br><a href="docs/gallery/deployment-flowchart.svg"><img src="docs/gallery/deployment-flowchart.svg" alt="Deployment Flowchart terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>C4Deployment</strong> · <a href="tests/scenarios/deployment.c4.mmd">source</a><br><a href="docs/gallery/deployment-c4.svg"><img src="docs/gallery/deployment-c4.svg" alt="C4Deployment terminal rendering" width="480"></a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>IPv4 Packet</strong> · <a href="tests/scenarios/ipv4.packet.mmd">source</a><br><a href="docs/gallery/ipv4-packet.svg"><img src="docs/gallery/ipv4-packet.svg" alt="IPv4 Packet terminal rendering" width="480"></a></td>
+<td width="50%" valign="top"><strong>Rack Architecture alternative</strong> · <a href="tests/scenarios/rack-alternative.architecture.mmd">source</a><br><a href="docs/gallery/rack-architecture-alternative.svg"><img src="docs/gallery/rack-architecture-alternative.svg" alt="Rack Architecture alternative terminal rendering" width="480"></a></td>
+</tr>
+</table>
+
+</details>
+
+Regenerate the ignored audit workspace and refresh the tracked README assets only after the
+33-image gate passes:
+
+```sh
+PUBLISH_README=1 ASG_BIN=/absolute/path/to/asg/target/release/asg scripts/asg-gallery.sh
 ```
 
 ## Support matrix

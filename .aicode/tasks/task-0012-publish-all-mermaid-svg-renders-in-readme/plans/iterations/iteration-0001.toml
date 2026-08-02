@@ -1,0 +1,30 @@
+schema_version = 1
+task = "task-0012-publish-all-mermaid-svg-renders-in-readme"
+iteration = 1
+loop_iteration = 1
+created_at = "unix:1785639618"
+objective = "Publish every supported Mermaid rendering as a reproducible README SVG gallery."
+open_issue_ids = ["task-0012-publish-all-mermaid-svg-renders-in-readme#0001"]
+
+[plan]
+objective = "Expose the already audited renderer breadth directly in README through tracked, reproducible terminal-capture SVGs without changing rendering semantics."
+
+[[plan.steps]]
+id = "S0.1"
+description = "Compare the existing text-only README and ignored ASG audit output with established diagram-library README presentation, then define a clear 29-family gallery plus four-scenario supplement."
+
+[[plan.steps]]
+id = "S0.2"
+description = "Extend the existing ASG workflow with one explicit safe mode that refreshes the tracked docs/gallery SVG set after the normal 33-image count gate passes."
+
+[[plan.steps]]
+id = "S0.3"
+description = "Publish the current 33 SVGs and embed every image in a navigable two-column README gallery with source links, generation provenance, budgets, and accurate output-format wording."
+
+[[plan.steps]]
+id = "S0.4"
+description = "Add focused regression coverage deriving the 29 family names from fixtures and checking exact parity with the four scenario assets and README image references."
+
+[[plan.steps]]
+id = "S0.5"
+description = "Run focused and required checks, review the complete README and asset set, create Issues for any finding, resolve them one at a time, commit reviewed work, and complete the Task."

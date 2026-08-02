@@ -1,0 +1,20 @@
+schema_version = 1
+task = "task-0012-publish-all-mermaid-svg-renders-in-readme"
+title = "Publish every supported Mermaid rendering as a reproducible README SVG gallery"
+status = "in_progress"
+created_at = "unix:1785639618"
+updated_at = "unix:1785639618"
+
+[[phases]]
+id = "S0"
+title = "Publish, verify, and review the complete README gallery"
+status = "in_progress"
+acceptance = [
+    "README embeds one named, inspectable SVG for every one of the 29 supported fixture families and separately embeds the four complex user scenarios.",
+    "All 33 SVGs are tracked under docs/gallery and are reproducibly generated from real concise Unicode mermansi CLI output through ASG with a 95-column render budget in a 100-column terminal.",
+    "README clearly states that mermansi outputs terminal text and that the embedded SVGs are ASG terminal captures, provides fixture links, and documents the safe regeneration command.",
+    "A focused regression test fails when a supported family or scenario asset is missing, extra, invalid, or no longer embedded by README.",
+    "Verification passes: cargo fmt --check",
+    "Verification passes: cargo clippy --all-targets --all-features -- -D warnings",
+    "Verification passes: cargo test --all-targets --all-features",
+]

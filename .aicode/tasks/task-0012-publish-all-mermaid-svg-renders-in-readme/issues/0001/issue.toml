@@ -1,0 +1,31 @@
+schema_version = 2
+id = "task-0012-publish-all-mermaid-svg-renders-in-readme#0001"
+number = 1
+title = "Publish every supported Mermaid rendering as a reproducible README SVG gallery"
+status = "resolved"
+severity = "P2"
+category = "documentation"
+fingerprint = "sha256:660df91e811ef9e37b46256e310de7a1f85cd9d6a53ecfba1e4c9e6efb8ded4e"
+created_at = "unix:1785639618"
+updated_at = "unix:1785640618"
+resolved_at = "unix:1785640618"
+
+[source]
+kind = "task"
+task = "task-0012-publish-all-mermaid-svg-renders-in-readme"
+
+[location]
+path = "README.md"
+line = 1
+
+[problem]
+description = "README claims complete terminal rendering support but contains no rendered output image. The 33 audited ASG SVGs live only under ignored .aicode/state paths, so GitHub visitors cannot inspect any supported family or complex scenario from the repository page."
+impact = "Users must trust a text-only support matrix and cannot quickly evaluate rendering completeness, bilingual width handling, diagram readability, or the difference between supported families and syntax-boundary alternatives."
+
+[acceptance]
+description = "Track and embed a complete, named README gallery for all 29 supported fixture families plus four complex scenarios; keep the assets reproducible through the existing real-CLI ASG workflow; clearly explain that they are terminal captures rather than native SVG output; link each family to its source fixture; and add an automated parity check for fixtures, assets, and README references."
+command = "cargo test --test readme_gallery"
+
+[resolution]
+review = "../../reviews/iteration-0001.json"
+description = "Resolved by publishing the real 33-image ASG output under docs/gallery, embedding and naming all 29 supported families plus four complex scenarios in README with source links and accurate terminal-capture wording, adding a safe opt-in publication mode and exact parity test, updating audit documentation, visually reviewing the rendered README, and passing all required checks."

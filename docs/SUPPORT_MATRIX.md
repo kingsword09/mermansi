@@ -151,17 +151,23 @@ entities, relationships, hierarchy, and chart values remain lossless.
 
 ## ASG visual audit
 
-The support matrix is necessary but cannot decide whether geometry is visually useful. The tracked
-gallery workflow records concise output through the real `mermansi` CLI, converts asciicast v3
-recordings with an externally supplied [ASG](https://github.com/kingsword09/asg) binary, and creates
-an inspectable HTML index. Generated text, casts, SVGs, and PNG previews stay under the ignored
-`.aicode/state/` directory.
+The support matrix is necessary but cannot decide whether geometry is visually useful. The gallery
+workflow records concise output through the real `mermansi` CLI, converts asciicast v3 recordings
+with an externally supplied [ASG](https://github.com/kingsword09/asg) binary, and creates an
+inspectable HTML index. Generated text, casts, SVGs, and PNG previews stay under the ignored
+`.aicode/state/` directory during normal audits. Set `PUBLISH_README=1` to refresh the validated
+33-SVG snapshot tracked in `docs/gallery/` and embedded by the repository README.
 
 ```sh
 ASG_BIN=/absolute/path/to/asg/target/release/asg scripts/asg-gallery.sh
+
+# Refresh README assets only after the 33-image generation gate passes
+PUBLISH_README=1 ASG_BIN=/absolute/path/to/asg/target/release/asg scripts/asg-gallery.sh
 ```
 
 The default run uses a 95-column render budget inside a 100-column terminal and produces 33 SVGs:
 all 29 supported fixture families plus the deployment Flowchart, C4Deployment, complex IPv4 Packet,
 and rack Architecture alternative scenarios. A successful file count is not a visual pass; every
 SVG in the generated `index.html` must be inspected before a rendering Task is completed.
+`tests/readme_gallery.rs` separately enforces exact parity between those family/scenario IDs, the
+tracked SVG filenames, complete ASG SVG roots, and README image/source references.

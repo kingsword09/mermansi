@@ -1,0 +1,8 @@
+schema_version = 1
+id = "task-0012-publish-all-mermaid-svg-renders-in-readme"
+number = 12
+title = "Publish every supported Mermaid rendering as a reproducible README SVG gallery"
+status = "in_progress"
+created_at = "unix:1785639618"
+updated_at = "unix:1785639618"
+objective = "Publish a complete, navigable, and reproducible README gallery embedding all 29 supported fixture-family SVGs plus the four complex deployment, C4Deployment, IPv4 Packet, and rack Architecture scenarios. Track the generated SVG assets under docs/gallery, generate them from real concise Unicode mermansi CLI output through ASG at the documented 95/100-column budgets, distinguish terminal captures from a native SVG output API, add one safe opt-in README publishing mode to the existing gallery script, and add regression coverage that prevents supported-family, tracked-asset, and README-reference drift. Improve the README around this visual proof without changing renderer behavior, run all required checks, perform immutable Review, resolve every Issue, commit each reviewed unit, and complete the Task."

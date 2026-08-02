@@ -1,0 +1,92 @@
+{
+  "schema_version": 2,
+  "task": "task-0012-publish-all-mermaid-svg-renders-in-readme",
+  "iteration": 1,
+  "loop_iteration": 1,
+  "created_at": "unix:1785640618",
+  "objective": "Review the complete tracked README SVG gallery, its real-CLI ASG publication workflow, documentation, and fixture-to-asset parity coverage against Task 0012 acceptance criteria.",
+  "plan": {
+    "objective": "Confirm that every supported family and complex scenario is visibly, accurately, safely, and reproducibly represented in README without changing renderer behavior.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Verify exact parity among the 29 Chinese family fixtures, four scenario IDs, tracked SVG filenames, README image embeds, and source links."
+      },
+      {
+        "id": "step-2",
+        "description": "Verify every SVG is a complete real ASG terminal capture, contains no executable or external SVG content, and matches the freshly generated audit output."
+      },
+      {
+        "id": "step-3",
+        "description": "Review the README hierarchy, hero, two-column family gallery, scenario disclosure, output-format wording, and rendered desktop presentation."
+      },
+      {
+        "id": "step-4",
+        "description": "Verify the publication path is opt-in, rejects invalid modes, publishes only after the 33-image gate, and includes all assets in the crate package."
+      },
+      {
+        "id": "step-5",
+        "description": "Run focused gallery coverage and all required repository checks."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "README now opens with a real Architecture terminal capture and provides a complete named gallery: all 29 supported families are visible in a two-column table and four complex scenarios are separately grouped, with every image linked to its full SVG and source fixture. The 33 current CLI/ASG captures are tracked under docs/gallery. The existing audit script has one validated PUBLISH_README=1 mode that refreshes those assets only after generation succeeds and the 33-image gate passes. A focused integration test derives family IDs from Chinese fixtures and enforces exact asset parity, README embeds, source links, complete SVG roots, and ASG capture markers. Support documentation now distinguishes ignored audit workspaces from tracked README snapshots.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "The focused gallery contract, script boundary checks, package inventory, regenerated 33-image ASG publication, rendered README inspection, and all required Rust checks passed. No actionable documentation, asset, security, or workflow finding remains.",
+    "commands": [
+      {
+        "command": "PUBLISH_README=1 ASG_BIN=/Users/kingsword09/Documents/code/ai/asg/target/release/asg scripts/asg-gallery.sh",
+        "passed": true,
+        "output": "Generated and published 33/33 SVGs: 29 supported families plus four complex scenarios."
+      },
+      {
+        "command": "cargo test --test readme_gallery",
+        "passed": true,
+        "output": "1 passed; exact fixture, scenario, tracked SVG, README embed, source-link, and SVG-root parity succeeded."
+      },
+      {
+        "command": "PUBLISH_README=yes ASG_BIN=/Users/kingsword09/Documents/code/ai/asg/target/release/asg scripts/asg-gallery.sh",
+        "passed": true,
+        "output": "Expected rejection occurred before generation with exit status 2 and an actionable 0-or-1 validation message."
+      },
+      {
+        "command": "cargo package --allow-dirty --list | rg '^docs/gallery/.*\\.svg$' | wc -l",
+        "passed": true,
+        "output": "Package inventory contains all 33 tracked gallery SVGs."
+      },
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Exit status 0 with no warnings."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "All suites passed, including the new README gallery contract and the existing 29-family rendering matrix."
+      },
+      {
+        "command": "Local GitHub-style README render at 1440px with all gallery assets served from the repository",
+        "passed": true,
+        "output": "Header and two-column gallery were visually reviewed; all 33 SVG requests returned HTTP 200 and no layout overlap or broken image was observed."
+      }
+    ]
+  },
+  "verdict": "pass",
+  "summary": "Task 0012 implementation passes Review with no findings. README now provides immediate visual proof and a complete inspectable 29-family gallery, all four complex scenarios are represented, the 33 assets are tracked and reproducible, and automated coverage prevents fixture, asset, or README drift.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 1,
+      "description": "Resolved by the complete tracked README gallery, safe ASG publication mode, exact parity test, synchronized support documentation, rendered-page inspection, and passing full verification."
+    }
+  ]
+}
