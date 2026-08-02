@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0011-create-the-next-task-because-user-visibl#0007"
+number = 7
+title = "Delegated ER relationship markers are ambiguous text fragments"
+status = "open"
+severity = "P1"
+category = "semantic-readability"
+fingerprint = "sha256:7c6e8d81cf5a44732e0fbe8b874e7cbbf51a8f22483e42b10972e70f7c5213d2"
+created_at = "unix:1785595960"
+updated_at = "unix:1785595960"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0001.json"
+
+[location]
+path = "src/adapters/mod.rs"
+line = 84
+
+[problem]
+description = "The delegated ER renderer stacks raw cardinality fragments such as '||', 'o{', and '|{' around relationship labels on a narrow vertical line. In the ASG image they read like detached text rather than endpoint markers connected to specific entities."
+impact = "Users cannot confidently read relationship direction or cardinality from the terminal diagram, undermining the purpose of an ER preview."
+
+[acceptance]
+description = "Render each ER relationship as a connected route with unambiguous endpoint cardinality markers and a readable label, while preserving every entity, attribute, relationship, direction, bounds, determinism, and ASCII/Unicode output. Add structural assertions that associate both markers and label with the same route."
+command = "cargo test --test semantic_integrity er_relationships_connect_cardinalities_and_labels -- --exact"

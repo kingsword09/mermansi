@@ -67,6 +67,22 @@ parser.
 | `c4` | `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` |
 | `architecture` | `architecture-beta` |
 
+## Syntax boundaries and user-facing alternatives
+
+The support count is based on the pinned `merman-core` parser inventory, not on names that merely
+look like Mermaid diagram headers.
+
+| Requested diagram | Boundary | Supported representation |
+|---|---|---|
+| Rack diagram | `rack-beta` is not a Mermaid 11.16 or pinned `merman-core` family and is rejected as invalid Mermaid. | Use `architecture-beta` for connected infrastructure/service placement, or `block-beta` for a literal rack-like arrangement. |
+| Field-definition diagram | This is the supported Packet family. Strict Packet syntax requires every field label after `:` to be quoted. | Use `packet-beta` with entries such as `0-3: "Version"`; `tests/scenarios/ipv4.packet.mmd` covers a five-word IPv4-style definition. |
+| Deployment architecture | A nested `flowchart` is supported and rendered by mermansi's native bounded fallback when delegated geometry cannot preserve its groups. | `tests/scenarios/deployment.flowchart.mmd` preserves eight nodes, four subgraphs, and nine edges at 95 columns. |
+| C4 deployment | `C4Deployment` is an alias of the supported C4 semantic family. | `tests/scenarios/deployment.c4.mmd` exercises nested deployment nodes, containers, a database container, and relationships. |
+
+Mermansi does not add a private parser or relax strict Mermaid syntax for these boundaries. This
+keeps parsing behavior aligned with `merman-core` and avoids accepting diagrams that Mermaid itself
+does not define.
+
 ## Support matrix
 
 | Family | Renderer | Support level | English fixture | Chinese fixture | Status |
@@ -109,12 +125,12 @@ adapter.
 
 Every family produces deterministic nonempty output. Geometry rows use terminal-native boxes,
 edges, and routing. Every adapter appends a canonical JSON semantic model to its readable preview,
-preserving every typed field without claiming SVG-coordinate parity. Flowcharts emit an empty
-preview plus that canonical representation only when the delegated geometric router reports an
-unsupported topology. Self-loops and parallel edges use mermansi's bounded, display-column-aware
-Canvas with a distinct routed lane and endpoint marker for every edge. Canvas node labels, edge
-labels, and arrow markers use semantic ANSI roles on every grapheme owner; stripping those roles
-is byte-identical to plain geometry. Pie, Radar, QuadrantChart, and Venn now render genuine
+preserving every typed field without claiming SVG-coordinate parity. Flowcharts never emit an empty
+preview: nested groups, explicit node shapes, and delegated empty or unsupported output use
+mermansi's native bounded geometry. Self-loops and parallel edges use mermansi's bounded,
+display-column-aware Canvas with a distinct routed lane and endpoint marker for every edge. Canvas
+node labels, edge labels, and arrow markers use semantic ANSI roles on every grapheme owner;
+stripping those roles is byte-identical to plain geometry. Pie, Radar, QuadrantChart, and Venn render genuine
 terminal chart geometry — closed circles, radial spokes, Cartesian plotting areas, and
 overlapping set outlines — using shared bounded chart primitives (`chart_primitives`).
 Sankey, Treemap, Ishikawa, EventModeling, and Info use bounded terminal-native flow, nested-area,
@@ -132,3 +148,20 @@ within its display-column bound, render deterministically with a minimum termina
 preserve quoted fixture labels, and contain neither source/structured-text nor semantic-model
 fallback output. Complete-mode renders are also compared with the parsed semantic model so typed
 entities, relationships, hierarchy, and chart values remain lossless.
+
+## ASG visual audit
+
+The support matrix is necessary but cannot decide whether geometry is visually useful. The tracked
+gallery workflow records concise output through the real `mermansi` CLI, converts asciicast v3
+recordings with an externally supplied [ASG](https://github.com/kingsword09/asg) binary, and creates
+an inspectable HTML index. Generated text, casts, SVGs, and PNG previews stay under the ignored
+`.aicode/state/` directory.
+
+```sh
+ASG_BIN=/absolute/path/to/asg/target/release/asg scripts/asg-gallery.sh
+```
+
+The default run uses a 95-column render budget inside a 100-column terminal and produces 33 SVGs:
+all 29 supported fixture families plus the deployment Flowchart, C4Deployment, complex IPv4 Packet,
+and rack Architecture alternative scenarios. A successful file count is not a visual pass; every
+SVG in the generated `index.html` must be inspected before a rendering Task is completed.

@@ -58,6 +58,9 @@ mermansi --file diagram.mmd --ascii
 
 # With ANSI color
 mermansi --file diagram.mmd --color
+
+# Geometry only (recommended for terminal previews and recordings)
+mermansi --file diagram.mmd --concise
 ```
 
 ### CLI flags
@@ -70,6 +73,8 @@ mermansi --file diagram.mmd --color
 | `--color` | Enable ANSI color roles |
 | `--truecolor` | Enable 24-bit ANSI color roles |
 | `--no-color` | Disable ANSI color (default) |
+| `--concise` | Emit terminal geometry only |
+| `--complete` | Emit geometry plus the canonical model (default) |
 | `--width <N>` | Maximum output width in terminal columns |
 | `--height <N>` | Maximum output height in terminal rows |
 | `--version` | Print version and exit |
@@ -113,6 +118,15 @@ let output = render_source(mermaid_text, &options).unwrap();
 Raw JSON objects and arrays use the same entry point and render as connected box-tree geometry.
 The exact `flowchart-v2` parser-id header is normalized to the public `flowchart` grammar header,
 then parsed by `merman-core` through its known-type API.
+
+### Syntax boundaries
+
+`rack-beta` is not a Mermaid 11.16 diagram family and is intentionally rejected; use
+`architecture-beta` or `block-beta` for rack/infrastructure views. Field-definition diagrams use
+the supported `packet-beta` family, whose strict syntax requires quoted labels such as
+`0-3: "Version"`. Both nested deployment Flowcharts and `C4Deployment` are supported. Runnable
+examples live under `tests/scenarios/`; the exact parser inventory and alternatives are documented
+in `docs/SUPPORT_MATRIX.md`.
 
 ### Convenience functions
 

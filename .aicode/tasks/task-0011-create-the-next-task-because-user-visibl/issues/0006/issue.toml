@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0011-create-the-next-task-because-user-visibl#0006"
+number = 6
+title = "Journey and Timeline force sparse single-column chains"
+status = "open"
+severity = "P2"
+category = "layout-density"
+fingerprint = "sha256:effe7dc2600c6d06cfed31224416553f2a3134ad88d70421db2dc75c5c663499"
+created_at = "unix:1785595960"
+updated_at = "unix:1785595960"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0001.json"
+
+[location]
+path = "src/adapters/journey.rs"
+line = 141
+
+[problem]
+description = "Both adapters map every section, task, period, and event to a separate node rank in a vertical BoxDiagram. Representative fixtures consume 53 and 42 rows while using only 21 columns, leaving most of a 95-column terminal unused."
+impact = "Common diagrams require excessive scrolling and appear sparse rather than providing a scannable terminal overview."
+
+[acceptance]
+description = "Use a compact ordered layout that consumes available width while preserving sequence, section/task association, actors, scores, events, closed nodes, and connected progression in ASCII and Unicode. The representative 95-column Journey and Timeline fixtures must each fit within 30 rows."
+command = "cargo test --test semantic_integrity journey_and_timeline_fit_compact_terminal_height -- --exact"

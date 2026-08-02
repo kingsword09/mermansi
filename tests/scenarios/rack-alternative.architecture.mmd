@@ -1,0 +1,11 @@
+architecture-beta
+title 机架部署替代架构
+group rack(cloud)[机架区域]
+  service gateway(server)[入口网关] in rack
+  service compute1(server)[计算节点1] in rack
+  service compute2(server)[计算节点2] in rack
+  service storage(database)[存储节点] in rack
+  gateway:R -- L:compute1
+  gateway:R -- L:compute2
+  compute1:R -- L:storage
+  compute2:R -- L:storage

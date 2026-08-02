@@ -1,0 +1,26 @@
+flowchart TB
+    subgraph 用户端
+        Web[Web浏览器]
+        APP[移动APP]
+    end
+    subgraph 负载层
+        LB[Nginx负载均衡]
+    end
+    subgraph 应用层
+        APP1[应用服务器1]
+        APP2[应用服务器2]
+    end
+    subgraph 数据层
+        Master[(MySQL主)]
+        Slave[(MySQL从)]
+        Cache[(Redis集群)]
+    end
+    Web --> LB
+    APP --> LB
+    LB --> APP1
+    LB --> APP2
+    APP1 --> Master
+    APP2 --> Slave
+    APP1 --> Cache
+    APP2 --> Cache
+    Master -.同步.-> Slave

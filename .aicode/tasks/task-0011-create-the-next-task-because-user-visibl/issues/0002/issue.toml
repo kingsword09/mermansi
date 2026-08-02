@@ -1,0 +1,31 @@
+schema_version = 2
+id = "task-0011-create-the-next-task-because-user-visibl#0002"
+number = 2
+title = "Shared box routing overwrites nested group and node borders"
+status = "resolved"
+severity = "P1"
+category = "routing-integrity"
+fingerprint = "sha256:b96d6c68e803f741cb30268124fa168c32ae9486b72ac63ea59f81d007338766"
+created_at = "unix:1785595960"
+updated_at = "unix:1785634568"
+resolved_at = "unix:1785634568"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0001.json"
+
+[location]
+path = "src/adapters/box_geometry.rs"
+line = 861
+
+[problem]
+description = "The router blocks only the four corners and group labels of a group, so a path may reuse long stretches of group borders. Endpoint paths are then painted over existing node borders. In the ASG gallery this creates merged or missing borders in deployment Flowchart, C4Deployment, and the rack Architecture alternative."
+impact = "Topology is present but nested ownership is visually ambiguous; users cannot reliably distinguish a container boundary from a relationship route."
+
+[acceptance]
+description = "Keep every nested group and node border closed after routing while retaining visible connected representative routes, endpoint markers, 95-column deployment bounds, and deterministic ASCII/Unicode output. Add structural regression assertions for the deployment, C4Deployment, and rack Architecture scenarios and inspect their regenerated ASG SVGs."
+command = "cargo test --test flowchart_fallback box_family_routes_preserve_closed_boundaries -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0002.json"
+description = "Resolved by deterministic occupied-cell route penalties, shared marker-free bus segments, structural regression tests for all three scenarios, full verification, and regenerated ASG visual inspection."

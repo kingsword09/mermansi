@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0011-create-the-next-task-because-user-visibl#0004"
+number = 4
+title = "Venn labels collide visually with ellipse outlines"
+status = "open"
+severity = "P2"
+category = "layout-collision"
+fingerprint = "sha256:6c68b53168ae8157e18bccf250368d85b71f91a23b1d44a4c026133f1f440262"
+created_at = "unix:1785595960"
+updated_at = "unix:1785595960"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0001.json"
+
+[location]
+path = "src/adapters/venn.rs"
+line = 104
+
+[problem]
+description = "Region placement checks that label cells are empty but does not require clearance from adjacent outline glyphs. The three-set fixture places labels and dense intersection text directly against circle outlines, making boundaries and labels run together in ASG output."
+impact = "The diagram is technically non-overlapping but remains visually ambiguous, especially for pairwise and three-way intersections."
+
+[acceptance]
+description = "Require deterministic clearance around in-region labels or use connected callouts when clearance is unavailable. Preserve exact region association, every label and intersection, compact bounds, and both charsets. Add structural tests that reject outline glyphs immediately adjacent to label spans."
+command = "cargo test --test semantic_integrity venn_labels_keep_outline_clearance -- --exact"

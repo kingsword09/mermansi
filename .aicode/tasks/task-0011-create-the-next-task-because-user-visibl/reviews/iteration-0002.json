@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "task": "task-0011-create-the-next-task-because-user-visibl",
+  "iteration": 2,
+  "loop_iteration": 2,
+  "created_at": "unix:1785634568",
+  "objective": "Resolve Issue 0002 by preventing shared box routes from following or visually replacing nested boundaries in deployment Flowchart, C4Deployment, and rack Architecture output.",
+  "plan": {
+    "objective": "Review the weighted route-cost implementation, shared undirected bus behavior, focused structural tests, full repository verification, and regenerated ASG scenarios for Issue 0002.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Verify that occupied border cells carry a deterministic traversal penalty while required boundary crossings remain possible."
+      },
+      {
+        "id": "step-2",
+        "description": "Verify that undirected routes may share compact bus segments while directed and parallel routes retain independent routing behavior."
+      },
+      {
+        "id": "step-3",
+        "description": "Run focused and full tests, regenerate all 33 ASG SVGs, and visually inspect deployment Flowchart, C4Deployment, and rack Architecture."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Replaced unweighted path discovery with deterministic weighted shortest paths that penalize existing geometry, kept entity obstacles hard-blocked, and allowed marker-free relationships to share routed bus cells. Added a unit test proving a route crosses rather than follows a painted border and an integration test covering all three user-visible scenarios in both charsets at 95 columns.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "Focused Issue 0002 tests, all required repository checks, and the 33-SVG ASG workflow passed. Visual inspection confirms distinct closed boundaries and readable routes in all three scenarios.",
+    "commands": [
+      {
+        "command": "cargo test --test flowchart_fallback box_family_routes_preserve_closed_boundaries -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed."
+      },
+      {
+        "command": "cargo test adapters::box_geometry::tests::weighted_router_crosses_painted_border_instead_of_following_it --lib -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed."
+      },
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "All unit and integration suites passed, including 25 library tests, 7 Flowchart fallback tests, 126 semantic-integrity tests, and the complete support matrix."
+      },
+      {
+        "command": "scripts/asg-gallery.sh /Users/kingsword09/Documents/code/ai/asg/target/release/asg .aicode/state/task-0011-asg/current",
+        "passed": true,
+        "output": "Generated 33/33 SVGs; deployment-flowchart, deployment-c4, and rack-architecture-alternative were visually re-inspected."
+      }
+    ]
+  },
+  "verdict": "pass",
+  "summary": "Issue 0002 passes with no new findings. Routes cross only necessary boundary cells, no longer reuse long border spans, and the rack topology uses a compact shared bus without changing the complete relationship legend. Issues 0003-0007 remain outside this Review and continue to block Task completion.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 2,
+      "description": "Resolved by deterministic occupied-cell route penalties, shared marker-free bus segments, structural regression tests for all three scenarios, full verification, and regenerated ASG visual inspection."
+    }
+  ]
+}

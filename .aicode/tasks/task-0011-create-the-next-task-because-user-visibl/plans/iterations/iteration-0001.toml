@@ -1,0 +1,30 @@
+schema_version = 1
+task = "task-0011-create-the-next-task-because-user-visibl"
+iteration = 1
+loop_iteration = 1
+created_at = "unix:1785586153"
+objective = "Create the next Task because user-visible rack, field-definition, and deployment-architecture examples disprove the completed Task 9/10 representative-fixture assumption. Establish the exact support boundary: rack-beta is not present in Mermaid 11.16 or the pinned merman-core parser inventory and must remain an explicit unsupported syntax with a documented architecture-beta or block-beta alternative; the field-definition example maps to Packet but its unquoted labels are invalid strict Mermaid and must receive actionable guidance plus a valid complex IPv4 scenario; the deployment example is a valid Flowchart whose eight nodes, four subgraphs, and nine edges currently collapse to semantic JSON because delegated geometry returns no preview. Replace that valid Flowchart empty-preview path with deterministic bounded terminal-native geometry preserving every node, nested group, edge endpoint, arrow, dotted style, label, node shape, and TB/BT/LR/RL direction at the real 95/115-column aicode budgets. Add complex deployment, C4Deployment, Packet-field, and supported rack-alternative scenarios without weakening the 29-family matrix. Build a reproducible ASG visual-audit workflow that records the real mermansi CLI output for all 29 supported families and produces 29 inspectable SVGs at a 100-column terminal, inspect every SVG rather than only counting geometry glyphs, create Issues for every actionable visual defect, run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task while preserving completed history."
+open_issue_ids = ["task-0011-create-the-next-task-because-user-visibl#0001"]
+
+[plan]
+objective = "Create the next Task because user-visible rack, field-definition, and deployment-architecture examples disprove the completed Task 9/10 representative-fixture assumption. Establish the exact support boundary: rack-beta is not present in Mermaid 11.16 or the pinned merman-core parser inventory and must remain an explicit unsupported syntax with a documented architecture-beta or block-beta alternative; the field-definition example maps to Packet but its unquoted labels are invalid strict Mermaid and must receive actionable guidance plus a valid complex IPv4 scenario; the deployment example is a valid Flowchart whose eight nodes, four subgraphs, and nine edges currently collapse to semantic JSON because delegated geometry returns no preview. Replace that valid Flowchart empty-preview path with deterministic bounded terminal-native geometry preserving every node, nested group, edge endpoint, arrow, dotted style, label, node shape, and TB/BT/LR/RL direction at the real 95/115-column aicode budgets. Add complex deployment, C4Deployment, Packet-field, and supported rack-alternative scenarios without weakening the 29-family matrix. Build a reproducible ASG visual-audit workflow that records the real mermansi CLI output for all 29 supported families and produces 29 inspectable SVGs at a 100-column terminal, inspect every SVG rather than only counting geometry glyphs, create Issues for every actionable visual defect, run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task while preserving completed history."
+
+[[plan.steps]]
+id = "S0.1"
+description = "Reproduce the exact user examples and classify them against the pinned parser inventory and current Mermaid 11.16 syntax: invalid rack-beta, invalid unquoted Packet labels, and valid nested deployment Flowchart with no geometry preview."
+
+[[plan.steps]]
+id = "S0.2"
+description = "Generate a baseline ASG SVG gallery from real concise Unicode mermansi output for all 29 supported families at the 95-column Mermaid budget, then record every actionable visual defect rather than relying on a minimum glyph count."
+
+[[plan.steps]]
+id = "S0.3"
+description = "Have the default Profile implement a native bounded Flowchart fallback for valid parsed models that delegated rendering cannot lay out, with nested subgraphs, node shapes, every relationship, edge style and label, and all four directions preserved."
+
+[[plan.steps]]
+id = "S0.4"
+description = "Add valid complex IPv4 Packet, deployment Flowchart, C4Deployment, and rack-alternative fixtures plus clear unsupported/invalid syntax guidance without adding a private Mermaid parser or accepting invented rack-beta syntax."
+
+[[plan.steps]]
+id = "S0.5"
+description = "Have Codex review the implementation and all 29 ASG SVGs; fix each actionable finding through a new numbered Issue, rerun the support matrix and required checks, then complete and commit the Task."

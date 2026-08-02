@@ -1,0 +1,26 @@
+schema_version = 2
+id = "task-0011-create-the-next-task-because-user-visibl#0003"
+number = 3
+title = "Pie and Radar ignore terminal character-cell aspect ratio"
+status = "open"
+severity = "P1"
+category = "visual-geometry"
+fingerprint = "sha256:c561bd990f42b4501bda2d29e129ea495f7b4593ccbaeb057800a040e9ab0886"
+created_at = "unix:1785595960"
+updated_at = "unix:1785595960"
+
+[source]
+kind = "review"
+review = "../../reviews/iteration-0001.json"
+
+[location]
+path = "src/adapters/pie.rs"
+line = 115
+
+[problem]
+description = "Pie and Radar use the same coordinate radius on both axes even though terminal cells are approximately twice as tall as they are wide. Their ASG renders therefore appear as narrow vertical columns instead of circular or balanced radial charts."
+impact = "The primary geometry is materially distorted and difficult to interpret despite satisfying glyph-presence tests."
+
+[acceptance]
+description = "Introduce one shared, explicit character-cell aspect transform for radial chart coordinates. Pie must appear circular and Radar balanced in the real ASG terminal while preserving values, ticks, labels, bounds, determinism, and ASCII/Unicode behavior. Add coordinate-level aspect assertions that fail on the current narrow geometry."
+command = "cargo test --test semantic_integrity radial_charts_compensate_terminal_cell_aspect_ratio -- --exact"

@@ -61,3 +61,22 @@ fn cli_exit_codes_distinguish_parse_render_and_option_errors() {
     let option = run_cli("flowchart TD\nA --> B", &["--width", "0"]);
     assert_eq!(option.status.code(), Some(3));
 }
+
+#[test]
+fn concise_flag_emits_only_terminal_geometry() {
+    let source = "flowchart TD\nA[开始] --> B[结束]";
+    let concise = run_cli(source, &["--concise", "--width", "95"]);
+    assert!(concise.status.success());
+    let concise = String::from_utf8(concise.stdout).unwrap();
+    assert!(concise.contains("开始"));
+    assert!(concise.contains("结束"));
+    assert!(!concise.contains("[flowchart semantic model]"));
+
+    let complete = run_cli(source, &["--complete", "--width", "95"]);
+    assert!(complete.status.success());
+    assert!(
+        String::from_utf8(complete.stdout)
+            .unwrap()
+            .contains("[flowchart semantic model]")
+    );
+}

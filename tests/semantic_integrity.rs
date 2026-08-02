@@ -106,19 +106,19 @@ fn decision_node_has_one_closed_border_in_each_charset() {
 
     let unicode = render_source(source, &MermansiOptions::unicode()).unwrap();
     let unicode_preview = flowchart_preview(&unicode);
-    assert_eq!(
-        unicode_preview,
-        "╭────────╮\n│        │\n< Is it? >\n│        │\n╰────────╯"
-    );
-    assert_eq!(unicode_preview.matches('╭').count(), 1);
-    assert_eq!(unicode_preview.matches('╰').count(), 1);
+    assert!(unicode_preview.contains("Is it?"));
+    assert_eq!(unicode_preview.matches('╱').count(), 2);
+    assert_eq!(unicode_preview.matches('╲').count(), 2);
+    assert!(unicode_preview.lines().any(|line| line.contains('<')));
+    assert!(unicode_preview.lines().any(|line| line.contains('>')));
 
     let ascii = render_source(source, &MermansiOptions::ascii()).unwrap();
     let ascii_preview = flowchart_preview(&ascii);
-    assert_eq!(
-        ascii_preview,
-        "/--------\\\n|        |\n< Is it? >\n|        |\n\\--------/"
-    );
+    assert!(ascii_preview.contains("Is it?"));
+    assert_eq!(ascii_preview.matches('/').count(), 2);
+    assert_eq!(ascii_preview.matches('\\').count(), 2);
+    assert!(ascii_preview.lines().any(|line| line.contains('<')));
+    assert!(ascii_preview.lines().any(|line| line.contains('>')));
 }
 
 // ---------------------------------------------------------------------------

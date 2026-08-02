@@ -1,6 +1,7 @@
 //! Shared bounded geometry for node-and-relationship diagram families.
 
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BinaryHeap, HashMap, VecDeque};
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -12,15 +13,16 @@ use crate::str_display_width;
 
 const MAX_INNER_WIDTH: usize = 32;
 const GROUP_PADDING_X: usize = 3;
-const GROUP_ROUTE_GAP_Y: usize = 2;
+const GROUP_ROUTE_GAP_Y: usize = 1;
 const ITEM_GAP_X: usize = 4;
-const ITEM_GAP_Y: usize = 2;
+const ITEM_GAP_Y: usize = 1;
 const LAYER_GAP_X: usize = 8;
-const LAYER_GAP_Y: usize = 4;
+const LAYER_GAP_Y: usize = 2;
 const ROUTE_MARGIN: usize = 2;
 const MAX_OUTER_ROUTE_LANES: usize = 8;
 const MAX_DEPTH: usize = 64;
 const MIN_CANVAS_WIDTH: usize = 12;
+const OCCUPIED_ROUTE_PENALTY: usize = 12;
 
 #[derive(Clone, Debug)]
 pub(crate) struct BoxNode {
@@ -31,6 +33,15 @@ pub(crate) struct BoxNode {
     pub(crate) parent: Option<String>,
     pub(crate) span: usize,
     pub(crate) order: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum BoxNodeShape {
+    #[default]
+    Rectangle,
+    Rounded,
+    Cylinder,
+    Decision,
 }
 
 #[derive(Clone, Debug)]
@@ -71,6 +82,7 @@ pub(crate) enum EdgeMarker {
     OpenDiamond,
     FilledDiamond,
     Circle,
+    Cross,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -305,6 +317,14 @@ struct Endpoint {
 }
 
 pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<String> {
+    render_with_node_shapes(diagram, opts, &HashMap::new())
+}
+
+pub(crate) fn render_with_node_shapes(
+    diagram: &BoxDiagram,
+    opts: &MermansiOptions,
+    node_shapes: &HashMap<String, BoxNodeShape>,
+) -> Result<String> {
     if opts.max_width < MIN_CANVAS_WIDTH {
         return Err(MermansiError::RenderLimit {
             context: "box geometry columns",
@@ -454,6 +474,7 @@ pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<Str
             item,
             &mut geometry,
             &mut obstacles,
+            node_shapes,
             opts.charset,
         )?;
     }
@@ -798,6 +819,7 @@ fn paint_item(
     placed: &PlacedItem,
     geometry: &mut HashMap<String, Rect>,
     obstacles: &mut Vec<Rect>,
+    node_shapes: &HashMap<String, BoxNodeShape>,
     charset: Charset,
 ) -> Result<()> {
     if matches!(placed.item.kind, ItemKind::Spacer) {
@@ -810,6 +832,17 @@ fn paint_item(
         height: placed.item.height,
     };
     draw_box(canvas, rect.x, rect.y, rect.width, rect.height, charset)?;
+    if matches!(placed.item.kind, ItemKind::Node) {
+        paint_node_shape(
+            canvas,
+            rect,
+            node_shapes
+                .get(&placed.item.id)
+                .copied()
+                .unwrap_or_default(),
+            charset,
+        )?;
+    }
     geometry.insert(placed.item.id.clone(), rect);
     match placed.item.kind {
         ItemKind::Node => {
@@ -855,21 +888,17 @@ fn paint_item(
                 },
             ]);
             for (offset, line) in placed.item.lines.iter().enumerate() {
-                write_centered(
-                    canvas,
-                    rect.x + 1,
-                    rect.y + 1 + offset,
-                    rect.width - 2,
-                    line,
-                )?;
-            }
-            if !placed.item.lines.is_empty() {
-                obstacles.push(Rect {
-                    x: rect.x + 1,
-                    y: rect.y + 1,
-                    width: rect.width - 2,
-                    height: placed.item.lines.len(),
-                });
+                let line_width = str_display_width(line);
+                let label_x = rect.x + 1;
+                canvas.set_text(label_x, rect.y + 1 + offset, line)?;
+                if line_width > 0 {
+                    obstacles.push(Rect {
+                        x: label_x,
+                        y: rect.y + 1 + offset,
+                        width: line_width,
+                        height: 1,
+                    });
+                }
             }
             for child in &placed.item.children {
                 let nested = PlacedItem {
@@ -877,10 +906,47 @@ fn paint_item(
                     y: rect.y + child.y,
                     item: child.item.clone(),
                 };
-                paint_item(canvas, &nested, geometry, obstacles, charset)?;
+                paint_item(canvas, &nested, geometry, obstacles, node_shapes, charset)?;
             }
         }
         ItemKind::Spacer => {}
+    }
+    Ok(())
+}
+
+fn paint_node_shape(
+    canvas: &mut Canvas,
+    rect: Rect,
+    shape: BoxNodeShape,
+    charset: Charset,
+) -> Result<()> {
+    if shape == BoxNodeShape::Rectangle {
+        return Ok(());
+    }
+
+    let (top_left, top_right, bottom_left, bottom_right) = match (charset, shape) {
+        (Charset::Unicode, BoxNodeShape::Rounded | BoxNodeShape::Cylinder) => ('╭', '╮', '╰', '╯'),
+        (Charset::Unicode, BoxNodeShape::Decision) => ('╱', '╲', '╲', '╱'),
+        (Charset::Ascii, BoxNodeShape::Rounded | BoxNodeShape::Cylinder) => ('.', '.', '\'', '\''),
+        (Charset::Ascii, BoxNodeShape::Decision) => ('/', '\\', '\\', '/'),
+        (_, BoxNodeShape::Rectangle) => return Ok(()),
+    };
+    canvas.set_char(rect.x, rect.y, top_left)?;
+    canvas.set_char(rect.right(), rect.y, top_right)?;
+    canvas.set_char(rect.x, rect.bottom(), bottom_left)?;
+    canvas.set_char(rect.right(), rect.bottom(), bottom_right)?;
+
+    let middle = rect.y + rect.height / 2;
+    match shape {
+        BoxNodeShape::Cylinder => {
+            canvas.set_char(rect.x, middle, '(')?;
+            canvas.set_char(rect.right(), middle, ')')?;
+        }
+        BoxNodeShape::Decision => {
+            canvas.set_char(rect.x, middle, '<')?;
+            canvas.set_char(rect.right(), middle, '>')?;
+        }
+        BoxNodeShape::Rectangle | BoxNodeShape::Rounded => {}
     }
     Ok(())
 }
@@ -905,17 +971,9 @@ fn draw_edge(
         .copied()
         .ok_or_else(|| layout_error(family, format!("edge target is missing: {}", edge.to)))?;
     let width = canvas.width();
-    let path = route_edge(
-        canvas,
-        source,
-        target,
-        edge,
-        obstacles,
-        routed,
-        route_height,
-        true,
-    )
-    .or_else(|| {
+    let prefer_shared_route =
+        edge.marker_start == EdgeMarker::None && edge.marker_end == EdgeMarker::None;
+    let path = if prefer_shared_route {
         route_edge(
             canvas,
             source,
@@ -926,7 +984,30 @@ fn draw_edge(
             route_height,
             false,
         )
-    })
+    } else {
+        route_edge(
+            canvas,
+            source,
+            target,
+            edge,
+            obstacles,
+            routed,
+            route_height,
+            true,
+        )
+        .or_else(|| {
+            route_edge(
+                canvas,
+                source,
+                target,
+                edge,
+                obstacles,
+                routed,
+                route_height,
+                false,
+            )
+        })
+    }
     .ok_or_else(|| layout_error(family, format!("no route for {} -> {}", edge.from, edge.to)))?;
     draw_path(canvas, &path, charset, edge.style)?;
     for point in path_cells(&path)
@@ -994,8 +1075,14 @@ fn route_edge(
         if blocked[source_index] {
             continue;
         }
-        let predecessors =
-            breadth_first_predecessors(source_endpoint.outside, width, height, &blocked);
+        let predecessors = weighted_predecessors(
+            source_endpoint.outside,
+            width,
+            height,
+            &blocked,
+            routed,
+            canvas,
+        );
         for target_side in target_sides.iter().copied() {
             if source == target && source_side == target_side {
                 continue;
@@ -1031,16 +1118,22 @@ fn route_edge(
             let occupied = path_cells(&path)
                 .iter()
                 .filter(|point| {
-                    canvas
-                        .get_cell(point.x, point.y)
-                        .is_some_and(|cell| !cell.is_empty())
+                    let index = grid_index(**point, width);
+                    !routed[index]
+                        && canvas
+                            .get_cell(point.x, point.y)
+                            .is_some_and(|cell| !cell.is_empty())
                 })
                 .count();
             let score = distance
                 .saturating_add(path.len().saturating_sub(2) * 2)
                 .saturating_add(occupied * 4)
                 .saturating_add(preference * 2);
-            let key = (overlap, score);
+            let key = if avoid_routed {
+                (overlap, score)
+            } else {
+                (0, score.saturating_add(overlap))
+            };
             if best.as_ref().is_none_or(|(best_key, _)| key < *best_key) {
                 best = Some((key, path));
             }
@@ -1077,19 +1170,26 @@ fn block_route_frame(blocked: &mut [bool], width: usize, height: usize) {
     }
 }
 
-fn breadth_first_predecessors(
+fn weighted_predecessors(
     start: Point,
     width: usize,
     height: usize,
     blocked: &[bool],
+    routed: &[bool],
+    canvas: &Canvas,
 ) -> Vec<usize> {
     let unvisited = usize::MAX;
     let start_index = grid_index(start, width);
     let mut predecessors = vec![unvisited; width * height];
+    let mut distances = vec![usize::MAX; width * height];
     predecessors[start_index] = start_index;
-    let mut queue = VecDeque::from([start]);
-    while let Some(point) = queue.pop_front() {
-        let point_index = grid_index(point, width);
+    distances[start_index] = 0;
+    let mut queue = BinaryHeap::from([Reverse((0usize, start_index))]);
+    while let Some(Reverse((distance, point_index))) = queue.pop() {
+        if distance != distances[point_index] {
+            continue;
+        }
+        let point = Point::new(point_index % width, point_index / width);
         let neighbors = [
             (point.x + 1 < width).then(|| Point::new(point.x + 1, point.y)),
             (point.y + 1 < height).then(|| Point::new(point.x, point.y + 1)),
@@ -1098,9 +1198,23 @@ fn breadth_first_predecessors(
         ];
         for neighbor in neighbors.into_iter().flatten() {
             let neighbor_index = grid_index(neighbor, width);
-            if !blocked[neighbor_index] && predecessors[neighbor_index] == unvisited {
+            if blocked[neighbor_index] {
+                continue;
+            }
+            let occupied = !routed[neighbor_index]
+                && canvas
+                    .get_cell(neighbor.x, neighbor.y)
+                    .is_some_and(|cell| !cell.is_empty());
+            let candidate = distance
+                .saturating_add(1)
+                .saturating_add(usize::from(occupied) * OCCUPIED_ROUTE_PENALTY);
+            if candidate < distances[neighbor_index]
+                || (candidate == distances[neighbor_index]
+                    && point_index < predecessors[neighbor_index])
+            {
+                distances[neighbor_index] = candidate;
                 predecessors[neighbor_index] = point_index;
-                queue.push_back(neighbor);
+                queue.push(Reverse((candidate, neighbor_index)));
             }
         }
     }
@@ -1228,6 +1342,7 @@ fn endpoint_marker(
         EdgeMarker::OpenDiamond if unicode => '◇',
         EdgeMarker::FilledDiamond if unicode => '◆',
         EdgeMarker::Circle if unicode => '○',
+        EdgeMarker::Cross => 'x',
         EdgeMarker::OpenDiamond | EdgeMarker::Circle => 'o',
         EdgeMarker::FilledDiamond => '*',
     };
@@ -1307,7 +1422,7 @@ fn edge_legend(edges: &[BoxEdge], policy: EdgeLegend, width: usize) -> Vec<Strin
     lines
 }
 
-fn edge_legend_text(edge: &BoxEdge) -> String {
+pub(crate) fn edge_legend_text(edge: &BoxEdge) -> String {
     let line = if edge.style == EdgeStyle::Dotted {
         ".."
     } else {
@@ -1344,6 +1459,7 @@ fn marker_legend(marker: EdgeMarker, start: bool) -> &'static str {
         (EdgeMarker::OpenDiamond, _) => "o",
         (EdgeMarker::FilledDiamond, _) => "*",
         (EdgeMarker::Circle, _) => "()",
+        (EdgeMarker::Cross, _) => "x",
     }
 }
 
@@ -1494,5 +1610,44 @@ fn layout_error(family: &'static str, message: impl Into<String>) -> MermansiErr
     MermansiError::GeometryLayout {
         family,
         message: message.into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn weighted_router_crosses_painted_border_instead_of_following_it() {
+        let mut canvas = Canvas::new(16, 9).expect("canvas");
+        draw_horizontal_line(&mut canvas, 4, 2, 13, Charset::Unicode).expect("border");
+        let width = canvas.width();
+        let height = canvas.height();
+        let start = Point::new(3, 4);
+        let target = Point::new(12, 4);
+        let blocked = vec![false; width * height];
+        let routed = vec![false; width * height];
+
+        let predecessors = weighted_predecessors(start, width, height, &blocked, &routed, &canvas);
+        let cells = reconstruct_path(
+            grid_index(start, width),
+            grid_index(target, width),
+            width,
+            &predecessors,
+        )
+        .expect("route");
+        let painted_cells = cells
+            .iter()
+            .filter(|point| {
+                canvas
+                    .get_cell(point.x, point.y)
+                    .is_some_and(|cell| !cell.is_empty())
+            })
+            .count();
+
+        assert_eq!(
+            painted_cells, 2,
+            "path followed the painted border: {cells:?}"
+        );
     }
 }

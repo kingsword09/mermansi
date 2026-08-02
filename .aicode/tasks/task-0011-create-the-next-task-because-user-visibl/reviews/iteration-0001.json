@@ -1,0 +1,162 @@
+{
+  "schema_version": 2,
+  "task": "task-0011-create-the-next-task-because-user-visibl",
+  "iteration": 1,
+  "loop_iteration": 1,
+  "created_at": "unix:1785595960",
+  "objective": "Render all 29 supported Mermaid families plus the deployment Flowchart, C4Deployment, IPv4 Packet, and rack Architecture scenarios as inspectable bounded terminal geometry, establish the strict syntax boundary, and verify the real 95-column output with ASG.",
+  "plan": {
+    "objective": "Review the current Task 0011 implementation, required verification evidence, and all 33 regenerated ASG SVGs; record every actionable visual defect as a new Issue.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Regenerate the 29-family plus four-scenario ASG gallery from the real mermansi CLI at a 95-column render budget and inspect every SVG."
+      },
+      {
+        "id": "step-2",
+        "description": "Run cargo fmt --check, strict all-target Clippy, and all-target all-feature tests against the reviewed worktree."
+      },
+      {
+        "id": "step-3",
+        "description": "Review the actual implementation diff and convert each actionable visual defect into a review-sourced Issue."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "The current implementation adds a deterministic Flowchart fallback for nested groups and explicit shapes, preserves deployment topology and support boundaries, adds concise CLI output, and supplies a reproducible ASG gallery workflow. The regenerated gallery contains 33 genuine SVG terminal renderings, but visual inspection found six remaining shared rendering defects.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "All three required repository checks passed and scripts/asg-gallery.sh generated exactly 33 SVGs. Visual verification still requires changes because semantic and glyph-count tests do not detect border overwrites, terminal-cell aspect distortion, or excessive layout height.",
+    "commands": [
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Current Codex ran the exact command in the reviewed worktree; exit status 0."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Current Codex ran the exact command in the reviewed worktree; exit status 0."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "Current Codex ran the exact command in the reviewed worktree; exit status 0. All unit and integration suites passed, including 126 semantic-integrity tests and the new Flowchart/support-boundary suites."
+      },
+      {
+        "command": "scripts/asg-gallery.sh /Users/kingsword09/Documents/code/ai/asg/target/release/asg .aicode/state/task-0011-asg/current",
+        "passed": true,
+        "output": "Generated 33/33 SVGs from concise real-CLI output: 29 supported families plus four scenarios. Every SVG was inspected through rasterized ASG output."
+      }
+    ]
+  },
+  "verdict": "changes_required",
+  "summary": "All 33 entries now render as terminal geometry rather than raw Mermaid or semantic JSON, and the deployment fallback preserves its full relationship legend. The visual pass is not complete: shared routing corrupts nested borders, radial charts ignore terminal cell aspect, Venn labels touch outlines, delegated State and ER output is ambiguous, and Journey/Timeline remain unnecessarily tall.",
+  "findings": [
+    {
+      "title": "Shared box routing overwrites nested group and node borders",
+      "severity": "P1",
+      "category": "routing-integrity",
+      "location": {
+        "path": "src/adapters/box_geometry.rs",
+        "line": 861
+      },
+      "problem": {
+        "description": "The router blocks only the four corners and group labels of a group, so a path may reuse long stretches of group borders. Endpoint paths are then painted over existing node borders. In the ASG gallery this creates merged or missing borders in deployment Flowchart, C4Deployment, and the rack Architecture alternative.",
+        "impact": "Topology is present but nested ownership is visually ambiguous; users cannot reliably distinguish a container boundary from a relationship route."
+      },
+      "acceptance": {
+        "description": "Keep every nested group and node border closed after routing while retaining visible connected representative routes, endpoint markers, 95-column deployment bounds, and deterministic ASCII/Unicode output. Add structural regression assertions for the deployment, C4Deployment, and rack Architecture scenarios and inspect their regenerated ASG SVGs.",
+        "command": "cargo test --test flowchart_fallback box_family_routes_preserve_closed_boundaries -- --exact"
+      }
+    },
+    {
+      "title": "Pie and Radar ignore terminal character-cell aspect ratio",
+      "severity": "P1",
+      "category": "visual-geometry",
+      "location": {
+        "path": "src/adapters/pie.rs",
+        "line": 115
+      },
+      "problem": {
+        "description": "Pie and Radar use the same coordinate radius on both axes even though terminal cells are approximately twice as tall as they are wide. Their ASG renders therefore appear as narrow vertical columns instead of circular or balanced radial charts.",
+        "impact": "The primary geometry is materially distorted and difficult to interpret despite satisfying glyph-presence tests."
+      },
+      "acceptance": {
+        "description": "Introduce one shared, explicit character-cell aspect transform for radial chart coordinates. Pie must appear circular and Radar balanced in the real ASG terminal while preserving values, ticks, labels, bounds, determinism, and ASCII/Unicode behavior. Add coordinate-level aspect assertions that fail on the current narrow geometry.",
+        "command": "cargo test --test semantic_integrity radial_charts_compensate_terminal_cell_aspect_ratio -- --exact"
+      }
+    },
+    {
+      "title": "Venn labels collide visually with ellipse outlines",
+      "severity": "P2",
+      "category": "layout-collision",
+      "location": {
+        "path": "src/adapters/venn.rs",
+        "line": 104
+      },
+      "problem": {
+        "description": "Region placement checks that label cells are empty but does not require clearance from adjacent outline glyphs. The three-set fixture places labels and dense intersection text directly against circle outlines, making boundaries and labels run together in ASG output.",
+        "impact": "The diagram is technically non-overlapping but remains visually ambiguous, especially for pairwise and three-way intersections."
+      },
+      "acceptance": {
+        "description": "Require deterministic clearance around in-region labels or use connected callouts when clearance is unavailable. Preserve exact region association, every label and intersection, compact bounds, and both charsets. Add structural tests that reject outline glyphs immediately adjacent to label spans.",
+        "command": "cargo test --test semantic_integrity venn_labels_keep_outline_clearance -- --exact"
+      }
+    },
+    {
+      "title": "Delegated State pseudo-state borders are visibly split",
+      "severity": "P1",
+      "category": "delegated-rendering",
+      "location": {
+        "path": "src/adapters/mod.rs",
+        "line": 80
+      },
+      "problem": {
+        "description": "The delegated State renderer emits rounded start/end pseudo-state corners on separate adjacent rows with disconnected vertical sides. The ASG image shows broken capsules around the initial and final markers.",
+        "impact": "A basic supported State fixture violates the closed-shape requirement and looks corrupted even though transitions and labels remain present."
+      },
+      "acceptance": {
+        "description": "Render initial/final pseudo-states as one closed terminal shape in ASCII and Unicode without changing transition semantics, labels, direction, bounds, or determinism. Add exact structural assertions for one top and one bottom border with connected sides.",
+        "command": "cargo test --test semantic_integrity state_pseudostates_have_single_closed_borders -- --exact"
+      }
+    },
+    {
+      "title": "Journey and Timeline force sparse single-column chains",
+      "severity": "P2",
+      "category": "layout-density",
+      "location": {
+        "path": "src/adapters/journey.rs",
+        "line": 141
+      },
+      "problem": {
+        "description": "Both adapters map every section, task, period, and event to a separate node rank in a vertical BoxDiagram. Representative fixtures consume 53 and 42 rows while using only 21 columns, leaving most of a 95-column terminal unused.",
+        "impact": "Common diagrams require excessive scrolling and appear sparse rather than providing a scannable terminal overview."
+      },
+      "acceptance": {
+        "description": "Use a compact ordered layout that consumes available width while preserving sequence, section/task association, actors, scores, events, closed nodes, and connected progression in ASCII and Unicode. The representative 95-column Journey and Timeline fixtures must each fit within 30 rows.",
+        "command": "cargo test --test semantic_integrity journey_and_timeline_fit_compact_terminal_height -- --exact"
+      }
+    },
+    {
+      "title": "Delegated ER relationship markers are ambiguous text fragments",
+      "severity": "P1",
+      "category": "semantic-readability",
+      "location": {
+        "path": "src/adapters/mod.rs",
+        "line": 84
+      },
+      "problem": {
+        "description": "The delegated ER renderer stacks raw cardinality fragments such as '||', 'o{', and '|{' around relationship labels on a narrow vertical line. In the ASG image they read like detached text rather than endpoint markers connected to specific entities.",
+        "impact": "Users cannot confidently read relationship direction or cardinality from the terminal diagram, undermining the purpose of an ER preview."
+      },
+      "acceptance": {
+        "description": "Render each ER relationship as a connected route with unambiguous endpoint cardinality markers and a readable label, while preserving every entity, attribute, relationship, direction, bounds, determinism, and ASCII/Unicode output. Add structural assertions that associate both markers and label with the same route.",
+        "command": "cargo test --test semantic_integrity er_relationships_connect_cardinalities_and_labels -- --exact"
+      }
+    }
+  ],
+  "resolutions": []
+}

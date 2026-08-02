@@ -28,6 +28,7 @@ fn run_with_io(
     let mut file: Option<&str> = None;
     let mut charset_unicode = true;
     let mut color_mode = mermansi::ColorMode::Plain;
+    let mut output_mode = mermansi::OutputMode::Complete;
     let mut max_width: Option<usize> = None;
     let mut max_height: Option<usize> = None;
 
@@ -46,6 +47,8 @@ fn run_with_io(
             "--color" => color_mode = mermansi::ColorMode::Ansi16,
             "--truecolor" => color_mode = mermansi::ColorMode::TrueColor,
             "--no-color" => color_mode = mermansi::ColorMode::Plain,
+            "--concise" => output_mode = mermansi::OutputMode::Concise,
+            "--complete" => output_mode = mermansi::OutputMode::Complete,
             "--file" => {
                 i += 1;
                 if i >= args.len() {
@@ -113,7 +116,7 @@ fn run_with_io(
     } else {
         mermansi::MermansiOptions::ascii()
     };
-    opts = opts.with_color(color_mode);
+    opts = opts.with_color(color_mode).with_output_mode(output_mode);
     if let Some(width) = max_width {
         opts = opts.with_max_width(width);
     }
@@ -217,7 +220,7 @@ fn write_help(output: &mut impl Write) -> std::io::Result<()> {
 \n\
 USAGE:\n    mermansi [OPTIONS]\n\
 \n\
-OPTIONS:\n    --file <PATH>      Read Mermaid source from a file (default: stdin)\n    --ascii            Use ASCII charset\n    --unicode          Use Unicode charset (default)\n    --color            Enable ANSI 16-color roles\n    --truecolor        Enable 24-bit ANSI color roles\n    --no-color         Disable ANSI color (default)\n    --width <N>        Maximum output width in terminal columns\n    --height <N>       Maximum output height in terminal rows\n    --version, -V      Print version and exit\n    --help, -h         Print this help and exit\n\
+OPTIONS:\n    --file <PATH>      Read Mermaid source from a file (default: stdin)\n    --ascii            Use ASCII charset\n    --unicode          Use Unicode charset (default)\n    --color            Enable ANSI 16-color roles\n    --truecolor        Enable 24-bit ANSI color roles\n    --no-color         Disable ANSI color (default)\n    --concise          Emit terminal geometry only\n    --complete         Emit geometry plus canonical model (default)\n    --width <N>        Maximum output width in terminal columns\n    --height <N>       Maximum output height in terminal rows\n    --version, -V      Print version and exit\n    --help, -h         Print this help and exit\n\
 \n\
 EXIT CODES:\n    0  Success\n    1  Parse error\n    2  Render error\n    3  Invalid options or I/O error",
         version = env!("CARGO_PKG_VERSION")

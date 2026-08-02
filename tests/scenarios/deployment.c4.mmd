@@ -1,0 +1,13 @@
+C4Deployment
+title 部署架构
+Deployment_Node(cloud, "云环境", "基础设施") {
+  Deployment_Node(k8s, "Kubernetes", "容器平台") {
+    Container(api, "API", "Rust", "业务接口")
+    Container(worker, "Worker", "Rust", "异步任务")
+  }
+  Deployment_Node(dbnode, "数据库节点", "虚拟机") {
+    ContainerDb(db, "PostgreSQL", "SQL", "持久化")
+  }
+}
+Rel(api, db, "读写")
+Rel(worker, db, "写入")
