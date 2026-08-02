@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0011-create-the-next-task-because-user-visibl#0001"
 number = 1
 title = "Create the next Task because user-visible rack, field-definition, and deployment-architecture examples disprove the completed Task 9/10 representative-fixture assumption. Establish the exact support boundary: rack-beta is not present in Mermaid 11.16 or the pinned merman-core parser inventory and must remain an explicit unsupported syntax with a documented architecture-beta or block-beta alternative; the field-definition example maps to Packet but its unquoted labels are invalid strict Mermaid and must receive actionable guidance plus a valid complex IPv4 scenario; the deployment example is a valid Flowchart whose eight nodes, four subgraphs, and nine edges currently collapse to semantic JSON because delegated geometry returns no preview. Replace that valid Flowchart empty-preview path with deterministic bounded terminal-native geometry preserving every node, nested group, edge endpoint, arrow, dotted style, label, node shape, and TB/BT/LR/RL direction at the real 95/115-column aicode budgets. Add complex deployment, C4Deployment, Packet-field, and supported rack-alternative scenarios without weakening the 29-family matrix. Build a reproducible ASG visual-audit workflow that records the real mermansi CLI output for all 29 supported families and produces 29 inspectable SVGs at a 100-column terminal, inspect every SVG rather than only counting geometry glyphs, create Issues for every actionable visual defect, run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task while preserving completed history."
-status = "open"
+status = "resolved"
 severity = "P1"
 category = "task-execution"
 fingerprint = "sha256:8b4c39e3bf0480477e9f6e97d9c2c6d57d140ca494f787b7058e0af3e5c5c668"
 created_at = "unix:1785586153"
-updated_at = "unix:1785586153"
+updated_at = "unix:1785638880"
+resolved_at = "unix:1785638880"
 
 [source]
 kind = "task"
@@ -24,3 +25,7 @@ impact = "The requested Task has not yet passed implementation, verification, an
 [acceptance]
 description = "Create the next Task because user-visible rack, field-definition, and deployment-architecture examples disprove the completed Task 9/10 representative-fixture assumption. Establish the exact support boundary: rack-beta is not present in Mermaid 11.16 or the pinned merman-core parser inventory and must remain an explicit unsupported syntax with a documented architecture-beta or block-beta alternative; the field-definition example maps to Packet but its unquoted labels are invalid strict Mermaid and must receive actionable guidance plus a valid complex IPv4 scenario; the deployment example is a valid Flowchart whose eight nodes, four subgraphs, and nine edges currently collapse to semantic JSON because delegated geometry returns no preview. Replace that valid Flowchart empty-preview path with deterministic bounded terminal-native geometry preserving every node, nested group, edge endpoint, arrow, dotted style, label, node shape, and TB/BT/LR/RL direction at the real 95/115-column aicode budgets. Add complex deployment, C4Deployment, Packet-field, and supported rack-alternative scenarios without weakening the 29-family matrix. Build a reproducible ASG visual-audit workflow that records the real mermansi CLI output for all 29 supported families and produces 29 inspectable SVGs at a 100-column terminal, inspect every SVG rather than only counting geometry glyphs, create Issues for every actionable visual defect, run all required checks, perform immutable Review, resolve all Issues, commit each reviewed unit, and complete the Task while preserving completed history."
 command = "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"
+
+[resolution]
+review = "../../reviews/iteration-0008.json"
+description = "Resolved after reviewing the complete Task 0011 implementation and all six review-sourced fixes. The strict rack-beta and Packet syntax boundaries are documented and tested; grouped deployment Flowchart, C4Deployment, complex IPv4 Packet, and the supported rack Architecture alternative render bounded terminal geometry; all 29 supported families plus four user scenarios regenerated as 33/33 ASG SVGs and were individually audited; every required repository check passed with no remaining actionable finding."
