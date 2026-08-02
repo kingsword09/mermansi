@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use crate::adapters::box_geometry::{
-    self, BoxDiagram, BoxDirection, BoxLayout, BoxNode, directed_chain_edges, directed_ranks,
+    self, BoxDiagram, BoxDirection, BoxLayout, BoxNode, directed_chain_edges,
 };
 use crate::adapters::{nonempty_or, starts_new_section_run};
 use crate::error::{MermansiError, Result};
@@ -122,7 +122,7 @@ fn render_ordered_timeline(
     if items.is_empty() {
         return Ok(format!("{title}\n\n(empty timeline)\n"));
     }
-    let direction = BoxDirection::Tb;
+    let direction = BoxDirection::Lr;
     let nodes = items
         .into_iter()
         .enumerate()
@@ -136,7 +136,6 @@ fn render_ordered_timeline(
         })
         .collect::<Vec<_>>();
     let edges = directed_chain_edges("timeline", nodes.len(), direction);
-    let ranks = directed_ranks(&nodes, &edges);
     box_geometry::render(
         &BoxDiagram {
             family: "timeline",
@@ -146,7 +145,7 @@ fn render_ordered_timeline(
             spacers: Vec::new(),
             edges,
             columns: None,
-            layout: BoxLayout::Layered { direction, ranks },
+            layout: BoxLayout::Packed,
             edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,

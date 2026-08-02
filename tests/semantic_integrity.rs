@@ -1328,17 +1328,6 @@ fn assert_exact_closed_unicode_boxes(preview: &str, expected: usize) {
     }
 }
 
-fn assert_clean_vertical_chain(preview: &str, expected_arrows: usize) {
-    assert_eq!(preview.matches('▼').count(), expected_arrows, "{preview}");
-    for line in preview.lines().filter(|line| line.contains('▼')) {
-        assert_eq!(
-            line.trim(),
-            "▼",
-            "vertical arrow overlapped other geometry:\n{preview}"
-        );
-    }
-}
-
 #[test]
 fn block_nested_three_levels_no_duplicate_nodes() {
     let source = "block-beta\n  block:L1[\"Level 1\"]\n    block:L2[\"Level 2\"]\n      Leaf[\"Leaf\"]\n    end\n  end\n";
@@ -1790,11 +1779,9 @@ fn kanban_timeline_and_journey_fixtures_are_complete_closed_geometry() {
     for (family, source, boxes, arrows, title, final_label) in cases {
         let output = render_source(source, &options)
             .unwrap_or_else(|error| panic!("{family} geometry failed: {error}"));
-        assert_exact_closed_unicode_boxes(&output, boxes);
-        assert_eq!(output.matches('▼').count(), arrows, "{family}:\n{output}");
-        if arrows > 0 {
-            assert_clean_vertical_chain(&output, arrows);
-        }
+        assert_closed_unicode_boxes(&output, boxes);
+        let directed_arrows = output.matches('▶').count() + output.matches('▼').count();
+        assert_eq!(directed_arrows, arrows, "{family}:\n{output}");
         assert!(
             output.contains(title),
             "{family} lost title '{title}':\n{output}"
@@ -1812,7 +1799,7 @@ fn kanban_timeline_and_journey_fixtures_are_complete_closed_geometry() {
 }
 
 #[test]
-fn timeline_events_are_closed_nodes_on_one_ordered_spine() {
+fn timeline_events_are_closed_nodes_on_one_ordered_chain() {
     let source = "timeline\n  title Release\n  section Plan\n    Design: Kickoff: Review\n    Build\n      : Deploy: Observe\n  section Ship\n    Launch: Announce";
     let output = render_source(
         source,
@@ -1820,8 +1807,8 @@ fn timeline_events_are_closed_nodes_on_one_ordered_spine() {
     )
     .unwrap();
 
-    assert_exact_closed_unicode_boxes(&output, 10);
-    assert_clean_vertical_chain(&output, 9);
+    assert_closed_unicode_boxes(&output, 10);
+    assert_eq!(output.matches('▶').count(), 9, "{output}");
     let labels = [
         "[Section] Plan",
         "[Period] Design",
@@ -1836,11 +1823,58 @@ fn timeline_events_are_closed_nodes_on_one_ordered_spine() {
     ];
     for pair in labels.windows(2) {
         assert!(
-            label_position(&output, pair[0]).0 < label_position(&output, pair[1]).0,
+            label_position(&output, pair[0]) < label_position(&output, pair[1]),
             "timeline order was not preserved:\n{output}"
         );
     }
     assert_no_structured_fallback(&output);
+}
+
+#[test]
+fn journey_and_timeline_fit_compact_terminal_height() {
+    let cases = [
+        (
+            "journey",
+            include_str!("fixtures/journey.zh.mmd"),
+            ["[Actors]", "[Section] 浏览", "[Task] 收到确认"],
+        ),
+        (
+            "timeline",
+            include_str!("fixtures/timeline.zh.mmd"),
+            ["[Section] 2010年", "[Period] A轮融资", "[Period] 上市"],
+        ),
+    ];
+
+    for charset in [Charset::Unicode, Charset::Ascii] {
+        let options = if charset == Charset::Unicode {
+            MermansiOptions::unicode()
+        } else {
+            MermansiOptions::ascii()
+        }
+        .with_output_mode(OutputMode::Concise)
+        .with_max_width(95)
+        .with_max_height(30);
+
+        for (family, source, labels) in cases {
+            let output = render_source(source, &options)
+                .unwrap_or_else(|error| panic!("{family} compact render failed: {error}"));
+            assert!(output.lines().count() <= 30, "{family}:\n{output}");
+            assert!(
+                output.lines().all(|line| str_display_width(line) <= 95),
+                "{family}:\n{output}"
+            );
+            for label in labels {
+                assert!(output.contains(label), "{family} lost '{label}':\n{output}");
+            }
+            if charset == Charset::Unicode {
+                assert_closed_unicode_boxes(&output, 8);
+                assert_eq!(output.matches('▶').count(), 7, "{family}:\n{output}");
+            } else {
+                assert!(output.matches('+').count() >= 32, "{family}:\n{output}");
+                assert_eq!(output.matches('>').count(), 7, "{family}:\n{output}");
+            }
+        }
+    }
 }
 
 #[test]
@@ -1954,8 +1988,8 @@ fn timeline_and_journey_handle_duplicate_empty_and_orphan_sections() {
         &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
     )
     .unwrap();
-    assert_exact_closed_unicode_boxes(&timeline_output, 8);
-    assert_clean_vertical_chain(&timeline_output, 7);
+    assert_closed_unicode_boxes(&timeline_output, 8);
+    assert_eq!(timeline_output.matches('▶').count(), 7, "{timeline_output}");
     assert_eq!(timeline_output.matches("[Section] Plan").count(), 2);
     for text in [
         "[Section] (unnamed)",
@@ -2008,8 +2042,8 @@ fn timeline_and_journey_handle_duplicate_empty_and_orphan_sections() {
         &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
     )
     .unwrap();
-    assert_exact_closed_unicode_boxes(&journey_output, 8);
-    assert_clean_vertical_chain(&journey_output, 7);
+    assert_closed_unicode_boxes(&journey_output, 8);
+    assert_eq!(journey_output.matches('▶').count(), 7, "{journey_output}");
     assert_eq!(journey_output.matches("[Section] Plan").count(), 2);
     for text in [
         "Alice, Bob, 用户",

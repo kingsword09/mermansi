@@ -2,12 +2,13 @@ schema_version = 2
 id = "task-0011-create-the-next-task-because-user-visibl#0006"
 number = 6
 title = "Journey and Timeline force sparse single-column chains"
-status = "open"
+status = "resolved"
 severity = "P2"
 category = "layout-density"
 fingerprint = "sha256:effe7dc2600c6d06cfed31224416553f2a3134ad88d70421db2dc75c5c663499"
 created_at = "unix:1785595960"
-updated_at = "unix:1785595960"
+updated_at = "unix:1785637267"
+resolved_at = "unix:1785637267"
 
 [source]
 kind = "review"
@@ -24,3 +25,7 @@ impact = "Common diagrams require excessive scrolling and appear sparse rather t
 [acceptance]
 description = "Use a compact ordered layout that consumes available width while preserving sequence, section/task association, actors, scores, events, closed nodes, and connected progression in ASCII and Unicode. The representative 95-column Journey and Timeline fixtures must each fit within 30 rows."
 command = "cargo test --test semantic_integrity journey_and_timeline_fit_compact_terminal_height -- --exact"
+
+[resolution]
+review = "../../reviews/iteration-0006.json"
+description = "Resolved by using the shared width-aware packed layout with left-to-right chain edges. The 100-column ASG fixtures dropped from 55/44 rows to 19/15 rows while preserving every node, label, score, actor, event, and directed connection."

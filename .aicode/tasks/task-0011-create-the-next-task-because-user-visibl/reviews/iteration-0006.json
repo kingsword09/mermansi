@@ -1,0 +1,79 @@
+{
+  "schema_version": 2,
+  "task": "task-0011-create-the-next-task-because-user-visibl",
+  "iteration": 6,
+  "loop_iteration": 6,
+  "created_at": "unix:1785637267",
+  "objective": "Resolve Issue 0006 by making Journey and Timeline compact, ordered, width-aware terminal diagrams.",
+  "plan": {
+    "objective": "Review packed row-major layout, complete directed chains, 95x30 acceptance, existing semantic coverage, full verification, and regenerated ASG output.",
+    "steps": [
+      {
+        "id": "step-1",
+        "description": "Verify existing shared packing consumes available width without changing item construction or semantic order."
+      },
+      {
+        "id": "step-2",
+        "description": "Verify every section, task, period, event, actor, score, and N-1 directed chain edge remains visible in both charsets."
+      },
+      {
+        "id": "step-3",
+        "description": "Run the 95x30 acceptance and full checks, regenerate all ASG output, and visually inspect Journey and Timeline."
+      }
+    ]
+  },
+  "implementation": {
+    "summary": "Changed Journey and Timeline from one top-to-bottom topological rank per item to the existing width-aware packed layout, with left-to-right directed chain edges and deterministic wrap routes. Updated tests to assert layout-independent closed nodes and complete directed chains, retained order checks, and added an exact 95-column, 30-row ASCII/Unicode acceptance test.",
+    "changed": true
+  },
+  "verification": {
+    "passed": true,
+    "summary": "Focused compact-layout and semantic tests, all repository checks, and regenerated ASG visual inspection passed. Journey fell from 55 to 19 ASG rows and Timeline from 44 to 15 rows, with readable row-wrap routes.",
+    "commands": [
+      {
+        "command": "cargo test --test semantic_integrity journey_and_timeline_fit_compact_terminal_height -- --exact",
+        "passed": true,
+        "output": "1 passed; 0 failed for both families in ASCII and Unicode at 95x30."
+      },
+      {
+        "command": "cargo test --test semantic_integrity timeline_ -- --nocapture",
+        "passed": true,
+        "output": "4 passed; 0 failed."
+      },
+      {
+        "command": "cargo test --test semantic_integrity journey_ -- --nocapture",
+        "passed": true,
+        "output": "3 passed; 0 failed."
+      },
+      {
+        "command": "cargo fmt --check",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "passed": true,
+        "output": "Exit status 0 in the reviewed worktree."
+      },
+      {
+        "command": "cargo test --all-targets --all-features",
+        "passed": true,
+        "output": "All suites passed, including 27 library tests and 130 semantic-integrity tests."
+      },
+      {
+        "command": "scripts/asg-gallery.sh /Users/kingsword09/Documents/code/ai/asg/target/release/asg .aicode/state/task-0011-asg/current",
+        "passed": true,
+        "output": "Generated 33/33 SVGs; Journey is 19 terminal rows and Timeline is 15 terminal rows, both visually inspected."
+      }
+    ]
+  },
+  "verdict": "pass",
+  "summary": "Issue 0006 passes with no new findings. Journey and Timeline now use terminal width for compact row-major progression while preserving all semantic items, associations, directed order, charset behavior, bounds, and determinism. Issue 0007 remains outside this Review.",
+  "findings": [],
+  "resolutions": [
+    {
+      "number": 6,
+      "description": "Resolved by shared packed layout, horizontal directed chains with deterministic wrap routes, exact compactness coverage, full verification, and ASG inspection."
+    }
+  ]
+}
