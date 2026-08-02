@@ -1,12 +1,9 @@
 name: Publish
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to publish (e.g. 0.2.0)"
-        required: true
-        type: string
+  push:
+    tags:
+      - 'v*'
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,7 +13,7 @@ jobs:
     name: Publish to crates.io
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
 
     steps:
@@ -25,11 +22,12 @@ jobs:
       - name: Install Rust toolchain
         run: rustup show active-toolchain
 
-      - name: Verify version matches Cargo.toml
+      - name: Verify version matches tag
         run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
           CARGO_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
-          if [ "$CARGO_VERSION" != "${{ inputs.version }}" ]; then
-            echo "::error::Cargo.toml version '$CARGO_VERSION' does not match input '${{ inputs.version }}'"
+          if [ "$CARGO_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Cargo.toml version '$CARGO_VERSION' does not match tag '$GITHUB_REF_NAME'"
             exit 1
           fi
 
@@ -38,15 +36,3 @@ jobs:
 
       - name: cargo publish
         run: cargo publish
-
-      - name: Create Git tag
-        run: |
-          git tag "v${{ inputs.version }}"
-          git push origin "v${{ inputs.version }}"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          tag_name: v${{ inputs.version }}
-          name: v${{ inputs.version }}
-          generate_release_notes: true

@@ -1,0 +1,7 @@
+[tagpr]
+	vPrefix = true
+	versionFile = Cargo.toml
+	releaseBranch = main
+	release = true
+	changelog = true
+	template = .github/tagpr_template.md
