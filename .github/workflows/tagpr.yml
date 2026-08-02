@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Optional exact version to release (e.g. 0.3.0). Leave empty to auto-bump."
+        required: false
+        type: string
 
 jobs:
   tagpr:
@@ -22,3 +27,38 @@ jobs:
         id: tagpr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply custom release version
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if ! echo "$RELEASE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid version '$RELEASE_VERSION'. Expected e.g. 0.3.0"
+            exit 1
+          fi
+
+          PR_INFO=$(gh pr list --state open --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("tagpr-from-")) | "\(.number) \(.headRefName)"' | head -1)
+          if [ -z "$PR_INFO" ]; then
+            echo "::error::No open tagpr release PR found. Nothing to release."
+            exit 1
+          fi
+          PR_NUM=${PR_INFO%% *}
+          PR_REF=${PR_INFO#* }
+
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch origin "$PR_REF"
+          git checkout "$PR_REF"
+
+          sed -i "s/^version = .*/version = \"$RELEASE_VERSION\"/" Cargo.toml
+          git add Cargo.toml
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "chore(release): set version to $RELEASE_VERSION"
+          git push origin "HEAD:$PR_REF"
+
+          gh pr edit "$PR_NUM" --title "chore(release): $RELEASE_VERSION"
