@@ -34,12 +34,12 @@ mkdir -p "$output/svg" "$output/png"
 for cast in "$output"/casts/*.cast; do
     id=$(basename "$cast" .cast)
     "$asg_bin" "$cast" "$output/svg/$id.svg" \
-        --window --at 0.01 --no-cursor --theme github-dark --cols "$terminal_width"
+        --window --at 0.01 --no-cursor --theme github-dark
 done
 
-# Showcase: one animated SVG playing every diagram in sequence.
+# Showcase: complete representative frames only; the static gallery retains all outputs.
 "$asg_bin" "$output/showcase.cast" "$output/svg/showcase.svg" \
-    --window --no-cursor --theme github-dark --cols "$terminal_width" --fps 20
+    --window --no-cursor --theme github-dark --from 0.001 --fps 20
 
 if command -v rsvg-convert >/dev/null 2>&1; then
     for svg in "$output"/svg/*.svg; do

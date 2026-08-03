@@ -288,6 +288,22 @@ impl Canvas {
         self.style_suffix[index].clear();
     }
 
+    pub(crate) fn merge_stroke_connections(
+        &mut self,
+        x: usize,
+        y: usize,
+        connections: [bool; 4],
+        charset: Charset,
+    ) {
+        let mut directions = 0;
+        for (connected, direction) in connections.into_iter().zip([NORTH, EAST, SOUTH, WEST]) {
+            if connected {
+                directions |= direction;
+            }
+        }
+        self.merge_stroke(x, y, directions, charset);
+    }
+
     /// Set a single character at `(x, y)` as an atomic grapheme write.
     pub fn set_char(&mut self, x: usize, y: usize, ch: char) -> Result<()> {
         let mut encoded = [0u8; 4];

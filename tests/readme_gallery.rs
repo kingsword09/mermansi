@@ -4,6 +4,17 @@ use std::fs;
 use std::path::Path;
 
 const FAMILY_COUNT: usize = 29;
+const SHOWCASE_IDS: &[&str] = &[
+    "ARCHITECTURE",
+    "FLOWCHART",
+    "GITGRAPH",
+    "MINDMAP",
+    "PACKET",
+    "PIE",
+    "SEQUENCE",
+    "TREEMAP",
+    "VENN",
+];
 const SCENARIOS: &[(&str, &str)] = &[
     ("deployment-c4", "tests/scenarios/deployment.c4.mmd"),
     (
@@ -42,6 +53,10 @@ fn readme_embeds_the_exact_supported_svg_gallery() {
         readme.contains("PUBLISH_README=1"),
         "README must document the explicit gallery publication command"
     );
+    assert!(
+        readme.contains("34-asset gate"),
+        "README must describe the family/scenario/showcase publication gate accurately"
+    );
 
     for family in families {
         assert_gallery_entry(
@@ -71,6 +86,27 @@ fn readme_embeds_the_exact_supported_svg_gallery() {
     assert!(
         hero_svg.contains("@keyframes"),
         "{hero_asset} must remain an animated ASG capture"
+    );
+    assert!(
+        svg_dimension(hero_svg, "height") <= 700,
+        "{hero_asset} must remain compact enough for the README"
+    );
+    for (index, id) in SHOWCASE_IDS.iter().enumerate() {
+        assert!(
+            hero_svg.contains(&format!("MERMAID / {id}")),
+            "{hero_asset} is missing complete showcase frame {id}"
+        );
+        assert!(
+            hero_svg.contains(&format!("{:02} / {:02}", index + 1, SHOWCASE_IDS.len())),
+            "{hero_asset} is missing the progress label for {id}"
+        );
+    }
+
+    let info_svg = fs::read_to_string(root.join("docs/gallery/info.svg"))
+        .expect("compact info gallery asset must be readable");
+    assert!(
+        svg_dimension(&info_svg, "width") <= 400,
+        "compact diagrams must not retain the old fixed 100-column canvas"
     );
 }
 
@@ -126,4 +162,23 @@ fn assert_gallery_entry(root: &Path, readme: &str, id: &str, source: &str) {
         svg.contains("viewBox=") && svg.contains("MERMAID / "),
         "{asset} must remain a real ASG terminal capture"
     );
+    assert!(
+        !svg.contains("@keyframes"),
+        "{asset} must be a complete static frame, not an animation"
+    );
+}
+
+fn svg_dimension(svg: &str, name: &str) -> usize {
+    let root = svg
+        .split_once('>')
+        .map(|(root, _)| root)
+        .expect("SVG root must close its opening tag");
+    let marker = format!("{name}=\"");
+    let value = root
+        .split_once(&marker)
+        .and_then(|(_, rest)| rest.split_once('\"').map(|(value, _)| value))
+        .unwrap_or_else(|| panic!("SVG root is missing {name:?}"));
+    value
+        .parse()
+        .unwrap_or_else(|error| panic!("SVG {name:?} is not an integer: {error}"))
 }

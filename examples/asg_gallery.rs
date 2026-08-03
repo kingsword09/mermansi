@@ -10,6 +10,18 @@ use mermansi::str_display_width;
 use serde_json::json;
 
 const EXPECTED_FAMILY_COUNT: usize = 29;
+const MIN_TERMINAL_COLUMNS: usize = 36;
+const SHOWCASE_IDS: &[&str] = &[
+    "architecture",
+    "flowchart",
+    "gitgraph",
+    "mindmap",
+    "packet",
+    "pie",
+    "sequence",
+    "treemap",
+    "venn",
+];
 
 struct Config {
     project: PathBuf,
@@ -44,10 +56,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         rendered_entries.push((entry.id.clone(), rendered.clone()));
         let rows = rendered.lines().count();
         let columns = rendered.lines().map(str_display_width).max().unwrap_or(0);
-        let terminal_rows = u16::try_from(rows.saturating_add(2).max(3))?;
-        let terminal_columns = u16::try_from(config.terminal_width)?;
+        let terminal_rows = u16::try_from(rows.saturating_add(3).max(4))?;
+        let terminal_columns = terminal_columns_for(&entry.id, columns, config.terminal_width)?;
         let terminal_text = format!(
-            "\u{1b}[1;36mMERMAID / {}\u{1b}[0m\r\n{}",
+            "\u{1b}[1;36mMERMAID / {}\u{1b}[0m\r\n\r\n{}",
             entry.id.to_ascii_uppercase(),
             rendered.replace('\n', "\r\n"),
         );
@@ -102,63 +114,133 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// Write a single combined v3 cast that plays every rendered diagram in
-/// sequence: clear screen, print the MERMAID banner, then type each line.
+/// Write a compact v3 cast whose visual events are always complete diagrams.
 fn write_showcase_cast(
     output: &Path,
     terminal_width: usize,
     rendered: &[(String, String)],
 ) -> Result<(), Box<dyn Error>> {
-    let max_rows = rendered
+    fs::write(
+        output.join("showcase.cast"),
+        showcase_cast(terminal_width, rendered)?,
+    )?;
+    Ok(())
+}
+
+fn showcase_cast(
+    terminal_width: usize,
+    rendered: &[(String, String)],
+) -> Result<String, Box<dyn Error>> {
+    let selected = SHOWCASE_IDS
+        .iter()
+        .map(|id| {
+            rendered
+                .iter()
+                .find(|(candidate, _)| candidate == id)
+                .ok_or_else(|| invalid_input(format!("showcase entry is missing: {id}")))
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    let total = selected.len();
+    let content_columns = selected
+        .iter()
+        .flat_map(|(_, text)| text.lines())
+        .map(str_display_width)
+        .max()
+        .unwrap_or(0)
+        .saturating_add(4);
+    let header_columns = selected
+        .iter()
+        .enumerate()
+        .map(|(index, (id, _))| str_display_width(&showcase_header(id, index + 1, total)))
+        .max()
+        .unwrap_or(0);
+    let required_columns = content_columns
+        .max(header_columns)
+        .max(MIN_TERMINAL_COLUMNS);
+    if required_columns > terminal_width {
+        return Err(invalid_input(format!(
+            "showcase needs {required_columns} columns, terminal limit is {terminal_width}"
+        ))
+        .into());
+    }
+    let terminal_columns = u16::try_from(required_columns)?;
+    let max_rows = selected
         .iter()
         .map(|(_, text)| text.lines().count())
         .max()
         .unwrap_or(0)
-        .saturating_add(2);
-    let terminal_rows = u16::try_from(max_rows.max(3))?;
+        .saturating_add(3);
+    let terminal_rows = u16::try_from(max_rows.max(4))?;
     let header = json!({
         "version": 3,
         "term": {
-            "cols": terminal_width,
+            "cols": terminal_columns,
             "rows": terminal_rows,
             "type": "xterm-256color",
         },
         "title": "mermansi / showcase",
     });
     let mut cast = format!("{header}\n");
-    // asciicast v3 event times are relative intervals, not absolute
-    // timestamps: emit each event as its delta from the previous one.
-    let mut delta = 0.05f64;
-    for (id, text) in rendered {
-        let rows = text.lines().count();
-        let label = id.to_ascii_uppercase();
-        let title = format!(
-            "\u{1b}[1;36m\u{2500}\u{2500} {label} {}\u{2500}\u{2500}\u{1b}[0m",
-            "\u{2500}".repeat(label.len())
-        );
-
-        // Announce the diagram on its own screen: clear, show a centered
-        // title card with a box rule, and hold it before drawing.
-        cast.push_str(&format!("{}\n", json!([delta, "o", "\u{1b}[2J\u{1b}[H"])));
-        delta = 0.05;
+    let mut previous_rows = None;
+    for (index, (id, text)) in selected.iter().enumerate() {
+        let delta = previous_rows.map_or(0.001, showcase_hold);
+        let frame = showcase_frame(id, text, index + 1, total, required_columns);
+        cast.push_str(&format!("{}\n", json!([delta, "o", frame])));
+        previous_rows = Some(text.lines().count());
+    }
+    if let Some(rows) = previous_rows {
         cast.push_str(&format!(
             "{}\n",
-            json!([delta, "o", format!("{title}\r\n")])
+            json!([showcase_hold(rows), "m", "complete"])
         ));
-        // Read the title before the diagram starts drawing. A marker event
-        // advances the clock without changing the terminal contents.
-        delta = 0.80;
-        cast.push_str(&format!("{}\n", json!([delta, "m", "title"])));
-        // Type the rendered diagram line by line.
-        for line in text.lines() {
-            cast.push_str(&format!("{}\n", json!([0.02, "o", format!("{line}\r\n")])));
-        }
-        // Hold the finished diagram long enough to actually read it.
-        // Reading time scales with diagram height, capped at 4 seconds.
-        delta = (0.9 + rows as f64 * 0.06).min(4.0);
     }
-    fs::write(output.join("showcase.cast"), cast)?;
-    Ok(())
+    Ok(cast)
+}
+
+fn showcase_header(id: &str, index: usize, total: usize) -> String {
+    format!(
+        "MERMAID / {}  {:02} / {:02}",
+        id.to_ascii_uppercase(),
+        index,
+        total
+    )
+}
+
+fn showcase_frame(id: &str, text: &str, index: usize, total: usize, width: usize) -> String {
+    let label = format!("MERMAID / {}", id.to_ascii_uppercase());
+    let counter = format!("{index:02} / {total:02}");
+    let gap = width.saturating_sub(str_display_width(&label) + str_display_width(&counter));
+    let content_width = text.lines().map(str_display_width).max().unwrap_or(0);
+    let indent = " ".repeat(width.saturating_sub(content_width) / 2);
+    let mut frame = format!(
+        "\u{1b}[2J\u{1b}[H\u{1b}[1;36m{label}\u{1b}[0m{}\u{1b}[2m{counter}\u{1b}[0m\r\n\r\n",
+        " ".repeat(gap)
+    );
+    for line in text.lines() {
+        frame.push_str(&indent);
+        frame.push_str(line);
+        frame.push_str("\r\n");
+    }
+    frame
+}
+
+fn showcase_hold(rows: usize) -> f64 {
+    (1.4 + rows as f64 * 0.045).min(3.0)
+}
+
+fn terminal_columns_for(id: &str, rendered_columns: usize, limit: usize) -> io::Result<u16> {
+    let header_columns = str_display_width(&format!("MERMAID / {}", id.to_ascii_uppercase()));
+    let required = rendered_columns
+        .saturating_add(2)
+        .max(header_columns.saturating_add(2))
+        .max(MIN_TERMINAL_COLUMNS);
+    if required > limit {
+        return Err(invalid_input(format!(
+            "{id} needs {required} terminal columns, configured limit is {limit}"
+        )));
+    }
+    u16::try_from(required)
+        .map_err(|_| invalid_input(format!("{id} terminal width does not fit in u16")))
 }
 
 impl Config {
@@ -198,6 +280,13 @@ impl Config {
                 }
                 other => return Err(invalid_input(format!("unknown argument: {other}")).into()),
             }
+        }
+        if config.render_width.saturating_add(2) > config.terminal_width {
+            return Err(invalid_input(format!(
+                "--terminal-width must be at least --render-width + 2 ({} required)",
+                config.render_width.saturating_add(2)
+            ))
+            .into());
         }
         Ok(config)
     }
@@ -298,6 +387,51 @@ fn render_cli(config: &Config, source: &Path) -> Result<String, Box<dyn Error>> 
 
 fn gallery_html(figures: &str) -> String {
     format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>mermansi ASG visual audit</title><style>html{{color-scheme:dark}}body{{margin:0;background:#111418;color:#e8edf2;font:14px ui-monospace,SFMono-Regular,Menlo,monospace}}header{{position:sticky;top:0;z-index:1;padding:12px 20px;background:#171b20;border-bottom:1px solid #343a42}}h1{{margin:0;font-size:16px}}main{{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px;padding:16px}}figure{{min-width:0;margin:0;border:1px solid #343a42;background:#20252b}}figcaption{{display:flex;justify-content:space-between;padding:8px 10px;color:#a9bac8;border-bottom:1px solid #343a42}}img{{display:block;width:100%;height:auto;background:#0d1117}}</style></head><body><header><h1>mermansi / ASG / 29 families + scenarios</h1></header><main>{figures}</main></body></html>"
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>mermansi ASG visual audit</title><style>:root{{--page:#111418;--surface:#171b20;--panel:#20252b;--line:#343a42;--text:#e8edf2;--muted:#a9bac8;--accent:#58a6ff}}html{{color-scheme:dark}}body{{margin:0;background:var(--page);color:var(--text);font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}}header{{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--line)}}h1,h2{{margin:0;font-size:16px;letter-spacing:0}}a{{color:var(--accent)}}.showcase{{padding:24px;border-bottom:1px solid var(--line)}}.showcase-inner{{display:grid;gap:12px;max-width:1040px;margin:0 auto}}.showcase img{{display:block;width:100%;height:auto;background:#0d1117}}main{{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;padding:16px}}figure{{min-width:0;margin:0;border:1px solid var(--line);background:var(--panel)}}figcaption{{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;color:var(--muted);border-bottom:1px solid var(--line)}}figure img{{display:block;width:100%;height:auto;background:#0d1117}}@media(max-width:560px){{header{{align-items:flex-start;flex-direction:column;padding:12px 16px}}.showcase{{padding:16px}}main{{padding:12px;gap:12px}}}}</style></head><body><header><h1>mermansi / ASG / 29 families + 4 scenarios</h1><a href=\"svg/showcase.svg\">showcase.svg</a></header><section class=\"showcase\"><div class=\"showcase-inner\"><h2>Animated showcase</h2><a href=\"svg/showcase.svg\"><img src=\"svg/showcase.svg\" alt=\"Animated mermansi terminal rendering showcase\"></a></div></section><main>{figures}</main></body></html>"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn static_gallery_columns_are_compact_and_bounded() {
+        assert_eq!(terminal_columns_for("class", 16, 100).unwrap(), 36);
+        assert_eq!(terminal_columns_for("packet", 95, 100).unwrap(), 97);
+        assert!(terminal_columns_for("packet", 95, 96).is_err());
+    }
+
+    #[test]
+    fn showcase_cast_switches_only_between_complete_frames() {
+        let rendered = SHOWCASE_IDS
+            .iter()
+            .enumerate()
+            .map(|(index, id)| ((*id).to_owned(), format!("┌──┐\n│{index:02}│\n└──┘\n")))
+            .collect::<Vec<_>>();
+        let cast = showcase_cast(80, &rendered).unwrap();
+        let mut lines = cast.lines();
+        let header: serde_json::Value = serde_json::from_str(lines.next().unwrap()).unwrap();
+        assert_eq!(header["term"]["cols"], MIN_TERMINAL_COLUMNS);
+        assert_eq!(header["term"]["rows"], 6);
+
+        let events = lines
+            .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+            .collect::<Vec<_>>();
+        let output_events = events
+            .iter()
+            .filter(|event| event[1] == "o")
+            .collect::<Vec<_>>();
+        assert_eq!(output_events.len(), SHOWCASE_IDS.len());
+        assert_eq!(output_events[0][0], 0.001);
+        for (index, (event, id)) in output_events.iter().zip(SHOWCASE_IDS).enumerate() {
+            let payload = event[2].as_str().unwrap();
+            assert!(payload.starts_with("\u{1b}[2J\u{1b}[H"));
+            assert!(payload.contains(&id.to_ascii_uppercase()));
+            assert!(payload.contains(&format!("│{index:02}│")));
+            assert!(payload.contains("└──┘\r\n"));
+        }
+        assert_eq!(events.last().unwrap()[1], "m");
+        assert_eq!(events.last().unwrap()[2], "complete");
+    }
 }

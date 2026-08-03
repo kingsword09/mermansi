@@ -156,18 +156,20 @@ workflow records concise output through the real `mermansi` CLI, converts asciic
 with an externally supplied [ASG](https://github.com/kingsword09/asg) binary, and creates an
 inspectable HTML index. Generated text, casts, SVGs, and PNG previews stay under the ignored
 `.aicode/state/` directory during normal audits. Set `PUBLISH_README=1` to refresh the validated
-33-SVG snapshot tracked in `docs/gallery/` and embedded by the repository README.
+34-SVG snapshot tracked in `docs/gallery/` and embedded by the repository README.
 
 ```sh
 ASG_BIN=/absolute/path/to/asg/target/release/asg scripts/asg-gallery.sh
 
-# Refresh README assets only after the 33-image generation gate passes
+# Refresh README assets only after the 34-asset generation gate passes
 PUBLISH_README=1 ASG_BIN=/absolute/path/to/asg/target/release/asg scripts/asg-gallery.sh
 ```
 
-The default run uses a 95-column render budget inside a 100-column terminal and produces 33 SVGs:
-all 29 supported fixture families plus the deployment Flowchart, C4Deployment, complex IPv4 Packet,
-and rack Architecture alternative scenarios. A successful file count is not a visual pass; every
+The default run uses a 95-column render budget and a 100-column terminal limit. Each static capture
+uses only the columns its content needs. It produces 34 SVGs: all 29 supported fixture families,
+the deployment Flowchart, C4Deployment, complex IPv4 Packet, rack Architecture alternative, and a
+compact animated showcase. The showcase changes only between complete diagram frames; the static
+assets remain the exhaustive audit surface. A successful file count is not a visual pass; every
 SVG in the generated `index.html` must be inspected before a rendering Task is completed.
 `tests/readme_gallery.rs` separately enforces exact parity between those family/scenario IDs, the
 tracked SVG filenames, complete ASG SVG roots, and README image/source references.

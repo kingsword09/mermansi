@@ -151,8 +151,10 @@ let unicode_output = render_source_unicode(mermaid_text).unwrap();
 `mermansi` outputs terminal text, not native SVG. Every image below is an
 [ASG](https://github.com/kingsword09/asg) capture of real CLI output produced with
 `mermansi --unicode --no-color --concise`, using a 95-column diagram budget inside a 100-column
-terminal. The animated hero above plays all 29 families and 4 scenarios in sequence, generated
-from a single asciicast v3 recording.
+terminal limit. Static captures shrink to their actual content width so compact diagrams remain
+legible. The animated hero above switches between nine representative, fully rendered diagrams;
+the complete gallery below retains all 29 families and 4 scenarios. Each hero state is emitted as
+one asciicast v3 frame, so box borders are never exposed half-drawn.
 The canonical gallery uses Chinese fixtures so CJK display-width behavior is visible rather than
 only asserted by tests. Select an image for its full-size SVG or select **source** for the Mermaid
 fixture that produced it.
@@ -242,7 +244,7 @@ fixture that produced it.
 </details>
 
 Regenerate the ignored audit workspace and refresh the tracked README assets only after the
-33-image gate passes:
+34-asset gate passes:
 
 ```sh
 PUBLISH_README=1 ASG_BIN=/absolute/path/to/asg/target/release/asg scripts/asg-gallery.sh

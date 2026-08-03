@@ -1373,7 +1373,13 @@ fn draw_path(
             '.'
         };
         for (index, point) in cells.into_iter().enumerate() {
-            if index != 0 && index != last && index.is_multiple_of(2) {
+            let occupied = canvas
+                .get_cell(point.x, point.y)
+                .is_some_and(|cell| !cell.is_empty())
+                || canvas.continuation_owner(point.x, point.y).is_some();
+            if occupied || index == 0 || index == last {
+                merge_path_cell(canvas, points, point, charset);
+            } else {
                 canvas.set_char(point.x, point.y, glyph)?;
             }
         }
@@ -1389,6 +1395,32 @@ fn draw_path(
         }
     }
     Ok(())
+}
+
+fn merge_path_cell(canvas: &mut Canvas, points: &[Point], point: Point, charset: Charset) {
+    let mut connections = [false; 4];
+    for pair in points.windows(2) {
+        if pair[0].x == pair[1].x
+            && point.x == pair[0].x
+            && point.y >= pair[0].y.min(pair[1].y)
+            && point.y <= pair[0].y.max(pair[1].y)
+        {
+            let start = pair[0].y.min(pair[1].y);
+            let end = pair[0].y.max(pair[1].y);
+            connections[0] |= point.y > start;
+            connections[2] |= point.y < end;
+        } else if pair[0].y == pair[1].y
+            && point.y == pair[0].y
+            && point.x >= pair[0].x.min(pair[1].x)
+            && point.x <= pair[0].x.max(pair[1].x)
+        {
+            let start = pair[0].x.min(pair[1].x);
+            let end = pair[0].x.max(pair[1].x);
+            connections[3] |= point.x > start;
+            connections[1] |= point.x < end;
+        }
+    }
+    canvas.merge_stroke_connections(point.x, point.y, connections, charset);
 }
 
 fn path_cells(points: &[Point]) -> Vec<Point> {

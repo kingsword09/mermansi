@@ -273,3 +273,35 @@ fn box_family_routes_preserve_closed_boundaries() {
         }
     }
 }
+
+#[test]
+fn dotted_routes_cross_group_boundaries_without_erasing_them() {
+    let source = "flowchart TD\n\
+        subgraph Group\n\
+          A[Inside]\n\
+        end\n\
+        A -.-> B[Outside]";
+
+    let unicode = render_source(source, &concise_options(Charset::Unicode, 95)).unwrap();
+    let group_bottom = unicode
+        .lines()
+        .find(|line| line.contains('└') && line.contains('┘') && line.contains('┼'))
+        .unwrap_or_else(|| panic!("dotted route did not preserve the group boundary:\n{unicode}"));
+    assert!(!group_bottom.contains('·'), "{unicode}");
+    assert!(
+        unicode.lines().any(|line| line.contains("─────┬────┘")),
+        "dotted route is detached from its source node:\n{unicode}"
+    );
+    assert!(
+        unicode.matches('·').count() >= 2,
+        "dotted route has invisible gaps:\n{unicode}"
+    );
+
+    let ascii = render_source(source, &concise_options(Charset::Ascii, 95)).unwrap();
+    let group_bottom = ascii
+        .lines()
+        .find(|line| line.contains('+') && line.matches('+').count() >= 3)
+        .unwrap_or_else(|| panic!("ASCII group boundary is missing:\n{ascii}"));
+    assert!(!group_bottom.contains('.'), "{ascii}");
+    assert!(ascii.lines().any(|line| line.trim() == "."), "{ascii}");
+}
