@@ -690,7 +690,7 @@ dependencies = [
 
 [[package]]
 name = "mermansi"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "chrono",
  "merman-ascii",
