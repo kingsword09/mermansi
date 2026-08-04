@@ -220,7 +220,7 @@ fn write_help(output: &mut impl Write) -> std::io::Result<()> {
 \n\
 USAGE:\n    mermansi [OPTIONS]\n\
 \n\
-OPTIONS:\n    --file <PATH>      Read Mermaid source from a file (default: stdin)\n    --ascii            Use ASCII charset\n    --unicode          Use Unicode charset (default)\n    --color            Enable ANSI 16-color roles\n    --truecolor        Enable 24-bit ANSI color roles\n    --no-color         Disable ANSI color (default)\n    --concise          Emit terminal geometry only\n    --complete         Emit geometry plus canonical model (default)\n    --width <N>        Maximum output width in terminal columns\n    --height <N>       Maximum output height in terminal rows\n    --version, -V      Print version and exit\n    --help, -h         Print this help and exit\n\
+OPTIONS:\n    --file <PATH>      Read Mermaid source from a file (default: stdin)\n    --ascii            Use ASCII charset\n    --unicode          Use Unicode charset (default)\n    --color            Enable ANSI 16-color roles\n    --truecolor        Enable 24-bit ANSI color roles\n    --no-color         Disable ANSI color (default)\n    --concise          Emit terminal geometry only\n    --complete         Emit geometry plus canonical model (default)\n    --width <N>        Maximum terminal-preview width in columns\n    --height <N>       Maximum terminal-preview height in rows\n    --version, -V      Print version and exit\n    --help, -h         Print this help and exit\n\
 \n\
 EXIT CODES:\n    0  Success\n    1  Parse error\n    2  Render error\n    3  Invalid options or I/O error",
         version = env!("CARGO_PKG_VERSION")

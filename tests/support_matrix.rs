@@ -10,7 +10,10 @@
 
 use merman_core::diagram::RenderSemanticModel;
 use mermansi::ansi::strip_ansi;
-use mermansi::{Charset, ColorMode, MermansiOptions, OutputMode, render_source, str_display_width};
+use mermansi::{
+    Charset, ColorMode, MermansiError, MermansiOptions, OutputMode, render_source,
+    str_display_width,
+};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -172,7 +175,9 @@ fn every_fixture_renders_terminal_geometry_in_the_supported_width_matrix() {
 
     let total: usize = fixtures.values().map(|f| f.all.len()).sum();
     assert!(total >= 58, "expected at least 58 fixtures, found {total}");
-    let mut rendered_combinations = 0usize;
+    let mut attempted_combinations = 0usize;
+    let mut required_combinations = 0usize;
+    let mut narrow_rejections = 0usize;
 
     for (family, f) in &fixtures {
         for file in &f.all {
@@ -199,7 +204,7 @@ fn every_fixture_renders_terminal_geometry_in_the_supported_width_matrix() {
             assert_structured_model_round_trips(&model, &complete, file);
 
             let expected_labels = quoted_fixture_labels(&source);
-            for width in [100, 120] {
+            for width in [40, 60, 80, 100, 120] {
                 for (charset_name, options) in [
                     ("Unicode", MermansiOptions::unicode()),
                     ("ASCII", MermansiOptions::ascii()),
@@ -207,42 +212,65 @@ fn every_fixture_renders_terminal_geometry_in_the_supported_width_matrix() {
                     let options = options
                         .with_output_mode(OutputMode::Concise)
                         .with_max_width(width);
-                    let first = render_source(&source, &options).unwrap_or_else(|error| {
-                        panic!(
+                    let first = render_source(&source, &options);
+                    let second = render_source(&source, &options);
+                    attempted_combinations += 1;
+                    match (first, second) {
+                        (Ok(first), Ok(second)) => {
+                            assert_eq!(
+                                first, second,
+                                "nondeterministic {charset_name} output for '{file}' at width \
+                                 {width}"
+                            );
+                            assert_concise_terminal_geometry(
+                                family,
+                                file,
+                                &source,
+                                &first,
+                                options.charset,
+                                width,
+                                &expected_labels,
+                            );
+                            if width >= 80 {
+                                required_combinations += 1;
+                            }
+                        }
+                        (Err(first), Err(second)) if width < 80 => {
+                            assert!(
+                                matches!(first, MermansiError::RenderLimit { .. }),
+                                "narrow render for '{file}' at width {width} failed with a \
+                                 non-limit error: {first}"
+                            );
+                            assert_eq!(
+                                first.to_string(),
+                                second.to_string(),
+                                "nondeterministic narrow error for '{file}' at width {width}"
+                            );
+                            narrow_rejections += 1;
+                        }
+                        (Err(error), _) | (_, Err(error)) => panic!(
                             "{charset_name} concise render failed for family '{family}' fixture \
-                             '{file}' at width {width}: {error}\nsource:\n{source}"
-                        )
-                    });
-                    let second = render_source(&source, &options).unwrap_or_else(|error| {
-                        panic!(
-                            "repeat {charset_name} concise render failed for '{file}' at width \
-                             {width}: {error}"
-                        )
-                    });
-
-                    assert_eq!(
-                        first, second,
-                        "nondeterministic {charset_name} output for '{file}' at width {width}"
-                    );
-                    assert_concise_terminal_geometry(
-                        family,
-                        file,
-                        &source,
-                        &first,
-                        options.charset,
-                        width,
-                        &expected_labels,
-                    );
-                    rendered_combinations += 1;
+                             '{file}' at required width {width}: {error}\nsource:\n{source}"
+                        ),
+                    }
                 }
             }
         }
     }
 
     assert_eq!(
-        rendered_combinations,
-        total * 2 * 2,
-        "the complete fixture/charset/width matrix was not executed"
+        attempted_combinations,
+        total * 2 * 5,
+        "the complete five-width fixture/charset matrix was not attempted"
+    );
+    assert_eq!(
+        required_combinations,
+        total * 2 * 3,
+        "every fixture and charset must render at 80, 100, and 120 columns"
+    );
+    assert!(
+        narrow_rejections > 0,
+        "40/60-column matrix did not exercise typed width degradation"
     );
 }
 

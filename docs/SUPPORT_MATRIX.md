@@ -142,12 +142,15 @@ geometry instead of delegated summaries or fractured multi-inheritance. Block re
 one routed path, long cycle edges use deterministic outer ports, and unlabeled edge legends are not
 duplicated below the geometry.
 
-`tests/support_matrix.rs` executes every English and Chinese fixture in concise mode at 100 and
-120 display columns in both ASCII and Unicode, for 232 combinations. Each combination must stay
-within its display-column bound, render deterministically with a minimum terminal-geometry signal,
-preserve quoted fixture labels, and contain neither source/structured-text nor semantic-model
-fallback output. Complete-mode renders are also compared with the parsed semantic model so typed
-entities, relationships, hierarchy, and chart values remain lossless.
+`tests/support_matrix.rs` executes every English and Chinese fixture in concise mode at
+40/60/80/100/120 display columns in both ASCII and Unicode, for 580 attempted combinations.
+Every family must render at 80/100/120 columns (348 required successes). At 40/60 columns an
+adapter may instead return a deterministic typed `RenderLimit` when its minimum useful geometry
+cannot fit. Every successful combination stays within its display-column bound, renders
+deterministically with a minimum terminal-geometry signal, preserves quoted fixture labels, and
+contains neither source/structured-text nor semantic-model fallback output. Complete-mode renders
+are also compared with the parsed semantic model so typed entities, relationships, hierarchy, and
+chart values remain lossless; preview dimensions do not rewrite arbitrary canonical JSON strings.
 
 ## ASG visual audit
 

@@ -11,16 +11,15 @@ use crate::adapters::{
     journey::render_journey, json::render_json, kanban::render_kanban, mindmap::render_mindmap,
     packet::render_packet, pie::render_pie, quadrant_chart::render_quadrant_chart,
     radar::render_radar, requirement::render_requirement, sankey::render_sankey,
-    state::render_state, timeline::render_timeline, treemap::render_treemap,
-    treeview::render_treeview, venn::render_venn, xychart::render_xychart,
+    sequence::render_sequence, state::render_state, timeline::render_timeline,
+    treemap::render_treemap, treeview::render_treeview, venn::render_venn, xychart::render_xychart,
 };
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
-use crate::output::render_structured_adapter;
+use crate::output::{AdapterOutput, render_structured_adapter};
 use crate::str_display_width;
 use merman_ascii::{AsciiColorMode, AsciiRenderOptions};
 use merman_core::diagram::RenderSemanticModel;
-use serde::Serialize;
 
 pub mod architecture;
 pub mod block;
@@ -45,6 +44,7 @@ pub mod quadrant_chart;
 pub mod radar;
 pub mod requirement;
 pub mod sankey;
+pub mod sequence;
 pub mod state;
 pub mod timeline;
 pub mod treemap;
@@ -70,6 +70,13 @@ pub(crate) fn to_ascii_options(opts: &MermansiOptions) -> AsciiRenderOptions {
 
 /// Render any [`RenderSemanticModel`] variant.
 pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Result<String> {
+    crate::render_model(model, opts)
+}
+
+pub(crate) fn render_model_output(
+    model: &RenderSemanticModel,
+    opts: &MermansiOptions,
+) -> Result<AdapterOutput> {
     opts.validate()?;
     match model {
         // --- merman-ascii delegated families ---
@@ -77,7 +84,7 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
             render_structured_adapter("flowchart", m, opts, || render_flowchart(m, opts))
         }
         RenderSemanticModel::Sequence(m) => {
-            render_ascii("sequence", m, opts, merman_ascii::render_sequence)
+            render_structured_adapter("sequence", m, opts, || render_sequence(m, opts))
         }
         RenderSemanticModel::State(m) => {
             render_structured_adapter("state", m, opts, || render_state(m, opts))
@@ -160,17 +167,6 @@ pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Resu
             render_structured_adapter("venn", m, opts, || render_venn(m, opts))
         }
     }
-}
-
-fn render_ascii<T: Serialize>(
-    family: &str,
-    model: &T,
-    opts: &MermansiOptions,
-    renderer: fn(&T, &AsciiRenderOptions) -> merman_ascii::Result<String>,
-) -> Result<String> {
-    render_structured_adapter(family, model, opts, || {
-        renderer(model, &to_ascii_options(opts)).map_err(Into::into)
-    })
 }
 
 /// Ensure a string is non-empty; if empty, substitute a placeholder.

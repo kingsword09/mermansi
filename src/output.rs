@@ -1,18 +1,67 @@
 //! Shared deterministic structured output and final render bounds.
 
-use crate::ansi::{AnsiEncoder, AnsiRole, strip_ansi};
+use crate::ansi::{AnsiEncoder, AnsiRole, is_bidi_format_control, strip_ansi};
 use crate::error::{MermansiError, Result};
 use crate::options::{MAX_CANVAS_CELLS, MAX_OUTPUT_BYTES, MermansiOptions, OutputMode};
 use crate::str_display_width;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
+#[derive(Debug)]
+pub(crate) struct AdapterOutput {
+    pub(crate) preview: String,
+    semantic: Option<String>,
+}
+
+impl AdapterOutput {
+    fn preview(preview: String) -> Self {
+        Self {
+            preview,
+            semantic: None,
+        }
+    }
+
+    fn complete(preview: String, semantic: String) -> Self {
+        Self {
+            preview,
+            semantic: Some(semantic),
+        }
+    }
+
+    pub(crate) fn to_text(&self) -> Result<String> {
+        let separator = if self.semantic.is_some() && !self.preview.is_empty() {
+            1 + usize::from(!self.preview.ends_with('\n'))
+        } else {
+            0
+        };
+        let semantic_len = self.semantic.as_ref().map_or(0, String::len);
+        ensure_byte_capacity(self.preview.len(), separator.saturating_add(semantic_len))?;
+        let mut output = String::with_capacity(
+            self.preview
+                .len()
+                .saturating_add(separator)
+                .saturating_add(semantic_len),
+        );
+        output.push_str(&self.preview);
+        if let Some(semantic) = &self.semantic {
+            if !self.preview.is_empty() {
+                if !self.preview.ends_with('\n') {
+                    output.push('\n');
+                }
+                output.push('\n');
+            }
+            output.push_str(semantic);
+        }
+        Ok(output)
+    }
+}
+
 pub(crate) fn render_structured_adapter<T, F>(
     family: &str,
     model: &T,
     opts: &MermansiOptions,
     render_preview: F,
-) -> Result<String>
+) -> Result<AdapterOutput>
 where
     T: Serialize,
     F: FnOnce() -> Result<String>,
@@ -20,41 +69,38 @@ where
     if opts.output_mode == OutputMode::Concise {
         let preview = render_preview()?;
         if !preview.trim().is_empty() {
-            return Ok(preview);
+            return Ok(AdapterOutput::preview(preview));
         }
         ensure_serialized_model_within_limit(model)?;
-        return append_preflighted_structured_model(String::new(), family, model, opts);
+        return Ok(AdapterOutput::preview(render_semantic_section(
+            family, model, opts,
+        )?));
     }
     ensure_serialized_model_within_limit(model)?;
-    append_preflighted_structured_model(render_preview()?, family, model, opts)
+    Ok(AdapterOutput::complete(
+        render_preview()?,
+        render_semantic_section(family, model, opts)?,
+    ))
 }
 
-fn append_preflighted_structured_model<T: Serialize>(
-    mut preview: String,
+fn render_semantic_section<T: Serialize>(
     family: &str,
     model: &T,
     opts: &MermansiOptions,
 ) -> Result<String> {
-    ensure_byte_capacity(preview.len(), 0)?;
-    if !preview.is_empty() {
-        ensure_byte_capacity(preview.len(), 2)?;
-        if !preview.ends_with('\n') {
-            preview.push('\n');
-        }
-        preview.push('\n');
-    }
-
     let header = format!("[{family} semantic model]");
     let encoder = AnsiEncoder::new(opts.color_mode);
     let painted_header = encoder.paint(AnsiRole::SectionHeader, &header);
-    ensure_byte_capacity(preview.len(), painted_header.len().saturating_add(1))?;
-    preview.push_str(&painted_header);
-    preview.push('\n');
+    let mut semantic = String::new();
+    ensure_byte_capacity(0, painted_header.len().saturating_add(1))?;
+    semantic.push_str(&painted_header);
+    semantic.push('\n');
 
     let canonical = canonicalize(serde_json::to_value(model)?);
+    let json_start = semantic.len();
     let (serialization, exceeded) = {
         let mut writer = BoundedStringWriter {
-            output: &mut preview,
+            output: &mut semantic,
             exceeded: None,
         };
         let serialization = serde_json::to_writer_pretty(&mut writer, &canonical);
@@ -68,9 +114,28 @@ fn append_preflighted_structured_model<T: Serialize>(
         });
     }
     serialization?;
-    ensure_byte_capacity(preview.len(), 1)?;
-    preview.push('\n');
-    Ok(preview)
+    let escaped_json = escape_terminal_json_controls(&semantic[json_start..])?;
+    semantic.truncate(json_start);
+    ensure_byte_capacity(semantic.len(), escaped_json.len())?;
+    semantic.push_str(&escaped_json);
+    ensure_byte_capacity(semantic.len(), 1)?;
+    semantic.push('\n');
+    Ok(semantic)
+}
+
+fn escape_terminal_json_controls(input: &str) -> Result<String> {
+    let mut output = String::with_capacity(input.len());
+    for ch in input.chars() {
+        if (ch.is_control() && !matches!(ch, '\n' | '\r' | '\t')) || is_bidi_format_control(ch) {
+            let escaped = format!("\\u{:04x}", ch as u32);
+            ensure_byte_capacity(output.len(), escaped.len())?;
+            output.push_str(&escaped);
+        } else {
+            ensure_byte_capacity(output.len(), ch.len_utf8())?;
+            output.push(ch);
+        }
+    }
+    Ok(output)
 }
 
 pub(crate) fn ensure_serialized_model_within_limit<T: Serialize>(model: &T) -> Result<()> {
@@ -167,7 +232,7 @@ fn canonicalize(value: Value) -> Value {
     }
 }
 
-pub(crate) fn validate_output(output: &str, opts: &MermansiOptions) -> Result<()> {
+pub(crate) fn validate_output(output: &str, preview: &str, opts: &MermansiOptions) -> Result<()> {
     if output.len() > MAX_OUTPUT_BYTES {
         return Err(MermansiError::RenderLimit {
             context: "output bytes",
@@ -178,7 +243,7 @@ pub(crate) fn validate_output(output: &str, opts: &MermansiOptions) -> Result<()
 
     let mut rows = 0usize;
     let mut max_width = 0usize;
-    for line in output.lines() {
+    for line in preview.lines() {
         rows = rows.checked_add(1).ok_or(MermansiError::RenderLimit {
             context: "output rows",
             requested: usize::MAX,
@@ -253,7 +318,7 @@ mod tests {
             || Ok("readable preview\n".to_owned()),
         );
 
-        assert_eq!(result.unwrap(), "readable preview\n");
+        assert_eq!(result.unwrap().to_text().unwrap(), "readable preview\n");
     }
 
     #[test]
@@ -267,6 +332,7 @@ mod tests {
         )
         .unwrap();
 
+        let result = result.to_text().unwrap();
         assert!(result.contains("[json semantic model]"));
         assert!(result.contains("kept"));
     }

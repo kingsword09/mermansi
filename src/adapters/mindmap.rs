@@ -8,6 +8,7 @@ use crate::options::MermansiOptions;
 use merman_core::diagrams::mindmap::MindmapDiagramRenderModel;
 
 pub fn render_mindmap(model: &MindmapDiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
+    box_geometry::ensure_inventory(model.nodes.len(), model.edges.len())?;
     let direction = BoxDirection::Lr;
     let (from_side, to_side) = direction.edge_sides();
     let nodes = model

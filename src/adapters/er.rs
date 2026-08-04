@@ -2,7 +2,10 @@
 
 use std::collections::HashMap;
 
-use crate::adapters::box_geometry::{self, BoxDiagram, BoxLayout, BoxNode, wrap_display};
+use crate::adapters::box_geometry::{
+    self, BoxDiagram, BoxDirection, BoxEdge, BoxLayout, BoxNode, EdgeLegend, EdgeMarker, EdgeStyle,
+    directed_ranks, wrap_display,
+};
 use crate::adapters::{detail_separator, nonempty_or};
 use crate::ansi::sanitize_label_text;
 use crate::error::{MermansiError, Result};
@@ -40,6 +43,27 @@ pub fn render_er(model: &ErDiagramRenderModel, opts: &MermansiOptions) -> Result
         .enumerate()
         .map(|(order, (id, entity))| entity_node(id, entity, order))
         .collect::<Vec<_>>();
+    let direction = BoxDirection::from_str(&model.direction);
+    let (from_side, to_side) = direction.edge_sides();
+    let edges = model
+        .relationships
+        .iter()
+        .map(|relationship| BoxEdge {
+            from: relationship.entity_a.clone(),
+            to: relationship.entity_b.clone(),
+            label: sanitize_label_text(&relationship.role_a),
+            marker_start: EdgeMarker::None,
+            marker_end: EdgeMarker::None,
+            style: if relationship.rel_spec.rel_type == "NON_IDENTIFYING" {
+                EdgeStyle::Dotted
+            } else {
+                EdgeStyle::Solid
+            },
+            from_side: Some(from_side),
+            to_side: Some(to_side),
+        })
+        .collect::<Vec<_>>();
+    let ranks = directed_ranks(&nodes, &edges);
     let mut output = if nodes.is_empty() {
         String::new()
     } else {
@@ -50,10 +74,10 @@ pub fn render_er(model: &ErDiagramRenderModel, opts: &MermansiOptions) -> Result
                 nodes,
                 groups: Vec::new(),
                 spacers: Vec::new(),
-                edges: Vec::new(),
+                edges,
                 columns: None,
-                layout: BoxLayout::Packed,
-                edge_legend: box_geometry::EdgeLegend::None,
+                layout: BoxLayout::Layered { direction, ranks },
+                edge_legend: EdgeLegend::None,
             },
             opts,
         )?
@@ -106,7 +130,11 @@ fn entity_node(id: &str, entity: &ErEntityRenderModel, order: usize) -> BoxNode 
         );
     }
     BoxNode {
-        id: format!("er-{order}"),
+        id: if entity.id.trim().is_empty() {
+            id.to_owned()
+        } else {
+            entity.id.clone()
+        },
         lines,
         dividers,
         parent: None,

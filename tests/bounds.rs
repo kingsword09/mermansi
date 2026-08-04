@@ -133,6 +133,99 @@ fn structured_output_height_is_bounded() {
 }
 
 #[test]
+fn complete_output_keeps_long_semantic_values_outside_preview_width_budget() {
+    let url = format!("https://example.com/{}", "x".repeat(240));
+    let source = format!("sequenceDiagram\n  participant A\n  links A: {{ \"Docs\": \"{url}\" }}");
+    let output = render_source(
+        &source,
+        &MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Complete)
+            .with_max_width(80),
+    )
+    .unwrap();
+    let (preview, semantic) = output
+        .split_once("\n\n[sequence semantic model]\n")
+        .unwrap_or_else(|| panic!("complete output is not separated:\n{output}"));
+
+    assert!(
+        preview
+            .lines()
+            .all(|line| mermansi::str_display_width(line) <= 80),
+        "preview exceeded its terminal width:\n{preview}"
+    );
+    assert!(
+        semantic.contains(&url),
+        "canonical URL was changed:\n{semantic}"
+    );
+    assert!(
+        semantic
+            .lines()
+            .any(|line| mermansi::str_display_width(line) > 80),
+        "test did not exercise the lossless-width conflict"
+    );
+}
+
+#[test]
+fn complete_output_escapes_terminal_controls_without_changing_canonical_json() {
+    let value = serde_json::json!({
+        "c1": "before\u{009d}payload\u{009c}after",
+        "bidi": "left\u{202e}right\u{202c}"
+    });
+    let output = render_model(
+        &RenderSemanticModel::Json(value.clone()),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Complete),
+    )
+    .unwrap();
+    let semantic = output
+        .split_once("[json semantic model]\n")
+        .map(|(_, semantic)| semantic.trim())
+        .unwrap_or_else(|| panic!("canonical JSON is missing:\n{output}"));
+
+    assert!(!semantic.contains('\u{009d}'), "{semantic:?}");
+    assert!(!semantic.contains('\u{009c}'), "{semantic:?}");
+    assert!(!semantic.contains('\u{202e}'), "{semantic:?}");
+    assert!(semantic.contains("\\u009d"), "{semantic}");
+    assert!(semantic.contains("\\u202e"), "{semantic}");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(semantic).unwrap(),
+        value
+    );
+}
+
+#[test]
+fn dense_box_routing_stops_at_the_shared_work_budget() {
+    let node_count = 50usize;
+    let mut source = String::from("flowchart TD\n  subgraph Dense\n");
+    for index in 0..node_count {
+        source.push_str(&format!("    N{index}[N{index}]\n"));
+    }
+    source.push_str("  end\n");
+    for from in 0..node_count {
+        for to in (from + 1)..node_count {
+            source.push_str(&format!("  N{from} --> N{to}\n"));
+        }
+    }
+
+    let result = render_source(
+        &source,
+        &MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(200)
+            .with_max_height(500),
+    );
+    assert!(
+        matches!(
+            result,
+            Err(MermansiError::RenderLimit {
+                context: "route work",
+                ..
+            })
+        ),
+        "dense routing did not stop at the work budget: {result:?}"
+    );
+}
+
+#[test]
 fn structured_output_bytes_are_bounded() {
     let model = RenderSemanticModel::Json(serde_json::json!({
         "label": "x".repeat(MAX_OUTPUT_BYTES)
@@ -507,31 +600,33 @@ fn five_native_geometry_adapters_reject_impossible_narrow_layouts() {
 #[test]
 fn ishikawa_compression_respects_width_and_minimum_slot_bounds() {
     let source = include_str!("fixtures/ishikawa.en.mmd");
-    let rendered = render_source(
-        source,
-        &MermansiOptions::unicode()
-            .with_output_mode(OutputMode::Concise)
-            .with_max_width(95),
-    )
-    .unwrap();
-    assert!(
-        rendered
-            .lines()
-            .all(|line| mermansi::str_display_width(line) <= 95),
-        "compressed Ishikawa exceeded its width bound:\n{rendered}"
-    );
+    for width in [80, 95] {
+        let rendered = render_source(
+            source,
+            &MermansiOptions::unicode()
+                .with_output_mode(OutputMode::Concise)
+                .with_max_width(width),
+        )
+        .unwrap();
+        assert!(
+            rendered
+                .lines()
+                .all(|line| mermansi::str_display_width(line) <= width),
+            "compressed Ishikawa exceeded its {width}-column bound:\n{rendered}"
+        );
+    }
 
     assert!(matches!(
         render_source(
             source,
             &MermansiOptions::unicode()
                 .with_output_mode(OutputMode::Concise)
-                .with_max_width(92),
+                .with_max_width(74),
         ),
         Err(MermansiError::RenderLimit {
             context: "ishikawa columns",
-            requested: 93,
-            limit: 92,
+            requested: 75,
+            limit: 74,
         })
     ));
 }
@@ -720,6 +815,35 @@ fn delegated_model_is_bounded_before_ascii_rendering() {
         ),
         "expected semantic model byte limit, got {result:?}"
     );
+}
+
+#[test]
+fn plain_flowchart_inventory_is_bounded_before_ascii_rendering() {
+    let engine = merman_core::Engine::new();
+    let parsed = engine
+        .parse_diagram_for_render_model_sync(
+            "flowchart TD\n  A",
+            merman_core::ParseOptions::strict(),
+        )
+        .expect("flowchart source should parse")
+        .expect("flowchart source should produce a model");
+    let RenderSemanticModel::Flowchart(mut model) = parsed.model else {
+        panic!("expected flowchart render model");
+    };
+    model.nodes = vec![model.nodes[0].clone(); 10_001];
+
+    let result = render_model(
+        &RenderSemanticModel::Flowchart(model),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    );
+    assert!(matches!(
+        result,
+        Err(MermansiError::RenderLimit {
+            context: "box geometry items",
+            requested: 10_001,
+            limit: 10_000,
+        })
+    ));
 }
 
 #[test]

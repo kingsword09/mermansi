@@ -31,6 +31,7 @@ cargo run --quiet --example asg_gallery -- \
     --terminal-width "$terminal_width"
 
 mkdir -p "$output/svg" "$output/png"
+find "$output/png" -maxdepth 1 -type f -name '*.png' -delete
 for cast in "$output"/casts/*.cast; do
     id=$(basename "$cast" .cast)
     "$asg_bin" "$cast" "$output/svg/$id.svg" \
@@ -46,12 +47,18 @@ if command -v rsvg-convert >/dev/null 2>&1; then
         id=$(basename "$svg" .svg)
         rsvg-convert "$svg" -o "$output/png/$id.png"
     done
+elif command -v resvg >/dev/null 2>&1; then
+    for svg in "$output"/svg/*.svg; do
+        id=$(basename "$svg" .svg)
+        resvg "$svg" "$output/png/$id.png" >/dev/null 2>&1
+    done
 elif command -v qlmanage >/dev/null 2>&1; then
+    echo "warning: qlmanage produces square audit thumbnails that may crop wide or tall SVGs" >&2
     for svg in "$output"/svg/*.svg; do
         qlmanage -t -s 1800 -o "$output/png" "$svg" >/dev/null 2>&1
     done
 else
-    echo "warning: install rsvg-convert or use macOS qlmanage to rasterize the SVG gallery" >&2
+    echo "warning: install rsvg-convert or resvg to rasterize the SVG gallery" >&2
 fi
 
 svg_count=$(find "$output/svg" -type f -name '*.svg' | wc -l | tr -d ' ')

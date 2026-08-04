@@ -9,6 +9,10 @@ use merman_core::diagrams::c4::{
 };
 
 pub fn render_c4(model: &C4DiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
+    box_geometry::ensure_inventory(
+        model.boundaries.len().saturating_add(model.shapes.len()),
+        model.rels.len(),
+    )?;
     let groups = model
         .boundaries
         .iter()

@@ -263,12 +263,8 @@ fn box_family_routes_preserve_closed_boundaries() {
                     !(line.contains('├') && line.contains('┘')),
                     "route folded into a closing border:\n{output}"
                 );
-                if line.contains('└') && line.contains('┘') {
-                    assert!(
-                        line.matches('┼').count() <= 1,
-                        "route followed a bottom border:\n{output}"
-                    );
-                }
+                assert_continuous_horizontal_boundaries(line, '┌', '┐', &output);
+                assert_continuous_horizontal_boundaries(line, '└', '┘', &output);
             }
         }
     }
@@ -304,4 +300,63 @@ fn dotted_routes_cross_group_boundaries_without_erasing_them() {
         .unwrap_or_else(|| panic!("ASCII group boundary is missing:\n{ascii}"));
     assert!(!group_bottom.contains('.'), "{ascii}");
     assert!(ascii.lines().any(|line| line.trim() == "."), "{ascii}");
+}
+
+#[test]
+fn every_cross_group_relationship_has_terminal_geometry() {
+    let source = "flowchart TD\n\
+        subgraph Left\n\
+          A[A]\n\
+          B[B]\n\
+        end\n\
+        subgraph Right\n\
+          C[C]\n\
+          D[D]\n\
+        end\n\
+        A --> C\n\
+        A --> D\n\
+        B --> C\n\
+        B --> D";
+    let output = render_source(source, &concise_options(Charset::Unicode, 120)).unwrap();
+    let geometry = output
+        .split_once("\n\n A --> C")
+        .map(|(geometry, _)| geometry)
+        .unwrap_or(&output);
+
+    assert_eq!(geometry.matches('▼').count(), 2, "{output}");
+    for label in ["A", "B", "C", "D"] {
+        let (row, column) = label_position(geometry, label);
+        let box_rows = geometry.lines().collect::<Vec<_>>();
+        let top = box_rows[row - 1];
+        let bottom = box_rows[row + 1];
+        assert!(
+            top.chars().any(|ch| matches!(ch, '┬' | '┴' | '┼' | '▼'))
+                || bottom.chars().any(|ch| matches!(ch, '┬' | '┴' | '┼')),
+            "node {label} at display column {column} has no attached relationship:\n{output}"
+        );
+    }
+}
+
+fn assert_continuous_horizontal_boundaries(line: &str, open: char, close: char, output: &str) {
+    let mut start = None;
+    for (column, ch) in line.chars().enumerate() {
+        if ch == open {
+            start = Some(column);
+        } else if ch == close
+            && let Some(start) = start.take()
+        {
+            let segment = line
+                .chars()
+                .skip(start + 1)
+                .take(column.saturating_sub(start + 1));
+            assert!(
+                segment
+                    .into_iter()
+                    .all(|cell| matches!(cell, '─' | '┬' | '┴' | '┼')),
+                "open boundary between columns {start} and {column}:\n{output}"
+            );
+        }
+    }
+    // A route turn can legitimately use `open` with the opposite vertical corner on
+    // the same row. Only matching box-boundary pairs are checked here.
 }

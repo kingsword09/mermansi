@@ -34,9 +34,13 @@ pub enum OutputMode {
     Concise,
 }
 
-/// Maximum output width in terminal display columns.
+/// Maximum terminal-preview width in display columns.
+///
+/// In complete mode the lossless canonical JSON suffix is outside this presentation bound.
 pub const DEFAULT_MAX_WIDTH: usize = 200;
-/// Maximum output height (rows).
+/// Maximum terminal-preview height in rows.
+///
+/// In complete mode the lossless canonical JSON suffix is outside this presentation bound.
 pub const DEFAULT_MAX_HEIGHT: usize = 500;
 /// Maximum total canvas cells (width * height).
 pub const MAX_CANVAS_CELLS: usize = 250_000;

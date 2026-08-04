@@ -18,6 +18,7 @@ pub fn render_block(model: &BlockDiagramRenderModel, opts: &MermansiOptions) -> 
         .iter()
         .find(|block| block.id == "root")
         .or_else(|| model.blocks_flat.first());
+    ensure_block_inventory(root, model.edges.len())?;
     let mut nodes = Vec::new();
     let mut groups = Vec::new();
     let mut spacers = Vec::new();
@@ -99,6 +100,24 @@ pub fn render_block(model: &BlockDiagramRenderModel, opts: &MermansiOptions) -> 
         },
         opts,
     )
+}
+
+fn ensure_block_inventory(root: Option<&BlockNodeRenderModel>, edge_count: usize) -> Result<()> {
+    let Some(root) = root else {
+        return box_geometry::ensure_inventory(0, edge_count);
+    };
+    box_geometry::ensure_inventory(root.children.len(), edge_count)?;
+    let mut stack = root.children.iter().collect::<Vec<_>>();
+    let mut visited = 0usize;
+    while let Some(block) = stack.pop() {
+        visited = visited.saturating_add(1);
+        let discovered = visited
+            .saturating_add(stack.len())
+            .saturating_add(block.children.len());
+        box_geometry::ensure_inventory(discovered, edge_count)?;
+        stack.extend(block.children.iter());
+    }
+    Ok(())
 }
 
 fn block_node(

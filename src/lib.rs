@@ -63,17 +63,21 @@ pub fn render_source(mermaid_text: &str, opts: &MermansiOptions) -> Result<Strin
 /// Render a parsed [`RenderSemanticModel`] to terminal text.
 pub fn render_model(model: &RenderSemanticModel, opts: &MermansiOptions) -> Result<String> {
     opts.validate()?;
-    let mut result = adapters::render_model(model, opts)?;
-    if result.is_empty() {
-        result.push_str("(empty render output)\n");
+    let mut rendered = adapters::render_model_output(model, opts)?;
+    if rendered.preview.is_empty() {
+        rendered.preview.push_str("(empty render output)\n");
     }
     // Rule 6: when ColorMode::Plain, no ANSI escape sequences — including any
     // that may be embedded in semantic label text — may appear in the final
     // output. Strip them before validation and return.
     if opts.color_mode == ColorMode::Plain {
+        rendered.preview = crate::ansi::strip_ansi(&rendered.preview);
+    }
+    let mut result = rendered.to_text()?;
+    if opts.color_mode == ColorMode::Plain {
         result = crate::ansi::strip_ansi(&result);
     }
-    output::validate_output(&result, opts)?;
+    output::validate_output(&result, &rendered.preview, opts)?;
     Ok(result)
 }
 

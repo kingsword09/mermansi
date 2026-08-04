@@ -5,6 +5,8 @@
 //! [`AnsiEncoder`] handles serialization.
 
 use crate::options::ColorMode;
+use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,31 +85,91 @@ impl AnsiEncoder {
 
 /// Remove ANSI escape sequences while preserving all printable Unicode text.
 ///
-/// Handles CSI sequences (`ESC [`) and drops any bare `ESC` (0x1b) bytes that are
-/// not part of a recognised sequence, ensuring no terminal-control bytes survive
-/// stripping.
+/// Handles CSI, OSC, DCS, APC, PM, SOS, ST, their 8-bit C1 forms, and bare ESC
+/// bytes. Newlines, carriage returns, and tabs are preserved so stripping color
+/// never changes the layout of an already-rendered terminal document.
 pub fn strip_ansi(input: &str) -> String {
+    strip_terminal_sequences(input, true, false)
+}
+
+fn strip_terminal_controls(input: &str) -> String {
+    strip_terminal_sequences(input, false, true)
+}
+
+fn strip_terminal_sequences(
+    input: &str,
+    preserve_layout_controls: bool,
+    remove_bidi_controls: bool,
+) -> String {
     let mut output = String::with_capacity(input.len());
     let mut chars = input.chars().peekable();
     while let Some(ch) = chars.next() {
-        if ch == '\u{1b}' {
-            if chars.peek() == Some(&'[') {
-                // CSI sequence: ESC [ ... final byte in 0x40..=0x7e
-                chars.next(); // consume '['
-                for control in chars.by_ref() {
-                    if ('@'..='~').contains(&control) {
-                        break;
-                    }
-                }
-            } else {
-                // Bare ESC byte (or ESC not followed by '['): drop it so no
-                // terminal-control bytes leak through.
+        match ch {
+            '\u{1b}' => consume_escape_sequence(&mut chars),
+            '\u{009b}' => consume_csi(&mut chars),
+            '\u{0090}' | '\u{0098}' | '\u{009d}' | '\u{009e}' | '\u{009f}' => {
+                consume_string_control(&mut chars)
             }
-        } else {
-            output.push(ch);
+            '\u{009c}' => {}
+            '\n' | '\r' | '\t' if preserve_layout_controls => output.push(ch),
+            _ if ch.is_control() => {}
+            _ if remove_bidi_controls && is_bidi_format_control(ch) => {}
+            _ => output.push(ch),
         }
     }
     output
+}
+
+fn consume_escape_sequence(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    match chars.peek() {
+        Some('[') => {
+            chars.next();
+            consume_csi(chars);
+        }
+        Some(']' | 'P' | '_' | '^' | 'X') => {
+            chars.next();
+            consume_string_control(chars);
+        }
+        Some('\\') => {
+            chars.next();
+        }
+        Some(&intermediate) if ('\u{20}'..='\u{2f}').contains(&intermediate) => {
+            while chars
+                .peek()
+                .is_some_and(|next| ('\u{20}'..='\u{2f}').contains(next))
+            {
+                chars.next();
+            }
+            if chars
+                .peek()
+                .is_some_and(|next| ('\u{30}'..='\u{7e}').contains(next))
+            {
+                chars.next();
+            }
+        }
+        Some(_) | None => {}
+    }
+}
+
+fn consume_csi(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    for control in chars.by_ref() {
+        if ('@'..='~').contains(&control) {
+            break;
+        }
+    }
+}
+
+fn consume_string_control(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    loop {
+        match chars.next() {
+            Some('\u{07}' | '\u{009c}') | None => break,
+            Some('\u{1b}') if chars.peek() == Some(&'\\') => {
+                chars.next();
+                break;
+            }
+            Some(_) => {}
+        }
+    }
 }
 
 /// Sanitize label text for terminal rendering by removing all terminal-control
@@ -131,75 +193,162 @@ pub fn strip_ansi(input: &str) -> String {
 /// Called by terminal adapters before label text is measured or placed, so raw control
 /// sequences cannot affect table alignment or Canvas geometry regardless of the active
 /// `ColorMode`.
+pub(crate) struct TerminalTextNormalizer;
+
+impl TerminalTextNormalizer {
+    pub(crate) fn normalize(input: &str) -> String {
+        let controls_removed = strip_terminal_controls(input);
+        let markup_removed = normalize_mermaid_markup(&controls_removed);
+        let bold_removed = strip_paired_delimiter(&markup_removed, "**");
+        let emphasis_removed = strip_paired_delimiter(&bold_removed, "__");
+        let parser_artifacts_removed = strip_unbalanced_bold_artifact(&emphasis_removed);
+        stabilize_leading_graphemes(&parser_artifacts_removed)
+    }
+}
+
 pub(crate) fn sanitize_label_text(input: &str) -> String {
+    TerminalTextNormalizer::normalize(input)
+}
+
+pub(crate) fn is_bidi_format_control(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}'
+    )
+}
+
+fn normalize_mermaid_markup(input: &str) -> String {
     let mut output = String::with_capacity(input.len());
-    let mut chars = input.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if ch == '\u{1b}' {
-            // We're at an ESC (0x1b) byte — determine which C1 family this is.
-            match chars.peek() {
-                // CSI: ESC [ ... final byte in 0x40..=0x7e
-                Some('[') => {
-                    chars.next(); // consume '['
-                    for control in chars.by_ref() {
-                        if ('@'..='~').contains(&control) {
-                            break;
-                        }
-                    }
-                }
-                // String-control families terminated by BEL or ST (ESC \):
-                //   OSC: ESC ]    DCS: ESC P    APC: ESC _
-                //   PM:  ESC ^    SOS: ESC X
-                Some(']' | 'P' | '_' | '^' | 'X') => {
-                    chars.next(); // consume the introducer byte
-                    // Consume until we hit BEL (0x07) or ST (ESC \).
-                    // Embedded non-terminating ESC bytes must continue consuming.
-                    loop {
-                        match chars.next() {
-                            Some('\u{07}') => break, // BEL terminator
-                            Some('\u{1b}') => {
-                                // Check for ST terminator (ESC \). If the ESC is
-                                // not followed by backslash, it is an embedded
-                                // non-terminating ESC: keep consuming.
-                                if chars.peek() == Some(&'\\') {
-                                    chars.next(); // consume '\'
-                                    break;
-                                }
-                                // Non-terminating embedded ESC — continue loop.
-                            }
-                            Some(_) => continue,
-                            None => break, // unterminated string control — drop rest
-                        }
-                    }
-                }
-                // ESC \ (ST) with no preceding introducer — drop both bytes
-                Some('\\') => {
-                    chars.next(); // consume '\'
-                }
-                // Any other ESC-prefixed sequence (nFe escapes like ESC followed by
-                // 0x20..=0x2f then a final byte, or bare ESC): drop the ESC. We
-                // conservatively consume one more byte if it's in the intermediate
-                // range, then keep scanning.
-                Some(&c) if ('\u{20}'..='\u{2f}').contains(&c) => {
-                    chars.next(); // consume intermediate byte
-                    for control in chars.by_ref() {
-                        if ('\u{30}'..='\u{7e}').contains(&control) {
-                            break;
-                        }
-                    }
-                }
-                // Bare ESC byte with no recognised follower: drop it.
-                Some(_) | None => {}
-            }
-        } else if ch.is_control() {
-            // All control characters (C0 0x00..=0x1f, DEL 0x7f, C1 0x80..=0x9f)
-            // are removed — including TAB, LF, and CR, which are layout-changing
-            // and can break Pie column alignment and the table format.
-        } else {
-            output.push(ch);
+    let mut index = 0usize;
+    while index < input.len() {
+        let rest = &input[index..];
+        if let Some((decoded, consumed)) = decode_entity(rest) {
+            output.push_str(decoded);
+            index += consumed;
+            continue;
         }
+        if rest.starts_with('<')
+            && let Some(end) = rest.find('>')
+        {
+            let body = rest[1..end].trim();
+            let name = body
+                .trim_start_matches('/')
+                .trim_end_matches('/')
+                .split_ascii_whitespace()
+                .next()
+                .unwrap_or_default();
+            if is_terminal_markup_tag(name) {
+                if matches!(name.to_ascii_lowercase().as_str(), "br" | "div" | "p") {
+                    push_text_separator(&mut output);
+                }
+                index += end + 1;
+                continue;
+            }
+        }
+        let ch = rest
+            .chars()
+            .next()
+            .expect("index remains on a character boundary");
+        output.push(ch);
+        index += ch.len_utf8();
     }
     output
+}
+
+fn is_terminal_markup_tag(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "br" | "b" | "strong" | "i" | "em" | "u" | "span" | "font" | "div" | "p"
+    )
+}
+
+fn decode_entity(rest: &str) -> Option<(&'static str, usize)> {
+    for (encoded, decoded) in [
+        ("&lt;", "<"),
+        ("&gt;", ">"),
+        ("&amp;", "&"),
+        ("&quot;", "\""),
+        ("&#39;", "'"),
+    ] {
+        if rest.starts_with(encoded) {
+            return Some((decoded, encoded.len()));
+        }
+    }
+    None
+}
+
+fn push_text_separator(output: &mut String) {
+    if !output.is_empty() && !output.ends_with(char::is_whitespace) {
+        output.push(' ');
+    }
+}
+
+fn strip_paired_delimiter(input: &str, delimiter: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut rest = input;
+    while let Some(start) = rest.find(delimiter) {
+        output.push_str(&rest[..start]);
+        let content = &rest[start + delimiter.len()..];
+        let Some(end) = content.find(delimiter) else {
+            output.push_str(delimiter);
+            output.push_str(content);
+            return output;
+        };
+        output.push_str(&content[..end]);
+        rest = &content[end + delimiter.len()..];
+    }
+    output.push_str(rest);
+    output
+}
+
+fn strip_unbalanced_bold_artifact(input: &str) -> String {
+    let Some(open) = input.find("**") else {
+        return input.to_owned();
+    };
+    let content_start = open + 2;
+    if input[content_start..].contains("**") {
+        return input.to_owned();
+    }
+    let Some(close_offset) = input[content_start..].rfind('*') else {
+        return input.to_owned();
+    };
+    let close = content_start + close_offset;
+    let mut output = String::with_capacity(input.len().saturating_sub(3));
+    output.push_str(&input[..open]);
+    output.push_str(&input[content_start..close]);
+    output.push_str(&input[close + 1..]);
+    output
+}
+
+fn stabilize_leading_graphemes(input: &str) -> String {
+    let mut output = String::with_capacity(input.len().saturating_add(3));
+    let mut has_base = false;
+    for grapheme in UnicodeSegmentation::graphemes(input, true) {
+        let width = UnicodeWidthStr::width(grapheme);
+        if width == 0 && !has_base {
+            let visible_marks = grapheme
+                .chars()
+                .filter(|ch| !is_leading_default_ignorable(*ch))
+                .collect::<String>();
+            if visible_marks.is_empty() {
+                continue;
+            }
+            output.push('◌');
+            output.push_str(&visible_marks);
+            has_base = true;
+            continue;
+        }
+        output.push_str(grapheme);
+        has_base |= width > 0;
+    }
+    output
+}
+
+fn is_leading_default_ignorable(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{200b}' | '\u{200c}' | '\u{200d}' | '\u{2060}' | '\u{fe00}'..='\u{fe0f}' | '\u{feff}' | '\u{e0100}'..='\u{e01ef}'
+    )
 }
 
 #[cfg(test)]
@@ -214,6 +363,12 @@ mod tests {
     #[test]
     fn sanitize_strips_csi_sequence() {
         assert_eq!(sanitize_label_text("\u{1b}[31mRed\u{1b}[0m"), "Red");
+    }
+
+    #[test]
+    fn strip_ansi_removes_string_controls_without_changing_layout() {
+        let input = "A\t\u{1b}[31mred\u{1b}[0m\nB\u{1b}]0;title\u{07}C\r\nD\u{009d}hidden\u{009c}E";
+        assert_eq!(strip_ansi(input), "A\tred\nBC\r\nDE");
     }
 
     #[test]
@@ -238,6 +393,31 @@ mod tests {
             sanitize_label_text("开始 \u{1F680} cafe\u{301}"),
             "开始 \u{1F680} cafe\u{301}"
         );
+    }
+
+    #[test]
+    fn normalize_terminal_markup_and_markdown_emphasis() {
+        assert_eq!(
+            sanitize_label_text("<b>Bold</b><br/>Next **strong** &amp; __clear__"),
+            "Bold Next strong & clear"
+        );
+        assert_eq!(sanitize_label_text("a < b"), "a < b");
+        assert_eq!(sanitize_label_text("+String **bold*"), "+String bold");
+    }
+
+    #[test]
+    fn sanitize_removes_bidi_format_controls() {
+        assert_eq!(
+            sanitize_label_text("safe\u{202e}evil\u{202c}\u{2066}text\u{2069}"),
+            "safeeviltext"
+        );
+    }
+
+    #[test]
+    fn sanitize_stabilizes_leading_zero_width_graphemes() {
+        assert_eq!(sanitize_label_text("\u{301}Accent"), "◌\u{301}Accent");
+        assert_eq!(sanitize_label_text("\u{fe0f}Icon"), "Icon");
+        assert_eq!(sanitize_label_text("\u{200d}Join"), "Join");
     }
 
     #[test]
@@ -270,6 +450,8 @@ mod tests {
         assert_eq!(sanitize_label_text("A\u{1b}^data\u{07}B"), "AB");
         // SOS (ESC X) terminated by ST (ESC \)
         assert_eq!(sanitize_label_text("A\u{1b}Xdata\u{1b}\\B"), "AB");
+        // Eight-bit C1 OSC terminated by eight-bit ST.
+        assert_eq!(sanitize_label_text("A\u{009d}data\u{009c}B"), "AB");
     }
 
     #[test]

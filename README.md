@@ -22,8 +22,8 @@ family.
 ## Features
 
 - **All 28 `RenderSemanticModel` variants supported** — 33 pinned render parser IDs and 29
-  fixture families (including the ZenUML-to-Sequence transform) are checked in 232 concise
-  rendering combinations: English/Chinese, ASCII/Unicode, and 100/120 display columns.
+  fixture families (including the ZenUML-to-Sequence transform) are checked across 580 concise
+  boundary combinations: English/Chinese, ASCII/Unicode, and 40/60/80/100/120 display columns.
 - **One public source-to-text API** — `render_source(source, &options)` accepts Mermaid or a raw
   JSON object/array.
 - **Complete or concise output** — keep the canonical semantic model for lossless inspection, or
@@ -84,8 +84,8 @@ mermansi --file diagram.mmd --concise
 | `--no-color` | Disable ANSI color (default) |
 | `--concise` | Emit terminal geometry only |
 | `--complete` | Emit geometry plus the canonical model (default) |
-| `--width <N>` | Maximum output width in terminal columns |
-| `--height <N>` | Maximum output height in terminal rows |
+| `--width <N>` | Maximum terminal-preview width in display columns |
+| `--height <N>` | Maximum terminal-preview height in rows |
 | `--version` | Print version and exit |
 | `--help` | Print help and exit |
 
@@ -123,6 +123,10 @@ use mermansi::{MermansiOptions, OutputMode, render_source};
 let options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
 let output = render_source(mermaid_text, &options).unwrap();
 ```
+
+Width, height, and canvas-cell limits apply to the terminal preview. In complete mode the
+canonical JSON suffix remains lossless, so an individual semantic string may exceed the preview
+width; the source, semantic model, and combined output remain protected by byte limits.
 
 Raw JSON objects and arrays use the same entry point and render as connected box-tree geometry.
 The exact `flowchart-v2` parser-id header is normalized to the public `flowchart` grammar header,

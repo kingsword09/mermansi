@@ -17,6 +17,13 @@ pub fn render_requirement(
     model: &RequirementDiagramRenderModel,
     opts: &MermansiOptions,
 ) -> Result<String> {
+    box_geometry::ensure_inventory(
+        model
+            .requirements
+            .len()
+            .saturating_add(model.elements.len()),
+        model.relationships.len(),
+    )?;
     let direction = BoxDirection::from_str(&model.direction);
     let (from_side, to_side) = direction.edge_sides();
     let mut nodes = Vec::new();

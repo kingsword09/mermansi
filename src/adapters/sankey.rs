@@ -120,7 +120,7 @@ pub fn render_sankey(model: &SankeyDiagramRenderModel, opts: &MermansiOptions) -
         .collect::<Vec<_>>();
     let direction = BoxDirection::Lr;
     let (from_side, to_side) = direction.edge_sides();
-    let mut edges = model
+    let edges = model
         .graph
         .links
         .iter()
@@ -142,13 +142,39 @@ pub fn render_sankey(model: &SankeyDiagramRenderModel, opts: &MermansiOptions) -
         })
         .collect::<Vec<_>>();
     let ranks = directed_ranks(&nodes, &edges);
+
+    match render_layout(&nodes, &edges, &ranks, direction, opts) {
+        Err(MermansiError::RenderLimit {
+            context: "box geometry columns",
+            ..
+        }) if direction == BoxDirection::Lr => {
+            // Directed ranks are axis-independent; reflowing only changes ports and orientation.
+            render_layout(&nodes, &edges, &ranks, BoxDirection::Tb, opts)
+        }
+        result => result,
+    }
+}
+
+fn render_layout(
+    nodes: &[BoxNode],
+    edges: &[BoxEdge],
+    ranks: &HashMap<String, usize>,
+    direction: BoxDirection,
+    opts: &MermansiOptions,
+) -> Result<String> {
+    let (from_side, to_side) = direction.edge_sides();
+    let mut edges = edges.to_vec();
+    for edge in &mut edges {
+        edge.from_side = Some(from_side);
+        edge.to_side = Some(to_side);
+    }
     let mut outer_route = 0usize;
     for edge in &mut edges {
         let rank_gap = ranks
             .get(&edge.from)
             .zip(ranks.get(&edge.to))
             .map_or(0, |(from, to)| from.abs_diff(*to));
-        if rank_gap > 1 {
+        if rank_gap > 1 && matches!(direction, BoxDirection::Lr | BoxDirection::Rl) {
             let side = if outer_route.is_multiple_of(2) {
                 box_geometry::Side::Top
             } else {
@@ -164,12 +190,15 @@ pub fn render_sankey(model: &SankeyDiagramRenderModel, opts: &MermansiOptions) -
         &BoxDiagram {
             family: "sankey",
             title: Some("Sankey".to_owned()),
-            nodes,
+            nodes: nodes.to_vec(),
             groups: Vec::new(),
             spacers: Vec::new(),
             edges,
             columns: None,
-            layout: BoxLayout::Layered { direction, ranks },
+            layout: BoxLayout::Layered {
+                direction,
+                ranks: ranks.clone(),
+            },
             edge_legend: box_geometry::EdgeLegend::All,
         },
         opts,

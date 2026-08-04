@@ -1,6 +1,7 @@
 //! Architecture diagram terminal geometry.
 
-use std::collections::{BTreeMap, HashMap};
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BinaryHeap, HashMap, HashSet};
 
 use crate::adapters::box_geometry::{
     self, BoxDiagram, BoxEdge, BoxGroup, BoxLayout, BoxNode, Side,
@@ -17,6 +18,10 @@ pub fn render_architecture(
     model: &ArchitectureDiagramRenderModel,
     opts: &MermansiOptions,
 ) -> Result<String> {
+    box_geometry::ensure_inventory(
+        model.groups.len().saturating_add(model.nodes.len()),
+        model.edges.len(),
+    )?;
     let node_order = model.groups.len();
     let layout = architecture_layout(model, node_order);
     let groups = model
@@ -157,56 +162,75 @@ fn architecture_layout(
     order_base: usize,
 ) -> ArchitectureLayout {
     let scores = horizontal_port_scores(model);
-    let mut parents = Vec::<Option<&str>>::new();
-    for node in &model.nodes {
+    let mut parent_indices = HashMap::<Option<&str>, usize>::new();
+    let mut partitions = Vec::<(Option<&str>, Vec<(usize, &ArchitectureRenderNode)>)>::new();
+    for (source_order, node) in model.nodes.iter().enumerate() {
         let parent = node.in_group.as_deref();
-        if !parents.contains(&parent) {
-            parents.push(parent);
+        let partition_index = parent_indices.get(&parent).copied().unwrap_or_else(|| {
+            let index = partitions.len();
+            parent_indices.insert(parent, index);
+            partitions.push((parent, Vec::new()));
+            index
+        });
+        partitions[partition_index].1.push((source_order, node));
+    }
+
+    let mut graphs = partitions
+        .iter()
+        .map(|(_, members)| {
+            (
+                vec![Vec::<usize>::new(); members.len()],
+                vec![0usize; members.len()],
+            )
+        })
+        .collect::<Vec<_>>();
+    let mut node_locations = HashMap::<&str, (usize, usize)>::with_capacity(model.nodes.len());
+    for (partition_index, (_, members)) in partitions.iter().enumerate() {
+        for (member_index, (_, node)) in members.iter().enumerate() {
+            node_locations
+                .entry(node.id.as_str())
+                .or_insert((partition_index, member_index));
         }
+    }
+    let mut seen_precedence = HashSet::with_capacity(model.edges.len());
+    for edge in &model.edges {
+        let Some((before_id, after_id)) = vertical_precedence(edge) else {
+            continue;
+        };
+        let (Some(&(before_partition, before)), Some(&(after_partition, after))) =
+            (node_locations.get(before_id), node_locations.get(after_id))
+        else {
+            continue;
+        };
+        if before_partition != after_partition
+            || before == after
+            || !seen_precedence.insert((before_partition, before, after))
+        {
+            continue;
+        }
+        graphs[before_partition].0[before].push(after);
+        graphs[before_partition].1[after] += 1;
     }
 
     let mut orders = HashMap::new();
     let mut columns = HashMap::new();
-    for parent in parents {
-        let members = model
-            .nodes
-            .iter()
-            .enumerate()
-            .filter(|(_, node)| node.in_group.as_deref() == parent)
-            .collect::<Vec<_>>();
+    for ((parent, members), (adjacency, mut indegree)) in partitions.into_iter().zip(graphs) {
         let mut layer = vec![0usize; members.len()];
-        let mut adjacency = vec![Vec::<usize>::new(); members.len()];
-        let mut indegree = vec![0usize; members.len()];
-        for edge in &model.edges {
-            let Some((before_id, after_id)) = vertical_precedence(edge) else {
-                continue;
-            };
-            let before = members.iter().position(|(_, node)| node.id == before_id);
-            let after = members.iter().position(|(_, node)| node.id == after_id);
-            let (Some(before), Some(after)) = (before, after) else {
-                continue;
-            };
-            if before != after && !adjacency[before].contains(&after) {
-                adjacency[before].push(after);
-                indegree[after] += 1;
-            }
-        }
-
         let mut ready = indegree
             .iter()
             .enumerate()
-            .filter_map(|(index, degree)| (*degree == 0).then_some(index))
-            .collect::<Vec<_>>();
+            .filter_map(|(index, degree)| {
+                (*degree == 0).then_some(Reverse((members[index].0, index)))
+            })
+            .collect::<BinaryHeap<_>>();
         let mut processed = 0usize;
-        while !ready.is_empty() {
-            ready.sort_unstable_by_key(|index| members[*index].0);
-            let current = ready.remove(0);
+        while let Some(Reverse((_, current))) = ready.pop() {
             processed += 1;
             for neighbor in adjacency[current].iter().copied() {
                 layer[neighbor] = layer[neighbor].max(layer[current] + 1);
                 indegree[neighbor] -= 1;
                 if indegree[neighbor] == 0 {
-                    ready.push(neighbor);
+                    ready.push(Reverse((members[neighbor].0, neighbor)));
                 }
             }
         }

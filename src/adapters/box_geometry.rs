@@ -1,7 +1,7 @@
 //! Shared bounded geometry for node-and-relationship diagram families.
 
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BinaryHeap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BinaryHeap, HashMap, HashSet, VecDeque};
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -20,6 +20,10 @@ const LAYER_GAP_X: usize = 8;
 const LAYER_GAP_Y: usize = 2;
 const ROUTE_MARGIN: usize = 2;
 const MAX_OUTER_ROUTE_LANES: usize = 8;
+const MAX_ROUTE_WORK: usize = 2_000_000;
+const MAX_LAYOUT_WORK: usize = 2_000_000;
+const MAX_BOX_ITEMS: usize = 10_000;
+const MAX_BOX_EDGES: usize = 20_000;
 const MAX_DEPTH: usize = 64;
 const MIN_CANVAS_WIDTH: usize = 12;
 const OCCUPIED_ROUTE_PENALTY: usize = 12;
@@ -160,6 +164,7 @@ pub(crate) fn directed_ranks(nodes: &[BoxNode], edges: &[BoxEdge]) -> HashMap<St
         .collect::<HashMap<_, _>>();
     let mut adjacency = vec![Vec::<usize>::new(); nodes.len()];
     let mut indegree = vec![0usize; nodes.len()];
+    let mut seen_edges = HashSet::with_capacity(edges.len());
 
     for edge in edges {
         let (Some(&source), Some(&target)) = (
@@ -168,7 +173,7 @@ pub(crate) fn directed_ranks(nodes: &[BoxNode], edges: &[BoxEdge]) -> HashMap<St
         ) else {
             continue;
         };
-        if source != target && !adjacency[source].contains(&target) {
+        if source != target && seen_edges.insert((source, target)) {
             adjacency[source].push(target);
             indegree[target] += 1;
         }
@@ -228,7 +233,7 @@ pub(crate) fn directed_chain_edges(
         .collect()
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum Side {
     Left,
     Right,
@@ -316,8 +321,242 @@ struct Endpoint {
     outside: Point,
 }
 
+#[derive(Debug)]
+struct RouteWorkBudget {
+    used: usize,
+}
+
+impl RouteWorkBudget {
+    const fn new() -> Self {
+        Self { used: 0 }
+    }
+
+    fn consume(&mut self) -> Result<()> {
+        self.used = self.used.saturating_add(1);
+        if self.used > MAX_ROUTE_WORK {
+            return Err(MermansiError::RenderLimit {
+                context: "route work",
+                requested: self.used,
+                limit: MAX_ROUTE_WORK,
+            });
+        }
+        Ok(())
+    }
+}
+
 pub(crate) fn render(diagram: &BoxDiagram, opts: &MermansiOptions) -> Result<String> {
     render_with_node_shapes(diagram, opts, &HashMap::new())
+}
+
+pub(crate) fn ensure_inventory(item_count: usize, edge_count: usize) -> Result<()> {
+    if item_count > MAX_BOX_ITEMS {
+        return Err(MermansiError::RenderLimit {
+            context: "box geometry items",
+            requested: item_count,
+            limit: MAX_BOX_ITEMS,
+        });
+    }
+    if edge_count > MAX_BOX_EDGES {
+        return Err(MermansiError::RenderLimit {
+            context: "box geometry edges",
+            requested: edge_count,
+            limit: MAX_BOX_EDGES,
+        });
+    }
+    Ok(())
+}
+
+fn ensure_layout_work(diagram: &BoxDiagram) -> Result<()> {
+    let mut requested = diagram
+        .nodes
+        .len()
+        .saturating_add(diagram.groups.len())
+        .saturating_add(diagram.spacers.len())
+        .saturating_add(diagram.edges.len());
+    if let Some(title) = &diagram.title {
+        requested = requested.saturating_add(title.len());
+    }
+    for node in &diagram.nodes {
+        requested = requested
+            .saturating_add(node.id.len())
+            .saturating_add(node.parent.as_ref().map_or(0, String::len))
+            .saturating_add(node.dividers.len());
+        for line in &node.lines {
+            requested = requested.saturating_add(line.len());
+        }
+    }
+    for group in &diagram.groups {
+        requested = requested
+            .saturating_add(group.id.len())
+            .saturating_add(group.parent.as_ref().map_or(0, String::len));
+        for line in &group.lines {
+            requested = requested.saturating_add(line.len());
+        }
+    }
+    for spacer in &diagram.spacers {
+        requested = requested.saturating_add(spacer.parent.as_ref().map_or(0, String::len));
+    }
+    for edge in &diagram.edges {
+        requested = requested
+            .saturating_add(edge.from.len())
+            .saturating_add(edge.to.len())
+            .saturating_add(edge.label.len());
+    }
+    if requested > MAX_LAYOUT_WORK {
+        return Err(MermansiError::RenderLimit {
+            context: "box layout work",
+            requested,
+            limit: MAX_LAYOUT_WORK,
+        });
+    }
+    Ok(())
+}
+
+struct HierarchyIndex<'a> {
+    groups: HashMap<&'a str, Vec<usize>>,
+    nodes: HashMap<&'a str, Vec<usize>>,
+    spacers: HashMap<&'a str, Vec<usize>>,
+}
+
+impl<'a> HierarchyIndex<'a> {
+    fn new(diagram: &'a BoxDiagram) -> Self {
+        let mut hierarchy = Self {
+            groups: HashMap::new(),
+            nodes: HashMap::new(),
+            spacers: HashMap::new(),
+        };
+        for (index, group) in diagram.groups.iter().enumerate() {
+            if let Some(parent) = group.parent.as_deref() {
+                hierarchy.groups.entry(parent).or_default().push(index);
+            }
+        }
+        for (index, node) in diagram.nodes.iter().enumerate() {
+            if let Some(parent) = node.parent.as_deref() {
+                hierarchy.nodes.entry(parent).or_default().push(index);
+            }
+        }
+        for (index, spacer) in diagram.spacers.iter().enumerate() {
+            if let Some(parent) = spacer.parent.as_deref() {
+                hierarchy.spacers.entry(parent).or_default().push(index);
+            }
+        }
+        hierarchy
+    }
+}
+
+fn validate_hierarchy(diagram: &BoxDiagram) -> Result<()> {
+    let mut group_ids = HashSet::with_capacity(diagram.groups.len());
+    for group in &diagram.groups {
+        if !group_ids.insert(group.id.as_str()) {
+            return Err(layout_error(
+                diagram.family,
+                format!("duplicate group id: {}", group.id),
+            ));
+        }
+    }
+
+    let mut entity_ids = group_ids.clone();
+    for node in &diagram.nodes {
+        if !entity_ids.insert(node.id.as_str()) {
+            return Err(layout_error(
+                diagram.family,
+                format!("duplicate entity id: {}", node.id),
+            ));
+        }
+    }
+
+    for group in &diagram.groups {
+        if let Some(parent) = group.parent.as_deref()
+            && !group_ids.contains(parent)
+        {
+            return Err(layout_error(
+                diagram.family,
+                format!("group {} references missing parent {parent}", group.id),
+            ));
+        }
+    }
+    for node in &diagram.nodes {
+        if let Some(parent) = node.parent.as_deref()
+            && !group_ids.contains(parent)
+        {
+            return Err(layout_error(
+                diagram.family,
+                format!("node {} references missing parent {parent}", node.id),
+            ));
+        }
+    }
+    for spacer in &diagram.spacers {
+        if let Some(parent) = spacer.parent.as_deref()
+            && !group_ids.contains(parent)
+        {
+            return Err(layout_error(
+                diagram.family,
+                format!("spacer references missing parent {parent}"),
+            ));
+        }
+    }
+    for edge in &diagram.edges {
+        for endpoint in [&edge.from, &edge.to] {
+            if !entity_ids.contains(endpoint.as_str()) {
+                return Err(layout_error(
+                    diagram.family,
+                    format!("edge references missing endpoint {endpoint}"),
+                ));
+            }
+        }
+    }
+
+    let parents = diagram
+        .groups
+        .iter()
+        .map(|group| (group.id.as_str(), group.parent.as_deref()))
+        .collect::<HashMap<_, _>>();
+    let mut depths = HashMap::<&str, usize>::with_capacity(diagram.groups.len());
+    for group in &diagram.groups {
+        if depths.contains_key(group.id.as_str()) {
+            continue;
+        }
+        let mut path = Vec::new();
+        let mut current = group.id.as_str();
+        let base_depth = loop {
+            if let Some(depth) = depths.get(current).copied() {
+                break depth;
+            }
+            if path.contains(&current) {
+                return Err(layout_error(
+                    diagram.family,
+                    format!("group cycle includes {current}"),
+                ));
+            }
+            path.push(current);
+            if path.len() > MAX_DEPTH {
+                return Err(MermansiError::RenderLimit {
+                    context: "box geometry depth",
+                    requested: path.len(),
+                    limit: MAX_DEPTH,
+                });
+            }
+            let Some(parent) = parents.get(current).copied().flatten() else {
+                break 0;
+            };
+            current = parent;
+        };
+
+        let requested = base_depth.saturating_add(path.len());
+        if requested > MAX_DEPTH {
+            return Err(MermansiError::RenderLimit {
+                context: "box geometry depth",
+                requested,
+                limit: MAX_DEPTH,
+            });
+        }
+        let mut depth = base_depth;
+        for id in path.into_iter().rev() {
+            depth = depth.saturating_add(1);
+            depths.insert(id, depth);
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn render_with_node_shapes(
@@ -325,6 +564,14 @@ pub(crate) fn render_with_node_shapes(
     opts: &MermansiOptions,
     node_shapes: &HashMap<String, BoxNodeShape>,
 ) -> Result<String> {
+    let item_count = diagram
+        .nodes
+        .len()
+        .saturating_add(diagram.groups.len())
+        .saturating_add(diagram.spacers.len());
+    ensure_inventory(item_count, diagram.edges.len())?;
+    ensure_layout_work(diagram)?;
+    validate_hierarchy(diagram)?;
     if opts.max_width < MIN_CANVAS_WIDTH {
         return Err(MermansiError::RenderLimit {
             context: "box geometry columns",
@@ -334,13 +581,14 @@ pub(crate) fn render_with_node_shapes(
     }
 
     let content_limit = opts.max_width - ROUTE_MARGIN * 2;
+    let hierarchy = HierarchyIndex::new(diagram);
     let mut ancestry = Vec::new();
     let mut root = Vec::new();
     for (index, group) in diagram.groups.iter().enumerate() {
         if group.parent.is_none() {
             root.push((
                 group.order,
-                build_group(diagram, index, content_limit, &mut ancestry)?,
+                build_group(diagram, &hierarchy, index, content_limit, &mut ancestry)?,
             ));
         }
     }
@@ -357,6 +605,9 @@ pub(crate) fn render_with_node_shapes(
     root.sort_by_key(|(order, _)| *order);
     let root = root.into_iter().map(|(_, item)| item).collect::<Vec<_>>();
     if root.is_empty() {
+        debug_assert!(
+            diagram.nodes.is_empty() && diagram.groups.is_empty() && diagram.spacers.is_empty()
+        );
         return Ok(diagram.title.clone().unwrap_or_default());
     }
 
@@ -486,6 +737,7 @@ pub(crate) fn render_with_node_shapes(
     }
 
     let mut routed = vec![false; width.saturating_mul(legend_y)];
+    let mut route_work = RouteWorkBudget::new();
     for edge in &geometry_edges {
         draw_edge(
             &mut canvas,
@@ -496,6 +748,7 @@ pub(crate) fn render_with_node_shapes(
             legend_y,
             opts.charset,
             diagram.family,
+            &mut route_work,
         )?;
     }
     for (offset, line) in legend.iter().enumerate() {
@@ -513,15 +766,17 @@ pub(crate) fn render_with_node_shapes(
 
 fn build_group(
     diagram: &BoxDiagram,
+    hierarchy: &HierarchyIndex<'_>,
     index: usize,
     max_width: usize,
     ancestry: &mut Vec<String>,
 ) -> Result<Item> {
     if ancestry.len() >= MAX_DEPTH {
-        return Err(layout_error(
-            diagram.family,
-            format!("nesting exceeds {MAX_DEPTH} levels"),
-        ));
+        return Err(MermansiError::RenderLimit {
+            context: "box geometry depth",
+            requested: ancestry.len().saturating_add(1),
+            limit: MAX_DEPTH,
+        });
     }
     let group = &diagram.groups[index];
     if ancestry.contains(&group.id) {
@@ -533,21 +788,24 @@ fn build_group(
     ancestry.push(group.id.clone());
     let inner_limit = max_width.saturating_sub(GROUP_PADDING_X * 2).max(5);
     let mut children = Vec::new();
-    for (child_index, child) in diagram.groups.iter().enumerate() {
-        if child.parent.as_deref() == Some(group.id.as_str()) {
+    if let Some(child_indices) = hierarchy.groups.get(group.id.as_str()) {
+        for &child_index in child_indices {
+            let child = &diagram.groups[child_index];
             children.push((
                 child.order,
-                build_group(diagram, child_index, inner_limit, ancestry)?,
+                build_group(diagram, hierarchy, child_index, inner_limit, ancestry)?,
             ));
         }
     }
-    for child in &diagram.nodes {
-        if child.parent.as_deref() == Some(group.id.as_str()) {
+    if let Some(child_indices) = hierarchy.nodes.get(group.id.as_str()) {
+        for &child_index in child_indices {
+            let child = &diagram.nodes[child_index];
             children.push((child.order, build_node(child, inner_limit)));
         }
     }
-    for spacer in &diagram.spacers {
-        if spacer.parent.as_deref() == Some(group.id.as_str()) {
+    if let Some(child_indices) = hierarchy.spacers.get(group.id.as_str()) {
+        for &child_index in child_indices {
+            let spacer = &diagram.spacers[child_index];
             children.push((spacer.order, build_spacer(spacer, inner_limit)));
         }
     }
@@ -822,12 +1080,35 @@ fn paint_item(
     node_shapes: &HashMap<String, BoxNodeShape>,
     charset: Charset,
 ) -> Result<()> {
+    paint_item_at(
+        canvas,
+        placed,
+        0,
+        0,
+        geometry,
+        obstacles,
+        node_shapes,
+        charset,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_item_at(
+    canvas: &mut Canvas,
+    placed: &PlacedItem,
+    offset_x: usize,
+    offset_y: usize,
+    geometry: &mut HashMap<String, Rect>,
+    obstacles: &mut Vec<Rect>,
+    node_shapes: &HashMap<String, BoxNodeShape>,
+    charset: Charset,
+) -> Result<()> {
     if matches!(placed.item.kind, ItemKind::Spacer) {
         return Ok(());
     }
     let rect = Rect {
-        x: placed.x,
-        y: placed.y,
+        x: offset_x.saturating_add(placed.x),
+        y: offset_y.saturating_add(placed.y),
         width: placed.item.width,
         height: placed.item.height,
     };
@@ -901,12 +1182,16 @@ fn paint_item(
                 }
             }
             for child in &placed.item.children {
-                let nested = PlacedItem {
-                    x: rect.x + child.x,
-                    y: rect.y + child.y,
-                    item: child.item.clone(),
-                };
-                paint_item(canvas, &nested, geometry, obstacles, node_shapes, charset)?;
+                paint_item_at(
+                    canvas,
+                    child,
+                    rect.x,
+                    rect.y,
+                    geometry,
+                    obstacles,
+                    node_shapes,
+                    charset,
+                )?;
             }
         }
         ItemKind::Spacer => {}
@@ -961,6 +1246,7 @@ fn draw_edge(
     route_height: usize,
     charset: Charset,
     family: &'static str,
+    route_work: &mut RouteWorkBudget,
 ) -> Result<()> {
     let source = geometry
         .get(&edge.from)
@@ -983,9 +1269,10 @@ fn draw_edge(
             routed,
             route_height,
             false,
-        )
+            route_work,
+        )?
     } else {
-        route_edge(
+        let isolated = route_edge(
             canvas,
             source,
             target,
@@ -994,8 +1281,11 @@ fn draw_edge(
             routed,
             route_height,
             true,
-        )
-        .or_else(|| {
+            route_work,
+        )?;
+        if isolated.is_some() {
+            isolated
+        } else {
             route_edge(
                 canvas,
                 source,
@@ -1005,8 +1295,9 @@ fn draw_edge(
                 routed,
                 route_height,
                 false,
-            )
-        })
+                route_work,
+            )?
+        }
     }
     .ok_or_else(|| layout_error(family, format!("no route for {} -> {}", edge.from, edge.to)))?;
     draw_path(canvas, &path, charset, edge.style)?;
@@ -1041,10 +1332,11 @@ fn route_edge(
     routed: &[bool],
     height: usize,
     avoid_routed: bool,
-) -> Option<Vec<Point>> {
+    route_work: &mut RouteWorkBudget,
+) -> Result<Option<Vec<Point>>> {
     let width = canvas.width();
     if width == 0 || height == 0 {
-        return None;
+        return Ok(None);
     }
     let mut blocked = blocked_cells(obstacles, width, height);
     block_route_frame(&mut blocked, width, height);
@@ -1070,7 +1362,9 @@ fn route_edge(
         .map_or_else(|| Side::ALL.to_vec(), |side| vec![side]);
     let mut best = None::<((usize, usize), Vec<Point>)>;
     for source_side in source_sides {
-        let source_endpoint = endpoint(source, source_side, width, height)?;
+        let Some(source_endpoint) = endpoint(source, source_side, width, height) else {
+            continue;
+        };
         let source_index = grid_index(source_endpoint.outside, width);
         if blocked[source_index] {
             continue;
@@ -1082,7 +1376,8 @@ fn route_edge(
             &blocked,
             routed,
             canvas,
-        );
+            route_work,
+        )?;
         for target_side in target_sides.iter().copied() {
             if source == target && source_side == target_side {
                 continue;
@@ -1139,7 +1434,7 @@ fn route_edge(
             }
         }
     }
-    best.map(|(_, path)| path)
+    Ok(best.map(|(_, path)| path))
 }
 
 fn blocked_cells(obstacles: &[Rect], width: usize, height: usize) -> Vec<bool> {
@@ -1177,7 +1472,8 @@ fn weighted_predecessors(
     blocked: &[bool],
     routed: &[bool],
     canvas: &Canvas,
-) -> Vec<usize> {
+    route_work: &mut RouteWorkBudget,
+) -> Result<Vec<usize>> {
     let unvisited = usize::MAX;
     let start_index = grid_index(start, width);
     let mut predecessors = vec![unvisited; width * height];
@@ -1189,6 +1485,7 @@ fn weighted_predecessors(
         if distance != distances[point_index] {
             continue;
         }
+        route_work.consume()?;
         let point = Point::new(point_index % width, point_index / width);
         let neighbors = [
             (point.x + 1 < width).then(|| Point::new(point.x + 1, point.y)),
@@ -1218,7 +1515,7 @@ fn weighted_predecessors(
             }
         }
     }
-    predecessors
+    Ok(predecessors)
 }
 
 fn reconstruct_path(
@@ -1295,22 +1592,21 @@ const fn grid_index(point: Point, width: usize) -> usize {
 fn compress_path(points: Vec<Point>) -> Vec<Point> {
     let mut normalized = Vec::new();
     for point in points {
-        if normalized.last() != Some(&point) {
-            normalized.push(point);
+        if normalized.last() == Some(&point) {
+            continue;
         }
-    }
-    let mut index = 1usize;
-    while index + 1 < normalized.len() {
-        let previous = normalized[index - 1];
-        let current = normalized[index];
-        let next = normalized[index + 1];
-        if (previous.x == current.x && current.x == next.x)
-            || (previous.y == current.y && current.y == next.y)
-        {
-            normalized.remove(index);
-        } else {
-            index += 1;
+        while normalized.len() >= 2 {
+            let previous = normalized[normalized.len() - 2];
+            let current = normalized[normalized.len() - 1];
+            if (previous.x == current.x && current.x == point.x)
+                || (previous.y == current.y && current.y == point.y)
+            {
+                normalized.pop();
+            } else {
+                break;
+            }
         }
+        normalized.push(point);
     }
     normalized
 }
@@ -1543,29 +1839,46 @@ pub(crate) fn wrap_words(text: &str, max_width: usize) -> Vec<String> {
 fn coalesced_geometry_edges(edges: &[BoxEdge]) -> Vec<BoxEdge> {
     let mut consumed = vec![false; edges.len()];
     let mut geometry = Vec::with_capacity(edges.len());
+    let mut pending = HashMap::<(&str, &str, Option<Side>, Option<Side>), VecDeque<usize>>::new();
+    for (index, edge) in edges.iter().enumerate() {
+        pending
+            .entry((
+                edge.from.as_str(),
+                edge.to.as_str(),
+                edge.from_side,
+                edge.to_side,
+            ))
+            .or_default()
+            .push_back(index);
+    }
     for (index, edge) in edges.iter().enumerate() {
         if consumed[index] {
             continue;
         }
+        let key = (
+            edge.from.as_str(),
+            edge.to.as_str(),
+            edge.from_side,
+            edge.to_side,
+        );
+        let own_index = pending.get_mut(&key).and_then(VecDeque::pop_front);
+        debug_assert_eq!(own_index, Some(index));
         consumed[index] = true;
         let mut combined = edge.clone();
-        if edge.from != edge.to
-            && let Some((reverse_index, reverse)) =
-                edges
-                    .iter()
-                    .enumerate()
-                    .skip(index + 1)
-                    .find(|(candidate_index, candidate)| {
-                        !consumed[*candidate_index]
-                            && candidate.from == edge.to
-                            && candidate.to == edge.from
-                            && candidate.from_side == edge.to_side
-                            && candidate.to_side == edge.from_side
-                    })
-        {
-            consumed[reverse_index] = true;
-            combined.marker_start = combine_marker(combined.marker_start, reverse.marker_end);
-            combined.marker_end = combine_marker(combined.marker_end, reverse.marker_start);
+        if edge.from != edge.to {
+            let reverse_key = (
+                edge.to.as_str(),
+                edge.from.as_str(),
+                edge.to_side,
+                edge.from_side,
+            );
+            if let Some(reverse_index) = pending.get_mut(&reverse_key).and_then(VecDeque::pop_front)
+            {
+                let reverse = &edges[reverse_index];
+                consumed[reverse_index] = true;
+                combined.marker_start = combine_marker(combined.marker_start, reverse.marker_end);
+                combined.marker_end = combine_marker(combined.marker_end, reverse.marker_start);
+            }
         }
         geometry.push(combined);
     }
@@ -1660,7 +1973,16 @@ mod tests {
         let blocked = vec![false; width * height];
         let routed = vec![false; width * height];
 
-        let predecessors = weighted_predecessors(start, width, height, &blocked, &routed, &canvas);
+        let predecessors = weighted_predecessors(
+            start,
+            width,
+            height,
+            &blocked,
+            &routed,
+            &canvas,
+            &mut RouteWorkBudget::new(),
+        )
+        .expect("route work");
         let cells = reconstruct_path(
             grid_index(start, width),
             grid_index(target, width),
@@ -1680,6 +2002,233 @@ mod tests {
         assert_eq!(
             painted_cells, 2,
             "path followed the painted border: {cells:?}"
+        );
+    }
+
+    #[test]
+    fn shared_box_inventory_is_bounded_before_layout() {
+        let nodes = (0..=MAX_BOX_ITEMS)
+            .map(|index| BoxNode {
+                id: format!("node-{index}"),
+                lines: vec!["node".to_owned()],
+                dividers: Vec::new(),
+                parent: None,
+                span: 1,
+                order: index,
+            })
+            .collect();
+        let diagram = BoxDiagram {
+            family: "test",
+            title: None,
+            nodes,
+            groups: Vec::new(),
+            spacers: Vec::new(),
+            edges: Vec::new(),
+            columns: None,
+            layout: BoxLayout::Packed,
+            edge_legend: EdgeLegend::None,
+        };
+
+        assert!(matches!(
+            render(&diagram, &MermansiOptions::unicode()),
+            Err(MermansiError::RenderLimit {
+                context: "box geometry items",
+                requested,
+                limit: MAX_BOX_ITEMS,
+            }) if requested == MAX_BOX_ITEMS + 1
+        ));
+    }
+
+    #[test]
+    fn shared_box_edge_inventory_is_bounded_before_routing() {
+        let edge = BoxEdge {
+            from: "a".to_owned(),
+            to: "b".to_owned(),
+            label: String::new(),
+            marker_start: EdgeMarker::None,
+            marker_end: EdgeMarker::Arrow,
+            style: EdgeStyle::Solid,
+            from_side: None,
+            to_side: None,
+        };
+        let diagram = BoxDiagram {
+            family: "test",
+            title: None,
+            nodes: Vec::new(),
+            groups: Vec::new(),
+            spacers: Vec::new(),
+            edges: vec![edge; MAX_BOX_EDGES + 1],
+            columns: None,
+            layout: BoxLayout::Packed,
+            edge_legend: EdgeLegend::None,
+        };
+
+        assert!(matches!(
+            render(&diagram, &MermansiOptions::unicode()),
+            Err(MermansiError::RenderLimit {
+                context: "box geometry edges",
+                requested,
+                limit: MAX_BOX_EDGES,
+            }) if requested == MAX_BOX_EDGES + 1
+        ));
+    }
+
+    #[test]
+    fn shared_box_layout_work_is_bounded_before_text_normalization() {
+        let diagram = BoxDiagram {
+            family: "test",
+            title: None,
+            nodes: vec![BoxNode {
+                id: "node".to_owned(),
+                lines: vec!["x".repeat(MAX_LAYOUT_WORK)],
+                dividers: Vec::new(),
+                parent: None,
+                span: 1,
+                order: 0,
+            }],
+            groups: Vec::new(),
+            spacers: Vec::new(),
+            edges: Vec::new(),
+            columns: None,
+            layout: BoxLayout::Packed,
+            edge_legend: EdgeLegend::None,
+        };
+
+        assert!(matches!(
+            render(&diagram, &MermansiOptions::unicode()),
+            Err(MermansiError::RenderLimit {
+                context: "box layout work",
+                requested,
+                limit: MAX_LAYOUT_WORK,
+            }) if requested > MAX_LAYOUT_WORK
+        ));
+    }
+
+    #[test]
+    fn shared_box_nesting_depth_is_a_typed_limit() {
+        let groups = (0..=MAX_DEPTH)
+            .map(|index| BoxGroup {
+                id: format!("group-{index}"),
+                lines: vec![format!("group {index}")],
+                parent: index.checked_sub(1).map(|parent| format!("group-{parent}")),
+                columns: None,
+                span: 1,
+                order: index,
+            })
+            .collect();
+        let diagram = BoxDiagram {
+            family: "test",
+            title: None,
+            nodes: Vec::new(),
+            groups,
+            spacers: Vec::new(),
+            edges: Vec::new(),
+            columns: None,
+            layout: BoxLayout::Packed,
+            edge_legend: EdgeLegend::None,
+        };
+
+        assert!(matches!(
+            render(&diagram, &MermansiOptions::unicode()),
+            Err(MermansiError::RenderLimit {
+                context: "box geometry depth",
+                requested,
+                limit: MAX_DEPTH,
+            }) if requested == MAX_DEPTH + 1
+        ));
+    }
+
+    #[test]
+    fn shared_box_rejects_a_fully_unreachable_group_cycle() {
+        let groups = vec![
+            BoxGroup {
+                id: "first".to_owned(),
+                lines: vec!["First".to_owned()],
+                parent: Some("second".to_owned()),
+                columns: None,
+                span: 1,
+                order: 0,
+            },
+            BoxGroup {
+                id: "second".to_owned(),
+                lines: vec!["Second".to_owned()],
+                parent: Some("first".to_owned()),
+                columns: None,
+                span: 1,
+                order: 1,
+            },
+        ];
+        let diagram = BoxDiagram {
+            family: "test",
+            title: Some("must not hide the cycle".to_owned()),
+            nodes: Vec::new(),
+            groups,
+            spacers: Vec::new(),
+            edges: Vec::new(),
+            columns: None,
+            layout: BoxLayout::Packed,
+            edge_legend: EdgeLegend::None,
+        };
+
+        assert!(matches!(
+            render(&diagram, &MermansiOptions::unicode()),
+            Err(MermansiError::GeometryLayout {
+                family: "test",
+                message,
+            }) if message.contains("group cycle")
+        ));
+    }
+
+    #[test]
+    fn reverse_edge_coalescing_keeps_greedy_source_order() {
+        let edge = |from: &str, to: &str, marker_end| BoxEdge {
+            from: from.to_owned(),
+            to: to.to_owned(),
+            label: String::new(),
+            marker_start: EdgeMarker::None,
+            marker_end,
+            style: EdgeStyle::Solid,
+            from_side: Some(Side::Right),
+            to_side: Some(Side::Left),
+        };
+        let edges = vec![
+            edge("a", "b", EdgeMarker::Arrow),
+            edge("a", "b", EdgeMarker::Circle),
+            BoxEdge {
+                from_side: Some(Side::Left),
+                to_side: Some(Side::Right),
+                ..edge("b", "a", EdgeMarker::Cross)
+            },
+        ];
+
+        let geometry = coalesced_geometry_edges(&edges);
+        assert_eq!(geometry.len(), 2);
+        assert_eq!(geometry[0].from, "a");
+        assert_eq!(geometry[0].to, "b");
+        assert_eq!(geometry[0].marker_start, EdgeMarker::Cross);
+        assert_eq!(geometry[0].marker_end, EdgeMarker::Arrow);
+        assert_eq!(geometry[1].marker_end, EdgeMarker::Circle);
+    }
+
+    #[test]
+    fn path_compression_keeps_only_turning_points() {
+        let points = vec![
+            Point::new(1, 1),
+            Point::new(2, 1),
+            Point::new(3, 1),
+            Point::new(3, 2),
+            Point::new(3, 3),
+            Point::new(4, 3),
+        ];
+
+        assert_eq!(
+            compress_path(points),
+            vec![
+                Point::new(1, 1),
+                Point::new(3, 1),
+                Point::new(3, 3),
+                Point::new(4, 3),
+            ]
         );
     }
 }

@@ -150,6 +150,33 @@ pub fn render_eventmodeling(
     ensure_limit("eventmodeling edges", edges.len(), MAX_EVENTMODELING_EDGES)?;
     let ranks = directed_ranks(&nodes, &edges);
 
+    match render_layout(model, &nodes, &edges, &ranks, direction, opts) {
+        Err(MermansiError::RenderLimit {
+            context: "box geometry columns",
+            ..
+        }) if direction == BoxDirection::Lr => {
+            // Ranks encode graph precedence, not screen axes; only ports and layer orientation
+            // change when the same precedence graph is reflowed top-to-bottom.
+            render_layout(model, &nodes, &edges, &ranks, BoxDirection::Tb, opts)
+        }
+        result => result,
+    }
+}
+
+fn render_layout(
+    model: &EventModelingDiagramRenderModel,
+    nodes: &[BoxNode],
+    edges: &[BoxEdge],
+    ranks: &HashMap<String, usize>,
+    direction: BoxDirection,
+    opts: &MermansiOptions,
+) -> Result<String> {
+    let (from_side, to_side) = direction.edge_sides();
+    let mut edges = edges.to_vec();
+    for edge in &mut edges {
+        edge.from_side = Some(from_side);
+        edge.to_side = Some(to_side);
+    }
     box_geometry::render(
         &BoxDiagram {
             family: "eventmodeling",
@@ -157,12 +184,15 @@ pub fn render_eventmodeling(
                 .title
                 .clone()
                 .or_else(|| Some("Event Modeling".to_owned())),
-            nodes,
+            nodes: nodes.to_vec(),
             groups: Vec::new(),
             spacers: Vec::new(),
             edges,
             columns: None,
-            layout: BoxLayout::Layered { direction, ranks },
+            layout: BoxLayout::Layered {
+                direction,
+                ranks: ranks.clone(),
+            },
             edge_legend: box_geometry::EdgeLegend::None,
         },
         opts,

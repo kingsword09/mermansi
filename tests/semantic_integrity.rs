@@ -9,6 +9,7 @@ use merman_core::diagram::RenderSemanticModel;
 use merman_core::diagrams::journey::{JourneyDiagramRenderModel, JourneyRenderTask};
 use merman_core::diagrams::kanban::{KanbanDiagramRenderModel, KanbanRenderNode};
 use merman_core::diagrams::timeline::{TimelineDiagramRenderModel, TimelineRenderTask};
+use mermansi::ansi::strip_ansi;
 use mermansi::{
     Charset, ColorMode, MermansiOptions, OutputMode, render_model, render_source, str_display_width,
 };
@@ -72,6 +73,52 @@ fn combining_mark_label_preserved() {
         output.contains(naive),
         "combining-mark label '{naive}' missing:\n{output}"
     );
+}
+
+#[test]
+fn leading_zero_width_and_bidi_labels_are_terminal_safe() {
+    for (source, expected) in [
+        (
+            "flowchart TD\n  A([\"\u{301}Accent\"]) --> B",
+            "◌\u{301}Accent",
+        ),
+        ("flowchart TD\n  A[\"\u{fe0f}Icon\"] --> B", "Icon"),
+        ("flowchart TD\n  A[\"\u{202e}abc\u{202c}\"] --> B", "abc"),
+    ] {
+        let output = render_source(
+            source,
+            &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+        )
+        .unwrap();
+        assert!(output.contains(expected), "missing {expected:?}:\n{output}");
+        assert!(
+            !output.contains('\u{202e}'),
+            "bidi override leaked:\n{output}"
+        );
+        assert!(!output.contains('\u{202c}'), "bidi pop leaked:\n{output}");
+    }
+}
+
+#[test]
+fn mermaid_markup_is_normalized_before_terminal_layout() {
+    let flowchart = render_source(
+        "flowchart TD\n  A[\"<b>Bold</b><br/>Next **strong**\"] --> B",
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert!(flowchart.contains("Bold Next strong"), "{flowchart}");
+    assert!(!flowchart.contains("<b>"), "{flowchart}");
+    assert!(!flowchart.contains("**"), "{flowchart}");
+
+    let class = render_source(
+        "classDiagram\n  class A {\n    +String **bold**\n    +line<br/>break\n  }",
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    assert!(class.contains("+String bold"), "{class}");
+    assert!(class.contains("+line break"), "{class}");
+    assert!(!class.contains("<br/>"), "{class}");
+    assert!(!class.contains("**"), "{class}");
 }
 
 #[test]
@@ -438,6 +485,145 @@ fn state_pseudostates_have_single_closed_borders() {
     );
 }
 
+#[test]
+fn complex_composite_state_keeps_labels_outside_closed_geometry() {
+    let source = "stateDiagram-v2\n\
+        state Composite {\n\
+          state fork_state <<fork>>\n\
+          state join_state <<join>>\n\
+          [*] --> fork_state\n\
+          fork_state --> A: PathA\n\
+          --\n\
+          fork_state --> B: PathB\n\
+          A --> join_state\n\
+          B --> join_state\n\
+          join_state --> [*]\n\
+        }";
+    let output = render_source(
+        source,
+        &MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(80),
+    )
+    .unwrap();
+    let (geometry, transitions) = output
+        .split_once("\nTransitions\n")
+        .unwrap_or_else(|| panic!("transition details are missing:\n{output}"));
+
+    assert!(
+        !geometry.contains("PathA"),
+        "label leaked into geometry:\n{output}"
+    );
+    assert!(
+        !geometry.contains("PathB"),
+        "label leaked into geometry:\n{output}"
+    );
+    assert!(transitions.contains("[fork] --> A: PathA"), "{output}");
+    assert!(transitions.contains("[fork] --> B: PathB"), "{output}");
+    assert!(
+        !output.contains("fork_state"),
+        "implementation id leaked:\n{output}"
+    );
+    assert!(
+        !output.contains("join_state"),
+        "implementation id leaked:\n{output}"
+    );
+    assert_coordinate_closed_boxes(geometry, ('┌', '┐', '└', '┘'), 7);
+    assert_coordinate_closed_boxes(geometry, ('╭', '╮', '╰', '╯'), 2);
+
+    let ascii = render_source(
+        source,
+        &MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(80),
+    )
+    .unwrap();
+    assert!(ascii.is_ascii(), "{ascii}");
+    assert!(ascii.contains("[fork] --> A: PathA"), "{ascii}");
+}
+
+#[test]
+fn composite_state_dividers_and_notes_use_complete_native_geometry() {
+    let source = "stateDiagram-v2\n\
+        state Concurrent {\n\
+          state A\n\
+          state B\n\
+          --\n\
+          A --> B: cross\n\
+          note right of A: one visible note\n\
+        }";
+
+    for options in [
+        MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(100),
+        MermansiOptions::ascii()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(100),
+    ] {
+        let output = render_source(source, &options).unwrap();
+        assert!(output.contains("[concurrent region]"), "{output}");
+        assert!(output.contains("A --> B: cross"), "{output}");
+        assert_eq!(output.matches("one visible note").count(), 1, "{output}");
+        assert!(!output.contains("divider-id-"), "{output}");
+        assert!(!output.contains("----note-"), "{output}");
+        assert!(!output.contains("semantic model]"), "{output}");
+        if options.charset == Charset::Unicode {
+            assert_coordinate_closed_boxes(&output, ('┌', '┐', '└', '┘'), 2);
+            assert_coordinate_closed_boxes(&output, ('╭', '╮', '╰', '╯'), 3);
+        }
+    }
+}
+
+#[test]
+fn composite_state_honors_all_root_directions() {
+    for (direction, relation) in [
+        ("TB", "below"),
+        ("BT", "above"),
+        ("LR", "right"),
+        ("RL", "left"),
+    ] {
+        let source = format!(
+            "stateDiagram-v2\n\
+             direction {direction}\n\
+             state A {{\n\
+               [*] --> A1\n\
+               A1 --> [*]\n\
+             }}\n\
+             state B {{\n\
+               [*] --> B1\n\
+               B1 --> [*]\n\
+             }}\n\
+             A --> B: next"
+        );
+        let output = render_source(
+            &source,
+            &MermansiOptions::unicode()
+                .with_output_mode(OutputMode::Concise)
+                .with_max_width(120),
+        )
+        .unwrap_or_else(|error| panic!("{direction} composite state failed: {error}"));
+        let a = state_group_label_position(&output, "A");
+        let b = state_group_label_position(&output, "B");
+        match relation {
+            "below" => assert!(a.0 < b.0, "{direction}:\n{output}"),
+            "above" => assert!(a.0 > b.0, "{direction}:\n{output}"),
+            "right" => assert!(a.1 < b.1, "{direction}:\n{output}"),
+            "left" => assert!(a.1 > b.1, "{direction}:\n{output}"),
+            _ => unreachable!(),
+        }
+    }
+}
+
+fn state_group_label_position(output: &str, label: &str) -> (usize, usize) {
+    let needle = format!("│{label} ");
+    output
+        .lines()
+        .enumerate()
+        .find_map(|(row, line)| line.find(&needle).map(|column| (row, column)))
+        .unwrap_or_else(|| panic!("state group {label:?} is missing:\n{output}"))
+}
+
 // ---------------------------------------------------------------------------
 // Class diagram specifics
 // ---------------------------------------------------------------------------
@@ -541,6 +727,34 @@ fn er_relationships_connect_cardinalities_and_labels() {
     );
 }
 
+#[test]
+fn er_relationships_are_attached_to_entity_geometry() {
+    let output = render_source(
+        "erDiagram\n  direction LR\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE_ITEM : contains",
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+    let geometry = output
+        .split_once("\nRelationships")
+        .map(|(geometry, _)| geometry)
+        .unwrap_or(&output);
+
+    assert!(geometry.contains("CUSTOMER"), "{output}");
+    assert!(geometry.contains("ORDER"), "{output}");
+    assert!(geometry.contains("LINE_ITEM"), "{output}");
+    let connected_row = geometry
+        .lines()
+        .find(|line| {
+            line.contains("CUSTOMER") && line.contains("ORDER") && line.contains("LINE_ITEM")
+        })
+        .unwrap_or_else(|| {
+            panic!("ER entities are not aligned on a connected LR route:\n{output}")
+        });
+    assert_eq!(connected_row.matches('├').count(), 2, "{output}");
+    assert_eq!(connected_row.matches('┤').count(), 2, "{output}");
+    assert!(connected_row.matches('─').count() >= 8, "{output}");
+}
+
 // ---------------------------------------------------------------------------
 // Sequence diagram specifics
 // ---------------------------------------------------------------------------
@@ -556,6 +770,269 @@ fn sequence_messages_preserved() {
         "message 'Hello' missing:\n{output}"
     );
     assert!(output.contains("Hi"), "message 'Hi' missing:\n{output}");
+}
+
+#[test]
+fn sequence_long_cjk_message_wraps_without_erasing_lifelines() {
+    let source = "zenuml\n    爱丽丝 -> 鲍勃: 你叫什么名字？";
+    let output = render_source(
+        source,
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    let label_lines = output
+        .lines()
+        .filter(|line| line.contains("你叫") || line.contains("名字") || line.contains('？'))
+        .collect::<Vec<_>>();
+    assert!(
+        label_lines.len() >= 2,
+        "long label was not wrapped:\n{output}"
+    );
+    for line in label_lines {
+        assert_eq!(
+            line.chars().filter(|ch| *ch == '│').count(),
+            2,
+            "wrapped label erased a participant lifeline:\n{output}"
+        );
+    }
+}
+
+#[test]
+fn sequence_controls_are_removed_before_delegated_layout() {
+    use merman_core::diagrams::sequence::SequenceMessagePayload;
+
+    let engine = merman_core::Engine::new();
+    let parsed = engine
+        .parse_diagram_for_render_model_sync(
+            "sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: Hello",
+            merman_core::ParseOptions::strict(),
+        )
+        .unwrap()
+        .unwrap();
+    let RenderSemanticModel::Sequence(clean_model) = parsed.model else {
+        panic!("expected sequence model");
+    };
+    let mut dirty_model = clean_model.clone();
+    dirty_model.actors.get_mut("A").unwrap().description = "\u{1b}[31mAlice\u{1b}[0m".to_owned();
+    dirty_model.messages[0].message =
+        SequenceMessagePayload::Text("\u{1b}]0;hidden\u{07}Hello".to_owned());
+
+    let plain_options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let expected =
+        render_model(&RenderSemanticModel::Sequence(clean_model), &plain_options).unwrap();
+
+    for color in [ColorMode::Plain, ColorMode::Ansi16, ColorMode::TrueColor] {
+        let output = render_model(
+            &RenderSemanticModel::Sequence(dirty_model.clone()),
+            &plain_options.with_color(color),
+        )
+        .unwrap();
+        assert_eq!(
+            strip_ansi(&output),
+            expected,
+            "terminal controls changed delegated sequence geometry in {color:?}"
+        );
+    }
+}
+
+#[test]
+fn state_controls_are_removed_before_delegated_layout() {
+    let engine = merman_core::Engine::new();
+    let parsed = engine
+        .parse_diagram_for_render_model_sync(
+            "stateDiagram-v2\n  A --> B: go",
+            merman_core::ParseOptions::strict(),
+        )
+        .unwrap()
+        .unwrap();
+    let RenderSemanticModel::State(clean_model) = parsed.model else {
+        panic!("expected state model");
+    };
+    let mut dirty_model = clean_model.clone();
+    dirty_model.edges[0].label = "\u{1b}]0;hidden\u{07}go".to_owned();
+
+    let plain_options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let expected = render_model(&RenderSemanticModel::State(clean_model), &plain_options).unwrap();
+    for color in [ColorMode::Plain, ColorMode::Ansi16, ColorMode::TrueColor] {
+        let output = render_model(
+            &RenderSemanticModel::State(dirty_model.clone()),
+            &plain_options.with_color(color),
+        )
+        .unwrap();
+        assert_eq!(strip_ansi(&output), expected, "state geometry changed");
+    }
+}
+
+#[test]
+fn xychart_controls_are_removed_before_delegated_layout() {
+    let engine = merman_core::Engine::new();
+    let parsed = engine
+        .parse_diagram_for_render_model_sync(
+            "xychart-beta\n  title Sales\n  x-axis [A, B]\n  y-axis 0 --> 10\n  bar [2, 4]",
+            merman_core::ParseOptions::strict(),
+        )
+        .unwrap()
+        .unwrap();
+    let RenderSemanticModel::XyChart(clean_model) = parsed.model else {
+        panic!("expected XY chart model");
+    };
+    let mut dirty_model = clean_model.clone();
+    dirty_model.title = Some("\u{1b}[31mSales\u{1b}[0m".to_owned());
+    if let merman_core::diagrams::xychart::XyChartAxisRenderModel::Band { categories, .. } =
+        &mut dirty_model.x_axis
+    {
+        categories[0] = "\u{1b}]0;hidden\u{07}A".to_owned();
+    }
+
+    let plain_options = MermansiOptions::unicode().with_output_mode(OutputMode::Concise);
+    let expected =
+        render_model(&RenderSemanticModel::XyChart(clean_model), &plain_options).unwrap();
+    for color in [ColorMode::Plain, ColorMode::Ansi16, ColorMode::TrueColor] {
+        let output = render_model(
+            &RenderSemanticModel::XyChart(dirty_model.clone()),
+            &plain_options.with_color(color),
+        )
+        .unwrap();
+        assert_eq!(strip_ansi(&output), expected, "XY chart geometry changed");
+    }
+}
+
+#[test]
+fn sequence_actor_properties_render_without_rejecting_valid_input() {
+    let source = "sequenceDiagram\n  participant A\n  properties A: { \"icon\": \"@clock\", \"role\": \"service\" }";
+    let output = render_source(
+        source,
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    assert!(output.contains("A"), "participant is missing:\n{output}");
+    assert!(output.contains("A.icon = \"@clock\""), "{output}");
+    assert!(output.contains("A.role = \"service\""), "{output}");
+}
+
+#[test]
+fn empty_sequence_and_zenuml_models_render_explicit_placeholders() {
+    for source in ["sequenceDiagram\n", "zenuml\n"] {
+        let output = render_source(
+            source,
+            &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+        )
+        .unwrap();
+        assert_eq!(output, "(empty sequence diagram)\n");
+    }
+}
+
+#[test]
+fn sequence_empty_control_sections_use_semantic_geometry_fallback() {
+    let output = render_source(
+        "sequenceDiagram\n  participant A\n  participant B\n  loop Empty\n  end",
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    assert_coordinate_closed_boxes(&output, ('┌', '┐', '└', '┘'), 2);
+    assert!(output.contains("loop start"), "{output}");
+    assert!(output.contains("loop end"), "{output}");
+    assert!(output.contains("Empty"), "{output}");
+    assert!(!output.contains("semantic model]"), "{output}");
+}
+
+#[test]
+fn sequence_unknown_message_features_remain_explicit_in_fallback() {
+    use merman_core::diagram::RenderSemanticModel;
+    use merman_core::diagrams::sequence::{
+        SequenceActor, SequenceDiagramRenderModel, SequenceMessage, SequenceMessagePayload,
+    };
+    use std::collections::BTreeMap;
+
+    let mut actors = BTreeMap::new();
+    actors.insert(
+        "A".to_owned(),
+        SequenceActor {
+            name: "A".to_owned(),
+            description: "Actor A".to_owned(),
+            actor_type: "participant".to_owned(),
+            wrap: false,
+            links: Default::default(),
+            properties: Default::default(),
+        },
+    );
+    let model = SequenceDiagramRenderModel {
+        acc_title: None,
+        acc_descr: None,
+        title: None,
+        actor_order: vec!["A".to_owned()],
+        actors,
+        boxes: Vec::new(),
+        messages: vec![SequenceMessage {
+            id: "m0".to_owned(),
+            from: Some("A".to_owned()),
+            to: Some("Implicit".to_owned()),
+            message_type: 42,
+            message: SequenceMessagePayload::Text("payload".to_owned()),
+            wrap: false,
+            activate: false,
+            placement: Some(7),
+            central_connection: 0,
+        }],
+        notes: Vec::new(),
+        created_actors: Default::default(),
+        destroyed_actors: Default::default(),
+    };
+    let output = render_model(
+        &RenderSemanticModel::Sequence(model),
+        &MermansiOptions::unicode().with_output_mode(OutputMode::Concise),
+    )
+    .unwrap();
+
+    for expected in [
+        "Actor A",
+        "Implicit (implicit)",
+        "message type 42",
+        "payload",
+        "placement=7",
+    ] {
+        assert!(output.contains(expected), "missing {expected:?}:\n{output}");
+    }
+}
+
+#[test]
+fn complex_sequence_falls_back_before_exceeding_a_narrow_viewport() {
+    let source = "sequenceDiagram\n\
+        participant User\n\
+        participant Main as Main Process\n\
+        participant Renderer\n\
+        participant Timer as 3s Fallback Timer With More Context\n\
+        User->>Main: CMD+W\n\
+        Main->>Main: event.preventDefault()\n\
+        Main->>Renderer: WINDOW_CLOSE_REQUESTED\n\
+        Main->>Timer: Start 3s timer\n\
+        alt Multiple panels\n\
+          Renderer->>Renderer: closePanel(focusedId)\n\
+          Note over Renderer: Panel removed\n\
+          Timer-->>Main: 3s elapsed -> window.destroy()\n\
+        else Single panel\n\
+          Renderer->>Renderer: closePanel(lastId)\n\
+          Note over Renderer: Panel reopens\n\
+          Timer-->>Main: 3s elapsed -> window.destroy()\n\
+        end";
+    let output = render_source(
+        source,
+        &MermansiOptions::unicode()
+            .with_output_mode(OutputMode::Concise)
+            .with_max_width(80),
+    )
+    .unwrap();
+
+    assert!(output.contains("Events"), "{output}");
+    assert!(output.contains("event.preventDefault()"), "{output}");
+    assert!(output.contains("Panel reopens"), "{output}");
+    assert!(
+        output.lines().all(|line| str_display_width(line) <= 80),
+        "sequence exceeded its requested viewport:\n{output}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1386,6 +1863,96 @@ fn assert_exact_closed_unicode_boxes(preview: &str, expected: usize) {
             "expected exactly {expected} '{corner}' box corners:\n{preview}"
         );
     }
+}
+
+fn assert_coordinate_closed_boxes(
+    preview: &str,
+    corners: (char, char, char, char),
+    expected: usize,
+) {
+    let lines = preview.lines().collect::<Vec<_>>();
+    let (top_left, top_right, bottom_left, bottom_right) = corners;
+    let mut closed = 0usize;
+    for (top_row, line) in lines.iter().enumerate() {
+        let top_left_columns = display_columns_of(line, top_left);
+        for left in top_left_columns {
+            let Some(right) = display_columns_of(line, top_right)
+                .into_iter()
+                .find(|right| {
+                    *right > left && horizontal_segment_is_continuous(line, left, *right, corners)
+                })
+            else {
+                continue;
+            };
+            let bottom = ((top_row + 1)..lines.len()).find(|row| {
+                display_char_at(lines[*row], left) == Some(bottom_left)
+                    && display_char_at(lines[*row], right) == Some(bottom_right)
+                    && horizontal_segment_is_continuous(lines[*row], left, right, corners)
+            });
+            let Some(bottom_row) = bottom else {
+                panic!(
+                    "box at row {top_row}, columns {left}..{right} has no matching bottom:\n{preview}"
+                );
+            };
+            for (row, side_line) in lines.iter().enumerate().take(bottom_row).skip(top_row + 1) {
+                for column in [left, right] {
+                    let side = display_char_at(side_line, column);
+                    assert!(
+                        side.is_some_and(|ch| matches!(ch, '│' | '├' | '┤' | '┼' | '┃')),
+                        "open box side at row {row}, column {column}:\n{preview}"
+                    );
+                }
+            }
+            closed += 1;
+        }
+    }
+    assert!(
+        closed >= expected,
+        "expected at least {expected} coordinate-closed boxes, found {closed}:\n{preview}"
+    );
+}
+
+fn display_columns_of(line: &str, needle: char) -> Vec<usize> {
+    let mut columns = Vec::new();
+    let mut display_column = 0usize;
+    for ch in line.chars() {
+        if ch == needle {
+            columns.push(display_column);
+        }
+        display_column += mermansi::char_display_width(ch);
+    }
+    columns
+}
+
+fn display_char_at(line: &str, target: usize) -> Option<char> {
+    let mut display_column = 0usize;
+    for ch in line.chars() {
+        if display_column == target {
+            return Some(ch);
+        }
+        display_column += mermansi::char_display_width(ch);
+        if display_column > target {
+            return None;
+        }
+    }
+    None
+}
+
+fn horizontal_segment_is_continuous(
+    line: &str,
+    left: usize,
+    right: usize,
+    corners: (char, char, char, char),
+) -> bool {
+    ((left + 1)..right).all(|column| {
+        display_char_at(line, column).is_some_and(|ch| {
+            matches!(ch, '─' | '━' | '┬' | '┴' | '┼')
+                || ch == corners.0
+                || ch == corners.1
+                || ch == corners.2
+                || ch == corners.3
+        })
+    })
 }
 
 #[test]
