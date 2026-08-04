@@ -18,7 +18,7 @@ const MAX_RADAR_TICKS: usize = 18;
 
 pub fn render_radar(model: &RadarDiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
     let mut out = String::new();
-    out.push_str(&format_title(&model.title));
+    out.push_str(&format_title(&model.title, opts.max_width));
 
     ensure_entity_limit("radar axes", model.axes.len())?;
     ensure_entity_limit("radar curves", model.curves.len())?;

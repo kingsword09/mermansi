@@ -7,10 +7,20 @@ output=${2:-"$root/.aicode/state/asg-gallery"}
 render_width=${RENDER_WIDTH:-95}
 terminal_width=${TERMINAL_WIDTH:-100}
 publish_readme=${PUBLISH_README:-0}
+expected_asg_version='asg 2.0.2'
 
 if [ -z "$asg_bin" ] || [ ! -x "$asg_bin" ]; then
     echo "usage: ASG_BIN=/absolute/path/to/asg scripts/asg-gallery.sh [ASG_BIN] [OUTPUT_DIR]" >&2
     echo "       set PUBLISH_README=1 to refresh docs/gallery after validation" >&2
+    exit 2
+fi
+
+if ! actual_asg_version=$("$asg_bin" --version 2>/dev/null); then
+    echo "error: unable to read ASG version from $asg_bin" >&2
+    exit 2
+fi
+if [ "$actual_asg_version" != "$expected_asg_version" ]; then
+    echo "error: expected $expected_asg_version, found $actual_asg_version" >&2
     exit 2
 fi
 
@@ -53,10 +63,7 @@ elif command -v resvg >/dev/null 2>&1; then
         resvg "$svg" "$output/png/$id.png" >/dev/null 2>&1
     done
 elif command -v qlmanage >/dev/null 2>&1; then
-    echo "warning: qlmanage produces square audit thumbnails that may crop wide or tall SVGs" >&2
-    for svg in "$output"/svg/*.svg; do
-        qlmanage -t -s 1800 -o "$output/png" "$svg" >/dev/null 2>&1
-    done
+    echo "warning: qlmanage thumbnails are square and can crop wide or tall SVGs; skipping PNG previews" >&2
 else
     echo "warning: install rsvg-convert or resvg to rasterize the SVG gallery" >&2
 fi

@@ -25,7 +25,7 @@ struct LegendRow {
 
 pub fn render_pie(model: &PieDiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
     let mut out = String::new();
-    out.push_str(&format_title(&model.title));
+    out.push_str(&format_title(&model.title, opts.max_width));
     ensure_entity_limit("pie sections", model.sections.len())?;
 
     if model.sections.is_empty() {

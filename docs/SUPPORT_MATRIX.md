@@ -156,9 +156,12 @@ chart values remain lossless; preview dimensions do not rewrite arbitrary canoni
 
 The support matrix is necessary but cannot decide whether geometry is visually useful. The gallery
 workflow records concise output through the real `mermansi` CLI, converts asciicast v3 recordings
-with an externally supplied [ASG](https://github.com/kingsword09/asg) binary, and creates an
-inspectable HTML index. Generated text, casts, SVGs, and PNG previews stay under the ignored
-`.aicode/state/` directory during normal audits. Set `PUBLISH_README=1` to refresh the validated
+with an externally supplied [ASG](https://github.com/kingsword09/asg) 2.0.2 binary, and creates an
+inspectable HTML index. The script rejects other ASG versions so dimensions, font geometry, and
+animation frame offsets cannot drift implicitly. Generated text, casts, SVGs, and optional PNG
+previews stay under the ignored `.aicode/state/` directory during normal audits; it skips the
+macOS `qlmanage` fallback because its square thumbnails can crop wide or tall diagrams. Set
+`PUBLISH_README=1` to refresh the validated
 34-SVG snapshot tracked in `docs/gallery/` and embedded by the repository README.
 
 ```sh

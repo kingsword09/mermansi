@@ -54,7 +54,7 @@ pub fn render_quadrant_chart(
     opts: &MermansiOptions,
 ) -> Result<String> {
     let mut out = String::new();
-    out.push_str(&format_title(&model.title));
+    out.push_str(&format_title(&model.title, opts.max_width));
     ensure_entity_limit("quadrant points", model.points.len())?;
 
     let quadrant_labels = [

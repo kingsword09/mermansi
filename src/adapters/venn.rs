@@ -3,7 +3,9 @@
 //! Draws closed overlapping set ellipses, places every subset and text-node label inside its
 //! associated region when space permits, and connects overflow labels to deterministic callouts.
 
-use crate::adapters::chart_primitives::{self, checked_chart_dimensions, ensure_entity_limit};
+use crate::adapters::chart_primitives::{
+    self, ChartWorkBudget, checked_chart_dimensions, ensure_entity_limit,
+};
 use crate::adapters::format_title;
 use crate::ansi::sanitize_label_text;
 use crate::canvas::Canvas;
@@ -42,7 +44,7 @@ struct PendingCallout {
 
 pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Result<String> {
     let mut out = String::new();
-    out.push_str(&format_title(&model.title));
+    out.push_str(&format_title(&model.title, opts.max_width));
 
     ensure_entity_limit("venn subsets", model.subsets.len())?;
     ensure_entity_limit("venn text nodes", model.text_nodes.len())?;
@@ -88,6 +90,8 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
         draw_ellipse_outline(&mut canvas, circle, outline)?;
     }
 
+    let mut work = ChartWorkBudget::new("venn label layout work");
+
     let intersection_separator = match opts.charset {
         Charset::Unicode => "∩",
         Charset::Ascii => "&",
@@ -106,13 +110,15 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
     let mut callout_index = 0usize;
     for label in &labels {
         if label.text.is_empty()
-            || place_region_label(&mut canvas, &circles, &circle_lookup, label)?
+            || place_region_label(&mut canvas, &circles, &circle_lookup, label, &mut work)?
         {
             continue;
         }
 
         let marker = chart_primitives::marker_char(callout_index, opts.charset);
-        if let Some(anchor) = find_region_point(&canvas, &circles, &circle_lookup, &label.sets) {
+        if let Some(anchor) =
+            find_region_point(&canvas, &circles, &circle_lookup, &label.sets, &mut work)?
+        {
             canvas.set_text(anchor.0, anchor.1, marker)?;
             pending_callouts.push(PendingCallout {
                 marker,
@@ -121,7 +127,14 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
                 order: label.order,
             });
         } else {
-            place_region_marker(&mut canvas, &circles, &circle_lookup, &label.sets, marker)?;
+            place_region_marker(
+                &mut canvas,
+                &circles,
+                &circle_lookup,
+                &label.sets,
+                marker,
+                &mut work,
+            )?;
             fallback_callouts.push((marker, label.text.clone()));
         }
         callout_index += 1;
@@ -130,6 +143,7 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
         &mut canvas,
         pending_callouts,
         opts.charset,
+        &mut work,
     )?);
 
     out.push_str(&chart_primitives::render_cropped_canvas(&canvas));
@@ -147,11 +161,22 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
     if !model.style_entries.is_empty() {
         out.push_str("\nStyles:\n");
         for entry in &model.style_entries {
-            let targets = entry.targets.join(",");
+            let targets = entry
+                .targets
+                .iter()
+                .map(|target| sanitize_label_text(target))
+                .collect::<Vec<_>>()
+                .join(",");
             let styles = entry
                 .styles
                 .iter()
-                .map(|(key, value)| format!("{key}={value}"))
+                .map(|(key, value)| {
+                    format!(
+                        "{}={}",
+                        sanitize_label_text(key),
+                        sanitize_label_text(value)
+                    )
+                })
                 .collect::<Vec<_>>();
             out.push_str(&format!("  {targets}: {}\n", styles.join(", ")));
         }
@@ -163,7 +188,7 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
             if subset.sets.len() < 2 {
                 continue;
             }
-            let sets = subset.sets.join(intersection_separator);
+            let sets = visible_sets(&subset.sets, intersection_separator);
             let label = subset
                 .label
                 .as_deref()
@@ -178,7 +203,7 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
     if !model.text_nodes.is_empty() {
         out.push_str("\nText Nodes:\n");
         for node in &model.text_nodes {
-            let sets = node.sets.join(intersection_separator);
+            let sets = visible_sets(&node.sets, intersection_separator);
             let id = sanitize_label_text(&node.id);
             let label = node
                 .label
@@ -197,7 +222,7 @@ pub fn render_venn(model: &VennDiagramRenderModel, opts: &MermansiOptions) -> Re
 fn collect_region_labels(model: &VennDiagramRenderModel, separator: &str) -> Vec<RegionLabel> {
     let mut labels = Vec::with_capacity(model.subsets.len() + model.text_nodes.len());
     for (order, subset) in model.subsets.iter().enumerate() {
-        let default = subset.sets.join(separator);
+        let default = visible_sets(&subset.sets, separator);
         let text = sanitize_label_text(subset.label.as_deref().unwrap_or(&default));
         labels.push(RegionLabel {
             sets: subset.sets.clone(),
@@ -226,6 +251,13 @@ fn collect_region_labels(model: &VennDiagramRenderModel, separator: &str) -> Vec
         });
     }
     labels
+}
+
+fn visible_sets(sets: &[String], separator: &str) -> String {
+    sets.iter()
+        .map(|set| sanitize_label_text(set))
+        .collect::<Vec<_>>()
+        .join(separator)
 }
 
 fn build_set_circles(
@@ -375,8 +407,10 @@ fn place_region_label(
     circles: &[SetCircle],
     lookup: &BTreeMap<String, usize>,
     label: &RegionLabel,
+    work: &mut ChartWorkBudget,
 ) -> Result<bool> {
-    let Some((x, y)) = find_region_span(canvas, circles, lookup, &label.sets, &label.text) else {
+    let Some((x, y)) = find_region_span(canvas, circles, lookup, &label.sets, &label.text, work)?
+    else {
         return Ok(false);
     };
     canvas.set_text(x, y, &label.text)?;
@@ -389,47 +423,60 @@ fn find_region_span(
     lookup: &BTreeMap<String, usize>,
     sets: &[String],
     text: &str,
-) -> Option<(usize, usize)> {
+    work: &mut ChartWorkBudget,
+) -> Result<Option<(usize, usize)>> {
     let width = str_display_width(text);
     if width == 0 || width > canvas.width() {
-        return None;
+        return Ok(None);
     }
-    let required = required_circle_indices(sets, lookup)?;
+    let Some(required) = required_circle_indices(sets, lookup) else {
+        return Ok(None);
+    };
     let (target_x, target_y) = region_center(circles, &required, canvas);
     for exact in [true, false] {
         if !exact && required.len() <= 1 {
             continue;
         }
-        let mut candidates = Vec::new();
+        let mut best = None::<(i64, usize, usize)>;
         for y in 0..canvas.height() {
             for x in 0..=canvas.width() - width {
+                work.consume(
+                    circles
+                        .len()
+                        .saturating_add(width)
+                        .saturating_add(LABEL_CLEARANCE_X * 2 + LABEL_CLEARANCE_Y * 2 + 1),
+                )?;
                 if span_has_clear_margin(canvas, x, y, width)
-                    && span_matches_region(circles, &required, x, y, width, exact)
+                    && span_matches_region(circles, &required, x, y, width, exact, work)?
                 {
                     let center_x = x as i64 + width as i64 / 2;
                     let distance = (center_x - target_x).abs() + (y as i64 - target_y).abs();
-                    candidates.push((distance, y, x));
+                    let candidate = (distance, y, x);
+                    if best.is_none_or(|current| candidate < current) {
+                        best = Some(candidate);
+                    }
                 }
             }
         }
-        candidates.sort_unstable();
-        if let Some((_, y, x)) = candidates.first().copied() {
-            return Some((x, y));
+        if let Some((_, y, x)) = best {
+            return Ok(Some((x, y)));
         }
     }
-    None
+    Ok(None)
 }
 
 fn place_connected_callouts(
     canvas: &mut Canvas,
     mut callouts: Vec<PendingCallout>,
     charset: Charset,
+    work: &mut ChartWorkBudget,
 ) -> Result<Vec<(&'static str, String)>> {
     if callouts.is_empty() {
         return Ok(Vec::new());
     }
 
     callouts.sort_by_key(|callout| (callout.anchor.1, callout.anchor.0, callout.order));
+    work.consume(canvas.width().saturating_mul(canvas.height()))?;
     let maximum_width = callouts
         .iter()
         .map(|callout| str_display_width(&format!("{}- {}", callout.marker, callout.text)))
@@ -451,10 +498,15 @@ fn place_connected_callouts(
         let maximum_row = canvas.height() - (callouts.len() - index);
         rows.push(callout.anchor.1.clamp(minimum_row, maximum_row));
     }
-    let all_labels_fit = callouts.iter().zip(&rows).all(|(callout, row)| {
+    let mut all_labels_fit = true;
+    for (callout, row) in callouts.iter().zip(&rows) {
         let text = format!("{}- {}", callout.marker, callout.text);
-        span_is_clear(canvas, callout_x, *row, str_display_width(&text))
-    });
+        work.consume(str_display_width(&text).saturating_add(1))?;
+        if !span_is_clear(canvas, callout_x, *row, str_display_width(&text)) {
+            all_labels_fit = false;
+            break;
+        }
+    }
     if !all_labels_fit {
         return Ok(callouts
             .into_iter()
@@ -498,8 +550,9 @@ fn place_region_marker(
     lookup: &BTreeMap<String, usize>,
     sets: &[String],
     marker: &str,
+    work: &mut ChartWorkBudget,
 ) -> Result<()> {
-    if let Some((x, y)) = find_region_point(canvas, circles, lookup, sets) {
+    if let Some((x, y)) = find_region_point(canvas, circles, lookup, sets, work)? {
         canvas.set_text(x, y, marker)?;
     }
     Ok(())
@@ -510,30 +563,36 @@ fn find_region_point(
     circles: &[SetCircle],
     lookup: &BTreeMap<String, usize>,
     sets: &[String],
-) -> Option<(usize, usize)> {
-    let required = required_circle_indices(sets, lookup)?;
+    work: &mut ChartWorkBudget,
+) -> Result<Option<(usize, usize)>> {
+    let Some(required) = required_circle_indices(sets, lookup) else {
+        return Ok(None);
+    };
     let (target_x, target_y) = region_center(circles, &required, canvas);
     for exact in [true, false] {
         if !exact && required.len() <= 1 {
             continue;
         }
-        let mut candidates = Vec::new();
+        let mut best = None::<(i64, usize, usize)>;
         for y in 0..canvas.height() {
             for x in 0..canvas.width() {
+                work.consume(circles.len().saturating_add(1))?;
                 if cell_is_clear(canvas, x, y)
-                    && point_matches_region(circles, &required, x, y, exact, 0.78)
+                    && point_matches_region(circles, &required, x, y, exact, 0.78, work)?
                 {
                     let distance = (x as i64 - target_x).abs() + (y as i64 - target_y).abs();
-                    candidates.push((distance, y, x));
+                    let candidate = (distance, y, x);
+                    if best.is_none_or(|current| candidate < current) {
+                        best = Some(candidate);
+                    }
                 }
             }
         }
-        candidates.sort_unstable();
-        if let Some((_, y, x)) = candidates.first().copied() {
-            return Some((x, y));
+        if let Some((_, y, x)) = best {
+            return Ok(Some((x, y)));
         }
     }
-    None
+    Ok(None)
 }
 
 fn required_circle_indices(
@@ -565,8 +624,14 @@ fn span_matches_region(
     y: usize,
     width: usize,
     exact: bool,
-) -> bool {
-    (x..x + width).all(|column| point_matches_region(circles, required, column, y, exact, 0.82))
+    work: &mut ChartWorkBudget,
+) -> Result<bool> {
+    for column in x..x + width {
+        if !point_matches_region(circles, required, column, y, exact, 0.82, work)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn point_matches_region(
@@ -576,15 +641,17 @@ fn point_matches_region(
     y: usize,
     exact: bool,
     inset: f64,
-) -> bool {
-    circles.iter().enumerate().all(|(index, circle)| {
+    work: &mut ChartWorkBudget,
+) -> Result<bool> {
+    work.consume(circles.len())?;
+    Ok(circles.iter().enumerate().all(|(index, circle)| {
         let inside = ellipse_contains(circle, x as f64, y as f64, inset);
         if required.binary_search(&index).is_ok() {
             inside
         } else {
             !exact || !ellipse_contains(circle, x as f64, y as f64, 0.92)
         }
-    })
+    }))
 }
 
 fn ellipse_contains(circle: &SetCircle, x: f64, y: f64, inset: f64) -> bool {
@@ -640,12 +707,56 @@ mod tests {
     fn exact_region_membership_requires_every_requested_set() {
         let circles = vec![circle("A", 8, 5), circle("B", 14, 5)];
         let both = vec![0, 1];
-        assert!(point_matches_region(&circles, &both, 11, 5, true, 0.8));
-        assert!(!point_matches_region(&circles, &both, 5, 5, true, 0.8));
+        assert!(
+            point_matches_region(
+                &circles,
+                &both,
+                11,
+                5,
+                true,
+                0.8,
+                &mut ChartWorkBudget::new("test")
+            )
+            .unwrap()
+        );
+        assert!(
+            !point_matches_region(
+                &circles,
+                &both,
+                5,
+                5,
+                true,
+                0.8,
+                &mut ChartWorkBudget::new("test")
+            )
+            .unwrap()
+        );
 
         let only_a = vec![0];
-        assert!(point_matches_region(&circles, &only_a, 4, 5, true, 0.8));
-        assert!(!point_matches_region(&circles, &only_a, 11, 5, true, 0.8));
+        assert!(
+            point_matches_region(
+                &circles,
+                &only_a,
+                4,
+                5,
+                true,
+                0.8,
+                &mut ChartWorkBudget::new("test")
+            )
+            .unwrap()
+        );
+        assert!(
+            !point_matches_region(
+                &circles,
+                &only_a,
+                11,
+                5,
+                true,
+                0.8,
+                &mut ChartWorkBudget::new("test")
+            )
+            .unwrap()
+        );
     }
 
     #[test]
@@ -663,5 +774,63 @@ mod tests {
 
         assert!(!span_has_clear_margin(&canvas, 7, 3, 4));
         assert!(span_has_clear_margin(&canvas, 7, 5, 4));
+    }
+
+    #[test]
+    fn dense_set_label_search_stops_at_the_work_limit() {
+        let subsets = (0..chart_primitives::MAX_CHART_ENTITIES)
+            .map(|index| VennSubsetRenderModel {
+                sets: vec![format!("set-{index}")],
+                size: 1.0,
+                label: None,
+            })
+            .collect();
+        let model = VennDiagramRenderModel {
+            title: None,
+            subsets,
+            text_nodes: Vec::new(),
+            style_entries: Vec::new(),
+            acc_title: None,
+            acc_descr: None,
+        };
+
+        assert!(matches!(
+            render_venn(&model, &MermansiOptions::unicode()),
+            Err(crate::error::MermansiError::RenderLimit {
+                context: "venn label layout work",
+                limit: chart_primitives::MAX_CHART_WORK,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn visible_set_and_style_text_is_terminal_safe() {
+        let mut styles = BTreeMap::new();
+        styles.insert(
+            "stroke\u{1b}[31m".to_owned(),
+            "red\u{1b}]0;hidden\u{07}".to_owned(),
+        );
+        let model = VennDiagramRenderModel {
+            title: None,
+            subsets: vec![VennSubsetRenderModel {
+                sets: vec!["A\u{1b}[31m\u{1b}[0m".to_owned()],
+                size: 1.0,
+                label: None,
+            }],
+            text_nodes: Vec::new(),
+            style_entries: vec![merman_core::diagrams::venn::VennStyleEntryRenderModel {
+                targets: vec!["A\u{1b}[31m\u{1b}[0m".to_owned()],
+                styles,
+            }],
+            acc_title: None,
+            acc_descr: None,
+        };
+
+        let output = render_venn(&model, &MermansiOptions::unicode()).unwrap();
+        assert!(!output.contains('\u{1b}'), "{output:?}");
+        assert!(!output.contains("hidden"), "{output:?}");
+        assert!(output.contains("A"), "{output}");
+        assert!(output.contains("stroke=red"), "{output}");
     }
 }

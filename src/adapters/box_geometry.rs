@@ -608,7 +608,11 @@ pub(crate) fn render_with_node_shapes(
         debug_assert!(
             diagram.nodes.is_empty() && diagram.groups.is_empty() && diagram.spacers.is_empty()
         );
-        return Ok(diagram.title.clone().unwrap_or_default());
+        return Ok(diagram
+            .title
+            .as_deref()
+            .map(|title| wrap_display(title, opts.max_width).join("\n"))
+            .unwrap_or_default());
     }
 
     let (mut placed, diagram_width, diagram_height) = match &diagram.layout {
@@ -1762,10 +1766,12 @@ pub(crate) fn edge_legend_text(edge: &BoxEdge) -> String {
         marker_legend(edge.marker_end, false)
     );
     let label = normalized(&edge.label);
+    let from = normalized(&edge.from);
+    let to = normalized(&edge.to);
     if label.is_empty() {
-        format!("{} {arrow} {}", edge.from, edge.to)
+        format!("{from} {arrow} {to}")
     } else {
-        format!("{} {arrow} {}  {label}", edge.from, edge.to)
+        format!("{from} {arrow} {to}  {label}")
     }
 }
 
@@ -1920,11 +1926,35 @@ pub(crate) fn wrap_display(text: &str, max_width: usize) -> Vec<String> {
         }
         let grapheme_width = str_display_width(grapheme).max(1);
         if width > 0 && width.saturating_add(grapheme_width) > max_width {
-            lines.push(line.trim_end().to_owned());
-            line.clear();
-            width = 0;
+            let move_from = UnicodeSegmentation::grapheme_indices(line.as_str(), true)
+                .next_back()
+                .and_then(|(index, previous)| {
+                    let previous_width = str_display_width(previous).max(1);
+                    (index > 0
+                        && previous_width.saturating_add(grapheme_width) <= max_width
+                        && (forbidden_line_start(grapheme) || forbidden_line_end(previous)))
+                    .then_some((index, previous_width))
+                });
+            if let Some((index, previous_width)) = move_from {
+                let moved = line.split_off(index);
+                lines.push(line.trim_end().to_owned());
+                line = moved;
+                width = previous_width;
+            } else {
+                lines.push(line.trim_end().to_owned());
+                line.clear();
+                width = 0;
+            }
         }
         if width == 0 && grapheme.chars().all(char::is_whitespace) {
+            continue;
+        }
+        if width == 0 && grapheme_width > max_width {
+            // A terminal cell cannot represent a wide grapheme in a one-column slot. Keep a
+            // visible placeholder so the preview remains bounded; complete output retains the
+            // original label in the semantic model.
+            line.push('?');
+            width = 1;
             continue;
         }
         line.push_str(grapheme);
@@ -1934,6 +1964,72 @@ pub(crate) fn wrap_display(text: &str, max_width: usize) -> Vec<String> {
         lines.push(line.trim_end().to_owned());
     }
     lines
+}
+
+fn forbidden_line_start(grapheme: &str) -> bool {
+    matches!(
+        grapheme.chars().next(),
+        Some(
+            ',' | '.'
+                | '!'
+                | '?'
+                | ':'
+                | ';'
+                | '%'
+                | ')'
+                | ']'
+                | '}'
+                | '、'
+                | '。'
+                | '，'
+                | '．'
+                | '！'
+                | '？'
+                | '：'
+                | '；'
+                | '）'
+                | '］'
+                | '｝'
+                | '〕'
+                | '〉'
+                | '》'
+                | '」'
+                | '』'
+                | '】'
+                | '〗'
+                | '〙'
+                | '〛'
+                | '’'
+                | '”'
+                | '»'
+                | '…'
+        )
+    )
+}
+
+fn forbidden_line_end(grapheme: &str) -> bool {
+    matches!(
+        grapheme.chars().next(),
+        Some(
+            '(' | '['
+                | '{'
+                | '（'
+                | '［'
+                | '｛'
+                | '〔'
+                | '〈'
+                | '《'
+                | '「'
+                | '『'
+                | '【'
+                | '〖'
+                | '〘'
+                | '〚'
+                | '‘'
+                | '“'
+                | '«'
+        )
+    )
 }
 
 fn normalized(value: &str) -> String {
@@ -2230,5 +2326,46 @@ mod tests {
                 Point::new(4, 3),
             ]
         );
+    }
+
+    #[test]
+    fn display_wrapping_keeps_cjk_punctuation_with_adjacent_text() {
+        let closing = wrap_display("需要，继续", 4);
+        assert_eq!(closing, ["需", "要，", "继续"]);
+        assert!(closing.iter().all(|line| str_display_width(line) <= 4));
+        assert!(closing.iter().all(|line| !forbidden_line_start(line)));
+
+        let opening = wrap_display("甲（乙丙", 4);
+        assert_eq!(opening, ["甲", "（乙", "丙"]);
+        assert!(opening.iter().all(|line| str_display_width(line) <= 4));
+        assert!(opening.iter().all(|line| {
+            UnicodeSegmentation::graphemes(line.as_str(), true)
+                .next_back()
+                .is_none_or(|grapheme| !forbidden_line_end(grapheme))
+        }));
+    }
+
+    #[test]
+    fn display_wrapping_keeps_wide_graphemes_inside_one_column_slots() {
+        let lines = wrap_display("中文🚀", 1);
+        assert_eq!(lines, ["?", "?", "?"]);
+        assert!(lines.iter().all(|line| str_display_width(line) <= 1));
+    }
+
+    #[test]
+    fn edge_legend_sanitizes_endpoint_identifiers() {
+        let edge = BoxEdge {
+            from: "A\u{1b}[31m".to_owned(),
+            to: "B\u{1b}]0;hidden\u{07}".to_owned(),
+            label: String::new(),
+            marker_start: EdgeMarker::None,
+            marker_end: EdgeMarker::Arrow,
+            style: EdgeStyle::Solid,
+            from_side: None,
+            to_side: None,
+        };
+        let legend = edge_legend_text(&edge);
+        assert_eq!(legend, "A --> B");
+        assert!(!legend.contains('\u{1b}'));
     }
 }

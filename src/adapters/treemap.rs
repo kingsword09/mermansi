@@ -4,8 +4,7 @@
 //! inside its parent. Positive numeric values control sibling area; missing values use subtree
 //! weight. Labels that cannot fit receive connected, deterministic callout identifiers.
 
-use unicode_segmentation::UnicodeSegmentation;
-
+use crate::adapters::box_geometry;
 use crate::adapters::chart_primitives::{checked_chart_dimensions, render_cropped_canvas};
 use crate::ansi::sanitize_label_text;
 use crate::canvas::{Canvas, draw_box};
@@ -237,7 +236,10 @@ fn append_callouts(out: &mut String, callouts: &[String], max_width: usize) {
     out.push_str("\nLabels:\n");
     let content_width = max_width.saturating_sub(6).max(1);
     for (index, label) in callouts.iter().enumerate() {
-        for (line_index, line) in wrap_display(label, content_width).iter().enumerate() {
+        for (line_index, line) in box_geometry::wrap_display(label, content_width)
+            .iter()
+            .enumerate()
+        {
             if line_index == 0 {
                 out.push_str(&format!("  [{}] {line}\n", index + 1));
             } else {
@@ -361,21 +363,4 @@ fn longest_label(node: &TreemapNodeRenderModel) -> usize {
         .iter()
         .map(longest_label)
         .fold(str_display_width(&node_label(node)), usize::max)
-}
-
-fn wrap_display(text: &str, width: usize) -> Vec<String> {
-    let mut lines = vec![String::new()];
-    let mut used = 0usize;
-    for grapheme in UnicodeSegmentation::graphemes(text, true) {
-        let grapheme_width = str_display_width(grapheme).max(1);
-        if used > 0 && used.saturating_add(grapheme_width) > width {
-            lines.push(String::new());
-            used = 0;
-        }
-        if let Some(line) = lines.last_mut() {
-            line.push_str(grapheme);
-        }
-        used += grapheme_width;
-    }
-    lines
 }

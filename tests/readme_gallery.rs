@@ -58,6 +58,20 @@ fn readme_embeds_the_exact_supported_svg_gallery() {
         readme.contains("34-asset gate"),
         "README must describe the family/scenario/showcase publication gate accurately"
     );
+    assert!(
+        readme.contains("ASG 2.0.2"),
+        "README must document the pinned ASG renderer version"
+    );
+    let gallery_script = fs::read_to_string(root.join("scripts/asg-gallery.sh"))
+        .expect("ASG gallery script must be readable");
+    assert!(
+        gallery_script.contains("expected_asg_version='asg 2.0.2'"),
+        "gallery publication must reject unreviewed ASG renderer versions"
+    );
+    assert!(
+        gallery_script.contains("skipping PNG previews"),
+        "gallery publication must not use square qlmanage crops as complete previews"
+    );
 
     for family in families {
         assert_gallery_entry(

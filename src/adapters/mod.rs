@@ -14,6 +14,7 @@ use crate::adapters::{
     sequence::render_sequence, state::render_state, timeline::render_timeline,
     treemap::render_treemap, treeview::render_treeview, venn::render_venn, xychart::render_xychart,
 };
+use crate::ansi::sanitize_label_text;
 use crate::error::Result;
 use crate::options::{Charset, ColorMode, MermansiOptions};
 use crate::output::{AdapterOutput, render_structured_adapter};
@@ -171,10 +172,11 @@ pub(crate) fn render_model_output(
 
 /// Ensure a string is non-empty; if empty, substitute a placeholder.
 pub(crate) fn nonempty_or(s: &str, placeholder: &str) -> String {
-    if s.trim().is_empty() {
+    let sanitized = sanitize_label_text(s);
+    if sanitized.trim().is_empty() {
         placeholder.to_string()
     } else {
-        s.to_string()
+        sanitized
     }
 }
 
@@ -208,9 +210,42 @@ pub(crate) const fn detail_separator(charset: Charset) -> &'static str {
 }
 
 /// Format a title block.
-pub(crate) fn format_title(title: &Option<String>) -> String {
-    match title {
-        Some(t) if !t.trim().is_empty() => format!("{t}\n\n"),
-        _ => String::new(),
+pub(crate) fn format_title(title: &Option<String>, max_width: usize) -> String {
+    let Some(title) = title.as_deref().map(sanitize_label_text) else {
+        return String::new();
+    };
+    if title.trim().is_empty() {
+        String::new()
+    } else {
+        let lines = box_geometry::wrap_display(&title, max_width.max(1));
+        format!("{}\n\n", lines.join("\n"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{format_title, nonempty_or};
+
+    #[test]
+    fn shared_chart_titles_are_terminal_safe_before_layout() {
+        let title = Some("\u{1b}[31mSales\u{1b}[0m\u{1b}]0;hidden\u{07}\nReport".to_owned());
+        assert_eq!(format_title(&title, 80), "SalesReport\n\n");
+    }
+
+    #[test]
+    fn shared_nonempty_text_is_terminal_safe() {
+        assert_eq!(
+            nonempty_or("\u{1b}[31mVisible\u{1b}[0m", "fallback"),
+            "Visible"
+        );
+        assert_eq!(nonempty_or("\u{1b}]0;hidden\u{07}", "fallback"), "fallback");
+    }
+
+    #[test]
+    fn shared_titles_wrap_by_display_column() {
+        assert_eq!(
+            format_title(&Some("中文标题".to_owned()), 4),
+            "中文\n标题\n\n"
+        );
     }
 }

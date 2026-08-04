@@ -248,7 +248,8 @@ fixture that produced it.
 </details>
 
 Regenerate the ignored audit workspace and refresh the tracked README assets only after the
-34-asset gate passes:
+34-asset gate passes. The publication script requires ASG 2.0.2 so SVG dimensions and animation
+frame offsets cannot change through an implicit renderer upgrade:
 
 ```sh
 PUBLISH_README=1 ASG_BIN=/absolute/path/to/asg/target/release/asg scripts/asg-gallery.sh

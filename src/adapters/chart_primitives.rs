@@ -11,6 +11,34 @@ use crate::options::{Charset, MermansiOptions};
 /// Maximum number of chart entities (sections, axes, curves, points, sets) rendered.
 pub const MAX_CHART_ENTITIES: usize = 4_096;
 
+/// Maximum bounded work spent searching for chart labels and collision-free points.
+pub const MAX_CHART_WORK: usize = 2_000_000;
+
+/// Shared deterministic work budget for chart placement searches.
+#[derive(Debug)]
+pub struct ChartWorkBudget {
+    context: &'static str,
+    used: usize,
+}
+
+impl ChartWorkBudget {
+    pub const fn new(context: &'static str) -> Self {
+        Self { context, used: 0 }
+    }
+
+    pub fn consume(&mut self, amount: usize) -> Result<()> {
+        self.used = self.used.saturating_add(amount);
+        if self.used > MAX_CHART_WORK {
+            return Err(MermansiError::RenderLimit {
+                context: self.context,
+                requested: self.used,
+                limit: MAX_CHART_WORK,
+            });
+        }
+        Ok(())
+    }
+}
+
 /// Horizontal character cells per vertical row for visually balanced radial geometry.
 pub const RADIAL_X_SCALE: f64 = 2.0;
 
@@ -369,5 +397,19 @@ mod tests {
 
         assert_eq!(east.0 - center.0, 8.0);
         assert_eq!(center.1 - north.1, 4.0);
+    }
+
+    #[test]
+    fn chart_work_budget_is_typed_and_bounded() {
+        let mut budget = ChartWorkBudget::new("chart test work");
+        assert!(budget.consume(MAX_CHART_WORK).is_ok());
+        assert!(matches!(
+            budget.consume(1),
+            Err(MermansiError::RenderLimit {
+                context: "chart test work",
+                requested,
+                limit: MAX_CHART_WORK,
+            }) if requested == MAX_CHART_WORK + 1
+        ));
     }
 }
